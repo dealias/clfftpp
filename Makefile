@@ -2,6 +2,10 @@ all: clfft1d
 
 CXXFLAGS=
 
+ifneq ($(strip $(OPENCL_INCLUDE_PATH)),)
+CXXFLAGS+=-I$(OPENCL_INCLUDE_PATH)
+endif
+
 ifneq ($(strip $(CLFFT_INCLUDE_PATH)),)
 # erratic:
 # export CLFFT_INCLUDE_PATH=${HOME}/clFFT/include
