@@ -4,6 +4,8 @@
 #include <timing.h>
 #include <seconds.h>
 
+#include<vector>
+
 /* No need to explicitely include the OpenCL headers */
 #include <clFFT.h>
 
@@ -32,44 +34,49 @@ int main() {
   cl_int err;
   cl_device_id device = 0;
 
+  std::vector<cl_device_id> device_ids;
+
   cl_uint max_plats=100, max_dev=100;
-
-  cl_platform_id platform_id[max_plats];
-  cl_device_id device_ids[max_dev];
-
-  cl_uint cl_num_platforms;
-  cl_uint cl_num_devices;
-
   
-  // Obtain the list of platforms available.
-  clGetPlatformIDs(max_plats, platform_id, &cl_num_platforms);
-  std::cout << "cl_num_platforms=" << cl_num_platforms << std::endl;
-  for(int i=0 ; i < cl_num_platforms ; ++i) {
-    err = clGetDeviceIDs(platform_id[i],
-			 CL_DEVICE_TYPE_DEFAULT,
-			 max_dev,  // num_entries
-			 device_ids,
-			 &cl_num_devices);
-    std::cout << "\tcl_num_devices=" << cl_num_devices << std::endl;
-    for(int j=0; j < cl_num_devices; ++j) {
-      char buffer[10240];
-      err = clGetDeviceInfo(device_ids[j],
-			    CL_DEVICE_NAME, //cl_device_info param_name,
-			    sizeof(buffer), buffer, NULL);
-      std::cout << "\t\tdevice " << j <<": " << buffer << std::endl;
+  cl_platform_id platform_ids[max_plats];
+
+  {
+    cl_device_id temp_device_ids[max_dev];
+    cl_uint cl_num_platforms;
+    cl_uint cl_num_devices;
+    
+    // Obtain the list of platforms available.
+    clGetPlatformIDs(max_plats, platform_ids, &cl_num_platforms);
+    for(int i=0 ; i < cl_num_platforms ; ++i) {
+      err = clGetDeviceIDs(platform_ids[i],
+			   CL_DEVICE_TYPE_DEFAULT,
+			   max_dev,  // num_entries
+			   temp_device_ids,
+			   &cl_num_devices);
+      for(int j=0; j < cl_num_devices; ++j) {
+	char buffer[1024];
+	err = clGetDeviceInfo(temp_device_ids[j],
+			      CL_DEVICE_NAME, //cl_device_info param_name,
+			      sizeof(buffer), 
+			      buffer, 
+			      NULL);
+	std::cout << "platform " << i 
+		  << " device " << j <<": " 
+		  << buffer << std::endl;
+	device_ids.push_back(temp_device_ids[j]);
+      }
     }
   }
 
-  err = clGetPlatformIDs(max_plats, &platform, NULL);
-  err = clGetDeviceIDs(platform, CL_DEVICE_TYPE_CPU, 1, &device, NULL);
+  // TODO: set this up to use std::array and push, right now this is
+  // the last platform!
+  device=device_ids[0];
 
   cl_context_properties props[3] = {CL_CONTEXT_PLATFORM, 0, 0};
   props[1] = (cl_context_properties)platform;
   cl_context ctx = clCreateContext(props, 1, &device, NULL, NULL, &err);
   cl_command_queue queue = clCreateCommandQueue(ctx, device, 0, &err);
   
-
-
   /* Setup clFFT. */
   clfftSetupData fftSetup;
   err = clfftInitSetupData(&fftSetup);
