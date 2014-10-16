@@ -23,41 +23,64 @@ void init(float *X, int N)
 }
 
 int main() {
-  cl_int err;
-  cl_platform_id platform = 0;
-  cl_device_id device = 0;
-  cl_context_properties props[3] = { CL_CONTEXT_PLATFORM, 0, 0 };
-  cl_context ctx = 0;
-  cl_command_queue queue = 0;
-  cl_mem bufX;
-  float *X;
-  cl_event event = NULL;
-  int ret = 0;
-  size_t N = 1024;
-  N=262144;
-
   /* FFT library realted declarations */
   clfftPlanHandle planHandle;
   clfftDim dim = CLFFT_1D;
-  size_t clLengths[1] = {N};
 
   /* Setup OpenCL environment. */
-  err = clGetPlatformIDs( 1, &platform, NULL );
-  err = clGetDeviceIDs( platform, CL_DEVICE_TYPE_CPU, 1, &device, NULL );
+  cl_platform_id platform = 0;
+  cl_int err;
+  cl_device_id device = 0;
 
+  cl_uint max_plats=100, max_dev=100;
+
+  cl_platform_id platform_id[max_plats];
+  cl_device_id device_ids[max_dev];
+
+  cl_uint cl_num_platforms;
+  cl_uint cl_num_devices;
+
+  
+  // Obtain the list of platforms available.
+  clGetPlatformIDs(max_plats, platform_id, &cl_num_platforms);
+  std::cout << "cl_num_platforms=" << cl_num_platforms << std::endl;
+  for(int i=0 ; i < cl_num_platforms ; ++i) {
+    err = clGetDeviceIDs(platform_id[i],
+			 CL_DEVICE_TYPE_DEFAULT,
+			 max_dev,  // num_entries
+			 device_ids,
+			 &cl_num_devices);
+    std::cout << "\tcl_num_devices=" << cl_num_devices << std::endl;
+    for(int j=0; j < cl_num_devices; ++j) {
+      char buffer[10240];
+      err = clGetDeviceInfo(device_ids[j],
+			    CL_DEVICE_NAME, //cl_device_info param_name,
+			    sizeof(buffer), buffer, NULL);
+      std::cout << "\t\tdevice " << j <<": " << buffer << std::endl;
+    }
+  }
+
+  err = clGetPlatformIDs(max_plats, &platform, NULL);
+  err = clGetDeviceIDs(platform, CL_DEVICE_TYPE_CPU, 1, &device, NULL);
+
+  cl_context_properties props[3] = {CL_CONTEXT_PLATFORM, 0, 0};
   props[1] = (cl_context_properties)platform;
-  ctx = clCreateContext( props, 1, &device, NULL, NULL, &err );
-  queue = clCreateCommandQueue( ctx, device, 0, &err );
+  cl_context ctx = clCreateContext(props, 1, &device, NULL, NULL, &err);
+  cl_command_queue queue = clCreateCommandQueue(ctx, device, 0, &err);
+  
+
 
   /* Setup clFFT. */
   clfftSetupData fftSetup;
   err = clfftInitSetupData(&fftSetup);
   err = clfftSetup(&fftSetup);
 
+  size_t N = 1024;
+  N=262144;
 
   /* Allocate host & initialize data. */
   /* Only allocation shown for simplicity. */
-  X = (float *)malloc(N * 2 * sizeof(*X));
+  float *X = (float *)malloc(N * 2 * sizeof(*X));
 
   int NT=1000;
   double *T=new double[NT];
@@ -66,7 +89,7 @@ int main() {
   //show(X,N);
   
   /* Prepare OpenCL memory objects and place data inside them. */
-  bufX = clCreateBuffer(ctx, 
+  cl_mem bufX = clCreateBuffer(ctx, 
 			CL_MEM_READ_WRITE, N * 2 * sizeof(*X),
 			NULL,
 			&err);
@@ -83,6 +106,7 @@ int main() {
 			     NULL);
 
   // Create a default plan for a complex FFT.
+  size_t clLengths[1] = {N};
   err = clfftCreateDefaultPlan(&planHandle, 
 			       ctx, 
 			       dim, 
@@ -163,6 +187,6 @@ int main() {
   clReleaseCommandQueue(queue);
   clReleaseContext(ctx);
 
-  return ret;
+  return 0;
 }
   
