@@ -189,6 +189,49 @@ int main() {
   }
   timings("with copy",N,T,NT,MEDIAN);
 
+  for(int i=0; i < NT; ++i) {
+    init(X,N);
+
+    // Copy X to bufX
+    err = clEnqueueWriteBuffer(queue,
+			       bufX,
+			       CL_TRUE,
+			       0,
+			       buf_size,
+			       X,
+			       0,
+			       NULL,
+			       NULL);
+    seconds();
+    // Execute the plan.
+    err = clfftEnqueueTransform(planHandle,
+				CLFFT_FORWARD,
+				1,
+				&queue,
+				0,
+				NULL,
+				NULL,
+				&bufX,
+				NULL,
+				NULL);
+
+    // Wait for calculations to be finished.
+    err = clFinish(queue);
+    T[i]=seconds();    
+    // Fetch results of calculations.
+    err = clEnqueueReadBuffer(queue, 
+			      bufX, 
+			      CL_TRUE, 
+			      0, 
+			      buf_size,
+			      X, 
+			      0, 
+			      NULL, 
+			      NULL );
+
+  }
+  timings("without copy",N,T,NT,MEDIAN);
+
   /* Release OpenCL memory objects. */
   clReleaseMemObject(bufX);
 
