@@ -45,7 +45,7 @@ int main() {
     clGetPlatformIDs(max_plats, platform_ids, &cl_num_platforms);
     for(int i=0 ; i < cl_num_platforms ; ++i) {
       err = clGetDeviceIDs(platform_ids[i],
-			   CL_DEVICE_TYPE_DEFAULT,
+			   CL_DEVICE_TYPE_ALL,
 			   max_dev,  // num_entries
 			   temp_device_ids,
 			   &cl_num_devices);
@@ -89,7 +89,7 @@ int main() {
 
 
   int N = 1024;
-  //N=262144;
+  N=262144;
 
   int buf_size= N * 2 * sizeof(float);
   float *X = (float *)malloc(buf_size);
