@@ -8,6 +8,11 @@ ifneq ($(strip $(CLFFT_INCLUDE_PATH)),)
 CXXFLAGS+=-I$(CLFFT_INCLUDE_PATH)
 endif
 
+ifneq ($(strip $(FFTWPP_INCLUDE_PATH)),)
+CXXFLAGS+=-I$(FFTWPP_INCLUDE_PATH)
+CXXFLAGS+=-I$(FFTWPP_INCLUDE_PATH)/tests
+endif
+
 LDFLAGS=
 LDFLAGS+=-lOpenCL
 ifneq ($(strip $(CLFFT_LIB_PATH)),)

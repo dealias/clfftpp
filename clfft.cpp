@@ -1,6 +1,8 @@
 #include <stdlib.h>
 
 #include <iostream>
+#include <timing.h>
+#include <seconds.h>
 
 /* No need to explicitely include the OpenCL headers */
 #include <clFFT.h>
@@ -12,8 +14,15 @@ void show(float *X, int N)
   }
 }
 
-int main( void )
+void init(float *X, int N)
 {
+  for(unsigned int i=0; i < N; ++i) {
+    X[2*i] = i;
+    X[2*i + 1] = 0.0;
+  }
+}
+
+int main() {
   cl_int err;
   cl_platform_id platform = 0;
   cl_device_id device = 0;
@@ -24,7 +33,8 @@ int main( void )
   float *X;
   cl_event event = NULL;
   int ret = 0;
-  size_t N = 16;
+  size_t N = 1024;
+  N=262144;
 
   /* FFT library realted declarations */
   clfftPlanHandle planHandle;
@@ -44,20 +54,17 @@ int main( void )
   err = clfftInitSetupData(&fftSetup);
   err = clfftSetup(&fftSetup);
 
-  std::cout << "set up X: " << std::endl;
 
   /* Allocate host & initialize data. */
   /* Only allocation shown for simplicity. */
   X = (float *)malloc(N * 2 * sizeof(*X));
 
-  // Initialize the data:
-  for(unsigned int i=0; i < N; ++i) {
-    X[2*i] = i;
-    X[2*i + 1] = 0.0;
-  }
-  show(X,N);
+  int NT=1000;
+  double *T=new double[NT];
 
-  std::cout << "set up bufX: " << std::endl;
+  init(X,N);
+  //show(X,N);
+  
   /* Prepare OpenCL memory objects and place data inside them. */
   bufX = clCreateBuffer(ctx, 
 			CL_MEM_READ_WRITE, N * 2 * sizeof(*X),
@@ -75,9 +82,11 @@ int main( void )
 			     NULL,
 			     NULL);
 
-  std::cout << "what's the plan? " << std::endl;
   // Create a default plan for a complex FFT.
-  err = clfftCreateDefaultPlan(&planHandle, ctx, dim, clLengths);
+  err = clfftCreateDefaultPlan(&planHandle, 
+			       ctx, 
+			       dim, 
+			       clLengths);
 
   /* Set plan parameters. */
   err = clfftSetPlanPrecision(planHandle, 
@@ -89,43 +98,55 @@ int main( void )
 			       CLFFT_INPLACE);
 
   // Bake the plan.
-  std::cout << "We... bake the plan? " << std::endl;
   err = clfftBakePlan(planHandle, 
 		      1, // numQueues: number of experiments 
 		      &queue, // commQueueFFT
 		      NULL, // Always NULL
 		      NULL // Always NULL
 		      );
-  // FIXME: baking the plan fails on GPUs.
 
-  std::cout << "execute the plan! " << std::endl;
-  // Execute the plan.
-  err = clfftEnqueueTransform(planHandle,
-			      CLFFT_FORWARD,
-			      1,
-			      &queue,
-			      0,
-			      NULL,
-			      NULL,
-			      &bufX,
-			      NULL,
-			      NULL);
+  for(int i=0; i < NT; ++i) {
+    init(X,N);
+    seconds();
+    // Copy X to bufX
+    err = clEnqueueWriteBuffer(queue,
+			       bufX,
+			       CL_TRUE,
+			       0,
+			       N * 2 * sizeof(*X),
+			       X,
+			       0,
+			       NULL,
+			       NULL);
 
-  // Wait for calculations to be finished.
-  err = clFinish(queue);
+    // Execute the plan.
+    err = clfftEnqueueTransform(planHandle,
+				CLFFT_FORWARD,
+				1,
+				&queue,
+				0,
+				NULL,
+				NULL,
+				&bufX,
+				NULL,
+				NULL);
 
-  // Fetch results of calculations.
-  err = clEnqueueReadBuffer(queue, 
-			    bufX, 
-			    CL_TRUE, 
-			    0, 
-			    N * 2 * sizeof( *X ), 
-			    X, 
-			    0, 
-			    NULL, 
-			    NULL );
-
-  show(X,N);
+    // Wait for calculations to be finished.
+    err = clFinish(queue);
+    
+    // Fetch results of calculations.
+    err = clEnqueueReadBuffer(queue, 
+			      bufX, 
+			      CL_TRUE, 
+			      0, 
+			      N * 2 * sizeof( *X ), 
+			      X, 
+			      0, 
+			      NULL, 
+			      NULL );
+    T[i]=seconds();
+  }
+  timings("with copy",N,T,NT,MEDIAN);
 
   /* Release OpenCL memory objects. */
   clReleaseMemObject(bufX);
@@ -144,3 +165,4 @@ int main( void )
 
   return ret;
 }
+  
