@@ -36,11 +36,9 @@ int main() {
 
   std::vector<cl_device_id> device_ids;
 
-  cl_uint max_plats=100, max_dev=100;
-  
-  cl_platform_id platform_ids[max_plats];
-
   {
+    cl_uint max_plats=100, max_dev=100;
+    cl_platform_id platform_ids[max_plats];
     cl_device_id temp_device_ids[max_dev];
     cl_uint cl_num_platforms;
     cl_uint cl_num_devices;
@@ -68,45 +66,52 @@ int main() {
     }
   }
 
-  // TODO: set this up to use std::array and push, right now this is
-  // the last platform!
   device=device_ids[0];
 
-  cl_context_properties props[3] = {CL_CONTEXT_PLATFORM, 0, 0};
-  props[1] = (cl_context_properties)platform;
-  cl_context ctx = clCreateContext(props, 1, &device, NULL, NULL, &err);
-  cl_command_queue queue = clCreateCommandQueue(ctx, device, 0, &err);
-  
+  cl_context ctx;
+  cl_command_queue queue;
+  {
+    cl_context_properties props[3] = {CL_CONTEXT_PLATFORM, 0, 0};
+    props[1] = (cl_context_properties)platform;
+    ctx = clCreateContext(props, 1, &device, NULL, NULL, &err);
+    queue = clCreateCommandQueue(ctx, device, 0, &err);
+  }
+
   /* Setup clFFT. */
-  clfftSetupData fftSetup;
-  err = clfftInitSetupData(&fftSetup);
-  err = clfftSetup(&fftSetup);
+  {
+    clfftSetupData fftSetup;
+    err = clfftInitSetupData(&fftSetup);
+    err = clfftSetup(&fftSetup);
+  }
 
   size_t N = 1024;
-  N=262144;
+  //N=262144;
 
   /* Allocate host & initialize data. */
   /* Only allocation shown for simplicity. */
   float *X = (float *)malloc(N * 2 * sizeof(*X));
 
-  int NT=1000;
+  int NT=10;
   double *T=new double[NT];
 
   init(X,N);
   //show(X,N);
   
+  int buf_size= N * 2 * sizeof(*X);
+
   /* Prepare OpenCL memory objects and place data inside them. */
   cl_mem bufX = clCreateBuffer(ctx, 
-			CL_MEM_READ_WRITE, N * 2 * sizeof(*X),
-			NULL,
-			&err);
+			       CL_MEM_READ_WRITE, 
+			       buf_size,
+			       NULL,
+			       &err);
 
   // Copy X to bufX
   err = clEnqueueWriteBuffer(queue,
 			     bufX,
 			     CL_TRUE,
 			     0,
-			     N * 2 * sizeof(*X),
+			     buf_size,
 			     X,
 			     0,
 			     NULL,
@@ -144,7 +149,7 @@ int main() {
 			       bufX,
 			       CL_TRUE,
 			       0,
-			       N * 2 * sizeof(*X),
+			       buf_size,
 			       X,
 			       0,
 			       NULL,
@@ -170,7 +175,7 @@ int main() {
 			      bufX, 
 			      CL_TRUE, 
 			      0, 
-			      N * 2 * sizeof( *X ), 
+			      buf_size,
 			      X, 
 			      0, 
 			      NULL, 
