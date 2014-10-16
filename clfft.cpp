@@ -25,9 +25,7 @@ void init(float *X, int N)
 }
 
 int main() {
-  /* FFT library realted declarations */
-  clfftPlanHandle planHandle;
-  clfftDim dim = CLFFT_1D;
+
 
   /* Setup OpenCL environment. */
   cl_platform_id platform = 0;
@@ -66,6 +64,11 @@ int main() {
     }
   }
 
+  int device_id=0;
+  if(device_id > device_ids.size()) {
+    std::cerr << "Invalid device" << std::endl;
+    exit(1);
+  }
   device=device_ids[0];
 
   cl_context ctx;
@@ -84,12 +87,12 @@ int main() {
     err = clfftSetup(&fftSetup);
   }
 
-  size_t N = 1024;
+
+  int N = 1024;
   //N=262144;
 
-  /* Allocate host & initialize data. */
-  /* Only allocation shown for simplicity. */
-  float *X = (float *)malloc(N * 2 * sizeof(*X));
+  int buf_size= N * 2 * sizeof(float);
+  float *X = (float *)malloc(buf_size);
 
   int NT=10;
   double *T=new double[NT];
@@ -97,7 +100,7 @@ int main() {
   init(X,N);
   //show(X,N);
   
-  int buf_size= N * 2 * sizeof(*X);
+
 
   /* Prepare OpenCL memory objects and place data inside them. */
   cl_mem bufX = clCreateBuffer(ctx, 
@@ -118,7 +121,9 @@ int main() {
 			     NULL);
 
   // Create a default plan for a complex FFT.
+  clfftDim dim = CLFFT_1D;
   size_t clLengths[1] = {N};
+  clfftPlanHandle planHandle;
   err = clfftCreateDefaultPlan(&planHandle, 
 			       ctx, 
 			       dim, 
