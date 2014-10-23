@@ -4,26 +4,34 @@
 #include <timing.h>
 #include <seconds.h>
 #include <platform.hpp>
+#include <clfft.hpp>
 
 #include<vector>
-
 
 /* No need to explicitely include the OpenCL headers */
 #include <clFFT.h>
 
-void show(float *X, int N)
+void show(float *X, int n)
 {
-  for(unsigned int i=0; i < N; ++i) {
+  for(unsigned int i=0; i < n; ++i) {
     std::cout << "(" << X[2*i] << "," <<  X[2*i +1] << ")" << std::endl;
   }
 }
 
-void init(float *X, int N)
+void init(float *X, int n)
 {
-  for(unsigned int i=0; i < N; ++i) {
+  for(unsigned int i=0; i < n; ++i) {
     X[2*i] = i;
     X[2*i + 1] = 0.0;
   }
+}
+
+void clfft_setup()
+{
+  cl_int err;  
+  clfftSetupData fftSetup;
+  err = clfftInitSetupData(&fftSetup);
+  err = clfftSetup(&fftSetup);
 }
 
 int main() {
@@ -31,47 +39,37 @@ int main() {
   show_devices();
   std::cout << std::endl;
 
+  int platnum=0;
+  int devnum=0;
+
   std::vector<std::vector<cl_device_id> > dev_ids;
   create_device_tree(dev_ids);
-  cl_device_id device = dev_ids[0][0];
+  cl_device_id device = dev_ids[platnum][devnum];
 
-  std::vector<cl_platform_id > plat_ids;
+  std::vector<cl_platform_id> plat_ids;
   find_platform_ids(plat_ids);
-  cl_platform_id platform = plat_ids[0];
+  cl_platform_id platform = plat_ids[devnum];
 
-  cl_int err;  
+  cl_context ctx = create_context(platform, device);
+  cl_command_queue queue = create_queue(ctx, device);
 
-  cl_context ctx;
-  cl_command_queue queue;
-  {
-    cl_context_properties props[3] = {CL_CONTEXT_PLATFORM, 0, 0};
-    props[1] = (cl_context_properties) platform;
-    ctx = clCreateContext(props, 1, &device, NULL, NULL, &err);
-    queue = clCreateCommandQueue(ctx, device, 0, &err);
-  }
+  clfft_setup();
 
-  /* Setup clFFT. */
-  {
-    clfftSetupData fftSetup;
-    err = clfftInitSetupData(&fftSetup);
-    err = clfftSetup(&fftSetup);
-  }
+  int n = 1024;
+  //n=262144;
 
+  typedef float real;
 
-  int N = 1024;
-  //N=262144;
+  int buf_size= n * 2 * sizeof(real);
+  real *X = (real *)malloc(buf_size);
 
-  int buf_size= N * 2 * sizeof(float);
-  float *X = (float *)malloc(buf_size);
+  int N=10;
+  double *T=new double[N];
 
-  int NT=10;
-  double *T=new double[NT];
+  init(X,n);
+  //show(X,n);
 
-  init(X,N);
-  //show(X,N);
-  
-
-
+  cl_int err;    
   /* Prepare OpenCL memory objects and place data inside them. */
   cl_mem bufX = clCreateBuffer(ctx, 
 			       CL_MEM_READ_WRITE, 
@@ -89,36 +87,38 @@ int main() {
 			     0,
 			     NULL,
 			     NULL);
-
+  
   // Create a default plan for a complex FFT.
   clfftDim dim = CLFFT_1D;
-  size_t clLengths[1] = {N};
-  clfftPlanHandle planHandle;
-  err = clfftCreateDefaultPlan(&planHandle, 
+  size_t clLengths[1] = {n};
+  clfftPlanHandle plan;
+  err = clfftCreateDefaultPlan(&plan, 
 			       ctx, 
 			       dim, 
 			       clLengths);
 
   /* Set plan parameters. */
-  err = clfftSetPlanPrecision(planHandle, 
+  err = clfftSetPlanPrecision(plan, 
 			      CLFFT_SINGLE);
-  err = clfftSetLayout(planHandle, 
+  err = clfftSetLayout(plan, 
 		       CLFFT_COMPLEX_INTERLEAVED, 
 		       CLFFT_COMPLEX_INTERLEAVED);
-  err = clfftSetResultLocation(planHandle, 
+  err = clfftSetResultLocation(plan, 
 			       CLFFT_INPLACE);
 
   // Bake the plan.
-  err = clfftBakePlan(planHandle, 
+  err = clfftBakePlan(plan,
 		      1, // numQueues: number of experiments 
 		      &queue, // commQueueFFT
 		      NULL, // Always NULL
 		      NULL // Always NULL
 		      );
 
-  for(int i=0; i < NT; ++i) {
-    init(X,N);
+  for(int i=0; i < N; ++i) {
+    init(X,n);
+
     seconds();
+
     // Copy X to bufX
     err = clEnqueueWriteBuffer(queue,
 			       bufX,
@@ -131,7 +131,7 @@ int main() {
 			       NULL);
 
     // Execute the plan.
-    err = clfftEnqueueTransform(planHandle,
+    err = clfftEnqueueTransform(plan,
 				CLFFT_FORWARD,
 				1,
 				&queue,
@@ -155,12 +155,13 @@ int main() {
 			      0, 
 			      NULL, 
 			      NULL );
+
     T[i]=seconds();
   }
-  timings("with copy",N,T,NT,MEDIAN);
+  timings("with copy",n,T,N,MEDIAN);
 
-  for(int i=0; i < NT; ++i) {
-    init(X,N);
+  for(int i=0; i < N; ++i) {
+    init(X,n);
 
     // Copy X to bufX
     err = clEnqueueWriteBuffer(queue,
@@ -173,8 +174,9 @@ int main() {
 			       NULL,
 			       NULL);
     seconds();
+
     // Execute the plan.
-    err = clfftEnqueueTransform(planHandle,
+    err = clfftEnqueueTransform(plan,
 				CLFFT_FORWARD,
 				1,
 				&queue,
@@ -187,7 +189,9 @@ int main() {
 
     // Wait for calculations to be finished.
     err = clFinish(queue);
-    T[i]=seconds();    
+
+    T[i]=seconds();
+
     // Fetch results of calculations.
     err = clEnqueueReadBuffer(queue, 
 			      bufX, 
@@ -200,7 +204,8 @@ int main() {
 			      NULL );
 
   }
-  timings("without copy",N,T,NT,MEDIAN);
+
+  timings("without copy",n,T,N,MEDIAN);
 
   /* Release OpenCL memory objects. */
   clReleaseMemObject(bufX);
@@ -208,7 +213,7 @@ int main() {
   free(X);
 
   /* Release the plan. */
-  err = clfftDestroyPlan(&planHandle);
+  err = clfftDestroyPlan(&plan);
 
   /* Release clFFT library. */
   clfftTeardown();

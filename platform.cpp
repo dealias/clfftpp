@@ -63,17 +63,27 @@ void show_devices()
     std::cout << "platform "<< i <<": " << buffer << std::endl;
     
     for(int j=0; j < D[i].size(); ++j) {
-      std::cout << D[i].size() << std::endl;
-      
       ret = clGetDeviceInfo(D[i][0],
 			    CL_DEVICE_NAME, //cl_device_info param_name,
 			    sizeof(buffer), 
 			    buffer, 
 			    NULL);
       std::cout << "\tdevice " << j << ": " << buffer << std::endl;
-      
      }
-  
   }
 }
 
+cl_context create_context(const cl_platform_id platform,
+			  const cl_device_id device)
+{
+  cl_int err;
+  cl_context_properties props[3] = {CL_CONTEXT_PLATFORM, 0, 0};
+  props[1] = (cl_context_properties) platform;
+  return clCreateContext(props, 1, &device, NULL, NULL, &err);
+}
+
+cl_command_queue create_queue(const cl_context ctx, const cl_device_id device)
+{
+  cl_int err;
+  return clCreateCommandQueue(ctx, device, 0, &err);
+}
