@@ -17,20 +17,28 @@ CXXFLAGS+=-I$(FFTWPP_INCLUDE_PATH)
 CXXFLAGS+=-I$(FFTWPP_INCLUDE_PATH)/tests
 endif
 
+CXXFLAGS+=-I.
+
 LDFLAGS=
+
 LDFLAGS+=-lOpenCL
+ifneq ($(strip $(OPENCL_LIB_PATH)),)
+LDFLAGS+=-L$(OPENCL_LIB_PATH)
+endif
+
 ifneq ($(strip $(CLFFT_LIB_PATH)),)
-# erratic:
-# export CLFFT_LIB_PATH=${HOME}/clFFT/lib
 LDFLAGS+=-L$(CLFFT_LIB_PATH)
 endif
 LDFLAGS+=-lclFFT
 
-clfft.o: clfft.cpp
-	g++ $(CXXFLAGS) clfft.cpp -c
+platform.o: platform.hpp platform.cpp
+	g++ $(CXXFLAGS) platform.cpp -c
 
-clfft1d: clfft.o 
-	g++ clfft.o $(LDFLAGS) -o clfft1d
+clfft.o: clfft.cpp clfft.hpp
+	g++ $(CXXFLAGS) clfft.cpp  -c 
+
+clfft1d: clfft.o platform.o 
+	g++ $^ $(LDFLAGS) -o $@
 
 clean:
-	rm -f clfft.o clfft1d
+	rm -f *.o clfft1d

@@ -3,8 +3,10 @@
 #include <iostream>
 #include <timing.h>
 #include <seconds.h>
+#include <platform.hpp>
 
 #include<vector>
+
 
 /* No need to explicitely include the OpenCL headers */
 #include <clFFT.h>
@@ -26,56 +28,24 @@ void init(float *X, int N)
 
 int main() {
 
+  show_devices();
+  std::cout << std::endl;
 
-  /* Setup OpenCL environment. */
-  cl_platform_id platform = 0;
-  cl_int err;
-  cl_device_id device = 0;
+  std::vector<std::vector<cl_device_id> > dev_ids;
+  create_device_tree(dev_ids);
+  cl_device_id device = dev_ids[0][0];
 
-  std::vector<cl_device_id> device_ids;
+  std::vector<cl_platform_id > plat_ids;
+  find_platform_ids(plat_ids);
+  cl_platform_id platform = plat_ids[0];
 
-  {
-    cl_uint max_plats=100, max_dev=100;
-    cl_platform_id platform_ids[max_plats];
-    cl_device_id temp_device_ids[max_dev];
-    cl_uint cl_num_platforms;
-    cl_uint cl_num_devices;
-    
-    // Obtain the list of platforms available.
-    clGetPlatformIDs(max_plats, platform_ids, &cl_num_platforms);
-    for(int i=0 ; i < cl_num_platforms ; ++i) {
-      err = clGetDeviceIDs(platform_ids[i],
-			   CL_DEVICE_TYPE_DEFAULT,
-			   max_dev,  // num_entries
-			   temp_device_ids,
-			   &cl_num_devices);
-      for(int j=0; j < cl_num_devices; ++j) {
-	char buffer[1024];
-	err = clGetDeviceInfo(temp_device_ids[j],
-			      CL_DEVICE_NAME, //cl_device_info param_name,
-			      sizeof(buffer), 
-			      buffer, 
-			      NULL);
-	std::cout << "platform " << i 
-		  << " device " << j <<": " 
-		  << buffer << std::endl;
-	device_ids.push_back(temp_device_ids[j]);
-      }
-    }
-  }
-
-  int device_id=0;
-  if(device_id > device_ids.size()) {
-    std::cerr << "Invalid device" << std::endl;
-    exit(1);
-  }
-  device=device_ids[0];
+  cl_int err;  
 
   cl_context ctx;
   cl_command_queue queue;
   {
     cl_context_properties props[3] = {CL_CONTEXT_PLATFORM, 0, 0};
-    props[1] = (cl_context_properties)platform;
+    props[1] = (cl_context_properties) platform;
     ctx = clCreateContext(props, 1, &device, NULL, NULL, &err);
     queue = clCreateCommandQueue(ctx, device, 0, &err);
   }
