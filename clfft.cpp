@@ -1,5 +1,4 @@
-/* No need to explicitely include the OpenCL headers */
-#include <clFFT.h>
+#include <clfft.hpp>
 
 void clfft_setup()
 {

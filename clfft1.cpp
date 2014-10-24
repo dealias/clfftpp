@@ -5,13 +5,9 @@
 #include <seconds.h>
 #include <platform.hpp>
 #include <clfft.hpp>
-#include <clfft1.hpp>
 
 
 #include<vector>
-
-/* No need to explicitely include the OpenCL headers */
-#include <clFFT.h>
 
 template<class T>
 void show(float *X, int n)
