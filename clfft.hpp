@@ -37,6 +37,10 @@ public:
       std::cerr << "clfft::clfft_setup error "<< err << std::endl;
   }
 
+  float * create_rambuf() {
+    return new float[buf_size];
+  }
+ 
   cl_mem create_clbuf() {
     cl_int err;
     bufX = clCreateBuffer(ctx, 
@@ -286,6 +290,107 @@ public:
     				NULL);
     if (err > 0)
       std::cerr << "Error in clfft2::backward: " << err << std::endl;
+  }
+
+};
+
+
+class clfft1r : public clfft_base
+{
+private:
+  unsigned nx; // size of problem
+
+  void set_buf_size() {
+    buf_size = (nx + 1) * 2 * sizeof(float); // TODO: variable precision
+  }
+
+  void setup() {
+    set_buf_size();
+
+    clfftDim dim = CLFFT_1D;
+    size_t clLengths[1] = {nx};
+
+    cl_int err;
+    err = clfftCreateDefaultPlan(&plan, 
+				 ctx, 
+				 dim, 
+				 clLengths);
+    err = clfftSetPlanPrecision(plan, 
+				CLFFT_SINGLE);
+    err = clfftSetLayout(plan, 
+			 CLFFT_COMPLEX_INTERLEAVED, 
+			 CLFFT_REAL);
+    err = clfftSetResultLocation(plan, 
+				 CLFFT_INPLACE);
+    err = clfftBakePlan(plan,
+			1, // numQueues: number of experiments 
+			&queue, // commQueueFFT
+			NULL, // Always NULL
+			NULL // Always NULL
+			);
+
+    if(err > 0) 
+      std::cerr << "clfft1r::setup error "<< err << std::endl;
+    
+  }
+public:
+  clfft1r() {
+    ctx = NULL;
+    queue = NULL;
+    bufX = NULL;
+    nx = 0;
+    set_buf_size();
+  }
+
+  clfft1r(unsigned int nx0, cl_command_queue queue0, cl_context ctx0,
+	 cl_mem bufX0=NULL) {
+    nx=nx0;
+    queue=queue0;
+    ctx=ctx0;
+    bufX=bufX0;
+    setup();
+  }
+
+  ~clfft1r() {
+    cl_int err;
+    err = clfftDestroyPlan(&plan);
+    if(err > 0) 
+      std::cerr << "clfft::~clfft1r error "<< err << std::endl;
+
+  }
+
+  void forward(cl_mem bufX0=NULL) {
+    cl_mem buf = (bufX0 != NULL) ? bufX0 : bufX;
+    cl_int err;
+    err = clfftEnqueueTransform(plan,
+				CLFFT_FORWARD,
+				1,
+				&queue,
+				0,
+				NULL,
+				NULL,
+				&buf,
+				NULL,
+				NULL);
+    if (err > 0)
+      std::cerr << "Error in clfft1r::forward: " << err << std::endl;
+  }
+
+  void backward(cl_mem bufX0=NULL) {
+    cl_mem buf = (bufX0 != NULL) ? bufX0 : bufX;
+    cl_int err;
+    err = clfftEnqueueTransform(plan,
+				CLFFT_BACKWARD,
+				1,
+				&queue,
+				0,
+				NULL,
+				NULL,
+				&buf,
+				NULL,
+				NULL);
+    if (err > 0)
+      std::cerr << "Error in clfft1r::backward: " << err << std::endl;
   }
 
 };

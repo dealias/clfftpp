@@ -34,7 +34,7 @@ LDFLAGS+=-L$(CLFFT_LIB_PATH)
 endif
 LDFLAGS+=-lclFFT
 
-all: clfft1 clfft2
+all: clfft1 clfft2 clfft1r
 
 platform.o: platform.hpp platform.cpp
 	g++ $(CXXFLAGS) platform.cpp -c
@@ -48,11 +48,18 @@ clfft1.o: clfft1.cpp
 clfft2.o: clfft2.cpp
 	g++ $(CXXFLAGS) $^ -c 
 
+clfft1r.o: clfft1r.cpp
+	g++ $(CXXFLAGS) $^ -c 
+
 clfft1: clfft1.o clfft.o platform.o 
 	g++ $^ $(LDFLAGS) -o $@
 
 clfft2: clfft2.o clfft.o platform.o 
 	g++ $^ $(LDFLAGS) -o $@
+
+clfft1r: clfft1r.o clfft.o platform.o 
+	g++ $^ $(LDFLAGS) -o $@
+
 
 clean:
 	rm -f *.o clfft1 clfft2

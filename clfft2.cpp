@@ -56,17 +56,13 @@ int main() {
   int ny = 4;
   //nx=262144;
   
-  typedef float real;
-
-  real *X = (real *)malloc(nx * ny * 2 * sizeof(real));
-
-  init(X,nx,ny);
-  //show(X,nx);
-
   clfft2 fft(nx,ny,queue,ctx);
   fft.create_clbuf();
 
+  float *X = fft.create_rambuf();
+
   std::cout << "\nInput:" << std::endl;
+  init(X,nx,ny);
   if(nx * ny <= 100) 
     show(X,nx,ny);
   else 
@@ -90,6 +86,7 @@ int main() {
   else 
     std::cout << X[0] << std::endl;
 
+  std::cout << "\nTimings:" << std::endl;
   int N=10;
   double *T=new double[N];
 
