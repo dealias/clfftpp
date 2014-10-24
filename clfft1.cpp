@@ -9,6 +9,9 @@
 
 #include<vector>
 
+
+
+
 template<class T>
 void show(float *X, int n)
 {
@@ -45,23 +48,24 @@ int main() {
   cl_context ctx = create_context(platform, device);
   cl_command_queue queue = create_queue(ctx, device);
 
-  clfft_setup();
+  int nx = 1024;
 
-  int n = 1024;
-  //n=262144;
+
+
+  //nx=262144;
 
   typedef float real;
 
-  int buf_size= n * 2 * sizeof(real);
+  int buf_size= nx * 2 * sizeof(real);
   real *X = (real *)malloc(buf_size);
 
   int N=10;
   double *T=new double[N];
 
-  init(X,n);
-  //show(X,n);
+  init(X,nx);
+  //show(X,nx);
 
-  cl_int err;    
+  cl_int err;
   /* Prepare OpenCL memory objects and place data inside them. */
   cl_mem bufX = clCreateBuffer(ctx, 
 			       CL_MEM_READ_WRITE, 
@@ -69,6 +73,7 @@ int main() {
 			       NULL,
 			       &err);
 
+  clfft1 fft1(nx,queue,ctx,bufX);
   // Copy X to bufX
   err = clEnqueueWriteBuffer(queue,
 			     bufX,
@@ -79,35 +84,9 @@ int main() {
 			     0,
 			     NULL,
 			     NULL);
-  
-  // Create a default plan for a complex FFT.
-  clfftDim dim = CLFFT_1D;
-  size_t clLengths[1] = {n};
-  clfftPlanHandle plan;
-  err = clfftCreateDefaultPlan(&plan, 
-			       ctx, 
-			       dim, 
-			       clLengths);
-
-  /* Set plan parameters. */
-  err = clfftSetPlanPrecision(plan, 
-			      CLFFT_SINGLE);
-  err = clfftSetLayout(plan, 
-		       CLFFT_COMPLEX_INTERLEAVED, 
-		       CLFFT_COMPLEX_INTERLEAVED);
-  err = clfftSetResultLocation(plan, 
-			       CLFFT_INPLACE);
-
-  // Bake the plan.
-  err = clfftBakePlan(plan,
-		      1, // numQueues: number of experiments 
-		      &queue, // commQueueFFT
-		      NULL, // Always NULL
-		      NULL // Always NULL
-		      );
 
   for(int i=0; i < N; ++i) {
-    init(X,n);
+    init(X,nx);
 
     seconds();
 
@@ -123,16 +102,7 @@ int main() {
 			       NULL);
 
     // Execute the plan.
-    err = clfftEnqueueTransform(plan,
-				CLFFT_FORWARD,
-				1,
-				&queue,
-				0,
-				NULL,
-				NULL,
-				&bufX,
-				NULL,
-				NULL);
+    fft1.fft();
 
     // Wait for calculations to be finished.
     err = clFinish(queue);
@@ -150,10 +120,10 @@ int main() {
 
     T[i]=seconds();
   }
-  timings("with copy",n,T,N,MEDIAN);
+  timings("with copy",nx,T,N,MEDIAN);
 
   for(int i=0; i < N; ++i) {
-    init(X,n);
+    init(X,nx);
 
     // Copy X to bufX
     err = clEnqueueWriteBuffer(queue,
@@ -168,16 +138,7 @@ int main() {
     seconds();
 
     // Execute the plan.
-    err = clfftEnqueueTransform(plan,
-				CLFFT_FORWARD,
-				1,
-				&queue,
-				0,
-				NULL,
-				NULL,
-				&bufX,
-				NULL,
-				NULL);
+    fft1.fft();
 
     // Wait for calculations to be finished.
     err = clFinish(queue);
@@ -197,18 +158,12 @@ int main() {
 
   }
 
-  timings("without copy",n,T,N,MEDIAN);
+  timings("without copy",nx,T,N,MEDIAN);
 
   /* Release OpenCL memory objects. */
   clReleaseMemObject(bufX);
 
   free(X);
-
-  /* Release the plan. */
-  err = clfftDestroyPlan(&plan);
-
-  /* Release clFFT library. */
-  clfftTeardown();
 
   /* Release OpenCL working objects. */
   clReleaseCommandQueue(queue);
