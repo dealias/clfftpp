@@ -1,4 +1,4 @@
-all: clfft1d
+all: clfft1
 
 CXXFLAGS=
 
@@ -34,11 +34,11 @@ LDFLAGS+=-lclFFT
 platform.o: platform.hpp platform.cpp
 	g++ $(CXXFLAGS) platform.cpp -c
 
-clfft.o: clfft.cpp clfft.hpp
-	g++ $(CXXFLAGS) clfft.cpp  -c 
+clfft1.o: clfft1.cpp clfft1.hpp
+	g++ $(CXXFLAGS) clfft1.cpp  -c 
 
-clfft1d: clfft.o platform.o 
+clfft1: clfft1.o platform.o 
 	g++ $^ $(LDFLAGS) -o $@
 
 clean:
-	rm -f *.o clfft1d
+	rm -f *.o clfft1

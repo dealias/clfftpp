@@ -4,7 +4,7 @@
 #include <timing.h>
 #include <seconds.h>
 #include <platform.hpp>
-#include <clfft.hpp>
+#include <clfft1.hpp>
 
 #include<vector>
 
