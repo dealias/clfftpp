@@ -4,7 +4,9 @@
 #include <timing.h>
 #include <seconds.h>
 #include <platform.hpp>
+#include <clfft.hpp>
 #include <clfft1.hpp>
+
 
 #include<vector>
 
@@ -26,14 +28,6 @@ void init(T *X, int n)
     X[2*i] = i;
     X[2*i + 1] = 0.0;
   }
-}
-
-void clfft_setup()
-{
-  cl_int err;  
-  clfftSetupData fftSetup;
-  err = clfftInitSetupData(&fftSetup);
-  err = clfftSetup(&fftSetup);
 }
 
 int main() {
