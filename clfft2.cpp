@@ -66,14 +66,29 @@ int main() {
   clfft2 fft(nx,ny,queue,ctx);
   fft.create_clbuf();
 
+  std::cout << "\nInput:" << std::endl;
+  if(nx * ny <= 100) 
+    show(X,nx,ny);
+  else 
+    std::cout << X[0] << std::endl;
+
   fft.ram_to_cl(X);
   fft.forward();
   fft.cl_to_ram(X);
-  if(nx * ny  <= 100) {
+  std::cout << "\nTransformed:" << std::endl;
+  if(nx * ny <= 100) 
     show(X,nx,ny);
-  } else {
+  else 
     std::cout << X[0] << std::endl;
-  }
+
+  fft.ram_to_cl(X);
+  fft.backward();
+  fft.cl_to_ram(X);
+  std::cout << "\nTransformed back:" << std::endl;
+  if(nx * ny <= 100) 
+    show(X,nx,ny);
+  else 
+    std::cout << X[0] << std::endl;
 
   int N=10;
   double *T=new double[N];

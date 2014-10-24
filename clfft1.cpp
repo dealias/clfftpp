@@ -1,10 +1,10 @@
 #include <stdlib.h>
+#include <platform.hpp>
+#include <clfft.hpp>
 
 #include <iostream>
 #include <timing.h>
 #include <seconds.h>
-#include <platform.hpp>
-#include <clfft.hpp>
 
 #include<vector>
 
@@ -55,27 +55,46 @@ int main() {
   init(X,nx);
   //show(X,nx);
 
-  clfft1 fft1(nx,queue,ctx);
-  fft1.create_clbuf();
+  clfft1 fft(nx,queue,ctx);
+  fft.create_clbuf();
 
-  fft1.ram_to_cl(X);
-  fft1.forward();
-  fft1.cl_to_ram(X);
+  std::cout << "\nInput:" << std::endl;
   if(nx <= 32) 
     show(X,nx);
   else 
     std::cout << X[0] << std::endl;
 
+  fft.ram_to_cl(X);
+  fft.forward();
+  fft.cl_to_ram(X);
+  std::cout << "\nTransformed:" << std::endl;
+  if(nx <= 32) 
+    show(X,nx);
+  else 
+    std::cout << X[0] << std::endl;
+
+  fft.ram_to_cl(X);
+  fft.backward();
+  fft.cl_to_ram(X);
+  std::cout << "\nTransformed back:" << std::endl;
+  if(nx <= 32) 
+    show(X,nx);
+  else 
+    std::cout << X[0] << std::endl;
+
+
   int N=10;
   double *T=new double[N];
 
+  
+  std::cout << "\nTimings:" << std::endl;
   for(int i=0; i < N; ++i) {
     init(X,nx);
     seconds();
-    fft1.ram_to_cl(X);
-    fft1.forward();
-    fft1.wait();
-    fft1.cl_to_ram(X);
+    fft.ram_to_cl(X);
+    fft.forward();
+    fft.wait();
+    fft.cl_to_ram(X);
     T[i]=seconds();
   }
   timings("fft with copy",nx,T,N,MEDIAN);
@@ -83,10 +102,10 @@ int main() {
   for(int i=0; i < N; ++i) {
     init(X,nx);
     seconds();
-    fft1.ram_to_cl(X);
-    fft1.forward();
-    fft1.wait();
-    fft1.cl_to_ram(X);
+    fft.ram_to_cl(X);
+    fft.forward();
+    fft.wait();
+    fft.cl_to_ram(X);
     T[i]=seconds();
   }
   timings("fft without copy",nx,T,N,MEDIAN);

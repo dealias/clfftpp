@@ -167,7 +167,24 @@ public:
 				NULL,
 				NULL);
     if (err > 0)
-      std::cerr << "Error in clfft1::forward_ram: " << err << std::endl;
+      std::cerr << "Error in clfft1::forward: " << err << std::endl;
+  }
+
+  void backward(cl_mem bufX0=NULL) {
+    cl_mem buf = (bufX0 != NULL) ? bufX0 : bufX;
+    cl_int err;
+    err = clfftEnqueueTransform(plan,
+				CLFFT_BACKWARD,
+				1,
+				&queue,
+				0,
+				NULL,
+				NULL,
+				&buf,
+				NULL,
+				NULL);
+    if (err > 0)
+      std::cerr << "Error in clfft1::backward: " << err << std::endl;
   }
 
 };
@@ -235,12 +252,9 @@ public:
     err = clfftDestroyPlan(&plan);
     if(err > 0) 
       std::cerr << "clfft::~clfft2 error "<< err << std::endl;
-
   }
 
   void forward(cl_mem bufX0=NULL) {
-    // FIXME
-
     cl_mem buf = (bufX0 != NULL) ? bufX0 : bufX;
     cl_int err;
     err = clfftEnqueueTransform(plan,
@@ -254,7 +268,24 @@ public:
     				NULL,
     				NULL);
     if (err > 0)
-      std::cerr << "Error in clfft1::forward_ram: " << err << std::endl;
+      std::cerr << "Error in clfft2::backward: " << err << std::endl;
+  }
+
+  void backward(cl_mem bufX0=NULL) {
+    cl_mem buf = (bufX0 != NULL) ? bufX0 : bufX;
+    cl_int err;
+    err = clfftEnqueueTransform(plan,
+    				CLFFT_BACKWARD,
+    				1,
+    				&queue,
+    				0,
+    				NULL,
+    				NULL,
+    				&buf,
+    				NULL,
+    				NULL);
+    if (err > 0)
+      std::cerr << "Error in clfft2::backward: " << err << std::endl;
   }
 
 };
