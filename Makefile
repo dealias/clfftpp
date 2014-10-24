@@ -19,6 +19,11 @@ endif
 
 CXXFLAGS+=-I.
 
+#CXXFLAGS+=-Ofast
+CXXFLAGS+=-Wall
+
+
+
 LDFLAGS=
 
 LDFLAGS+=-lOpenCL

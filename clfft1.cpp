@@ -6,14 +6,10 @@
 #include <platform.hpp>
 #include <clfft.hpp>
 
-
 #include<vector>
 
-
-
-
 template<class T>
-void show(float *X, int n)
+void show(T *X, int n)
 {
   for(unsigned int i=0; i < n; ++i) {
     std::cout << "(" << X[2*i] << "," <<  X[2*i +1] << ")" << std::endl;
@@ -32,7 +28,6 @@ void init(T *X, int n)
 int main() {
 
   show_devices();
-  std::cout << std::endl;
 
   int platnum=0;
   int devnum=0;
@@ -49,119 +44,55 @@ int main() {
   cl_command_queue queue = create_queue(ctx, device);
 
   int nx = 1024;
-
-
-
   //nx=262144;
+
+  nx=4;
 
   typedef float real;
 
-  int buf_size= nx * 2 * sizeof(real);
-  real *X = (real *)malloc(buf_size);
-
-  int N=10;
-  double *T=new double[N];
+  real *X = (real *)malloc(nx * 2 * sizeof(real));
 
   init(X,nx);
   //show(X,nx);
 
   cl_int err;
   /* Prepare OpenCL memory objects and place data inside them. */
-  cl_mem bufX = clCreateBuffer(ctx, 
-			       CL_MEM_READ_WRITE, 
-			       buf_size,
-			       NULL,
-			       &err);
+  clfft1 fft1(nx,queue,ctx);
+  
+  fft1.create_clbuf();
 
-  clfft1 fft1(nx,queue,ctx,bufX);
-  // Copy X to bufX
-  err = clEnqueueWriteBuffer(queue,
-			     bufX,
-			     CL_TRUE,
-			     0,
-			     buf_size,
-			     X,
-			     0,
-			     NULL,
-			     NULL);
+  fft1.ram_to_cl(X);
+  fft1.forward();
+  fft1.cl_to_ram(X);
+  if(nx <= 32) 
+    show(X,nx);
+  else 
+    std::cout << X[0] << std::endl;
+
+  int N=10;
+  double *T=new double[N];
 
   for(int i=0; i < N; ++i) {
     init(X,nx);
-
     seconds();
-
-    // Copy X to bufX
-    err = clEnqueueWriteBuffer(queue,
-			       bufX,
-			       CL_TRUE,
-			       0,
-			       buf_size,
-			       X,
-			       0,
-			       NULL,
-			       NULL);
-
-    // Execute the plan.
-    fft1.fft();
-
-    // Wait for calculations to be finished.
+    fft1.ram_to_cl(X);
+    fft1.forward();
     err = clFinish(queue);
-    
-    // Fetch results of calculations.
-    err = clEnqueueReadBuffer(queue, 
-			      bufX, 
-			      CL_TRUE, 
-			      0, 
-			      buf_size,
-			      X, 
-			      0, 
-			      NULL, 
-			      NULL );
-
+    fft1.cl_to_ram(X);
     T[i]=seconds();
   }
-  timings("with copy",nx,T,N,MEDIAN);
+  timings("fft with copy",nx,T,N,MEDIAN);
 
   for(int i=0; i < N; ++i) {
     init(X,nx);
-
-    // Copy X to bufX
-    err = clEnqueueWriteBuffer(queue,
-			       bufX,
-			       CL_TRUE,
-			       0,
-			       buf_size,
-			       X,
-			       0,
-			       NULL,
-			       NULL);
     seconds();
-
-    // Execute the plan.
-    fft1.fft();
-
-    // Wait for calculations to be finished.
+    fft1.ram_to_cl(X);
+    fft1.forward();
     err = clFinish(queue);
-
+    fft1.cl_to_ram(X);
     T[i]=seconds();
-
-    // Fetch results of calculations.
-    err = clEnqueueReadBuffer(queue, 
-			      bufX, 
-			      CL_TRUE, 
-			      0, 
-			      buf_size,
-			      X, 
-			      0, 
-			      NULL, 
-			      NULL );
-
   }
-
-  timings("without copy",nx,T,N,MEDIAN);
-
-  /* Release OpenCL memory objects. */
-  clReleaseMemObject(bufX);
+  timings("fft without copy",nx,T,N,MEDIAN);
 
   free(X);
 

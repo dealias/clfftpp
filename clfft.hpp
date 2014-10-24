@@ -1,5 +1,6 @@
 /* No need to explicitely include the OpenCL headers */
 #include <clFFT.h>
+#include <iostream>
 
 void clfft_setup();
 
@@ -7,6 +8,13 @@ class clfft_base
 {
 private:
   static int count_zero;
+protected:
+  clfftPlanHandle plan;
+  cl_context ctx;
+  cl_command_queue queue;
+  cl_mem bufX;
+  int buf_size;
+
 public:
   clfft_base(){
     if(count_zero == 0)
@@ -25,27 +33,64 @@ public:
     clfftSetupData fftSetup;
     err = clfftInitSetupData(&fftSetup);
     err = clfftSetup(&fftSetup);
+    if(err > 0) 
+      std::cerr << "clfft::clfft_setup error "<< err << std::endl;
   }
+
+  cl_mem create_clbuf() {
+    cl_int err;
+    bufX = clCreateBuffer(ctx, 
+			  CL_MEM_READ_WRITE, 
+			  buf_size,
+			  NULL,
+			  &err);
+    if(err > 0) 
+      std::cerr << "clfft::create_clbuf error "<< err << std::endl;
+    return bufX;
+  }
+
+  void cl_to_ram(float *X, cl_mem bufX0=NULL) {
+    cl_mem buf = (bufX0 != NULL) ? bufX0 : bufX;
+    cl_int err;
+    err = clEnqueueReadBuffer(queue,
+			      buf,
+			      CL_TRUE,
+			      0,
+			      buf_size,
+			      X,
+			      0,
+			      NULL,
+			      NULL );
+  }
+
+  void ram_to_cl(float *X, cl_mem bufX0=NULL) {
+    cl_mem buf = (bufX0 != NULL) ? bufX0 : bufX;
+    cl_int err;
+    err = clEnqueueWriteBuffer(queue,
+			       buf,
+			       CL_TRUE,
+			       0,
+			       buf_size,
+			       X,
+			       0,
+			       NULL,
+			       NULL);
+  }
+
 };
 
 class clfft1 : public clfft_base
 {
 private:
-  clfftPlanHandle plan;
   unsigned nx; // size of problem
-  cl_mem bufX;
-  
-  // TODO: should be in base class?
-  cl_command_queue queue;
-  cl_context ctx;
-public:
-  clfft1(unsigned int nx0, cl_command_queue queue0, cl_context ctx0,
-	 cl_mem bufX0) {
-    nx=nx0;
-    queue=queue0;
-    ctx=ctx0;
-    bufX=bufX0;
-    
+
+  void set_buf_size() {
+    buf_size = nx * 2 * sizeof(float); // TODO: variable precision
+  }
+
+  void setup() {
+    set_buf_size();
+
     clfftDim dim = CLFFT_1D;
     size_t clLengths[1] = {nx};
 
@@ -67,14 +112,39 @@ public:
 			NULL, // Always NULL
 			NULL // Always NULL
 			);
+
+    if(err > 0) 
+      std::cerr << "clfft1::setup error "<< err << std::endl;
+    
+  }
+public:
+  clfft1() {
+    ctx = NULL;
+    queue = NULL;
+    bufX = NULL;
+    nx = 0;
+    set_buf_size();
+  }
+
+  clfft1(unsigned int nx0, cl_command_queue queue0, cl_context ctx0,
+	 cl_mem bufX0=NULL) {
+    nx=nx0;
+    queue=queue0;
+    ctx=ctx0;
+    bufX=bufX0;
+    setup();
   }
 
   ~clfft1() {
     cl_int err;
     err = clfftDestroyPlan(&plan);
+    if(err > 0) 
+      std::cerr << "clfft::~clfft1 error "<< err << std::endl;
+
   }
-  void fft() {
-    // FIXME: compute FFTs and such.
+
+  void forward(cl_mem bufX0=NULL) {
+    cl_mem buf = (bufX0 != NULL) ? bufX0 : bufX;
     cl_int err;
     err = clfftEnqueueTransform(plan,
 				CLFFT_FORWARD,
@@ -83,11 +153,11 @@ public:
 				0,
 				NULL,
 				NULL,
-				&bufX,
+				&buf,
 				NULL,
 				NULL);
-
-
   }
+
+
 
 };
