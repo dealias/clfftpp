@@ -61,6 +61,8 @@ public:
 			      0,
 			      NULL,
 			      NULL );
+    if (err > 0)
+      std::cerr << "Error in clfft_base::cl_to_ram: " << std::endl;
   }
 
   void ram_to_cl(float *X, cl_mem bufX0=NULL) {
@@ -75,6 +77,14 @@ public:
 			       0,
 			       NULL,
 			       NULL);
+    if (err > 0)
+      std::cerr << "Error in clfft_base::ram_to_cl: " << std::endl;
+  }
+
+  void wait() {
+    cl_int err = clFinish(queue);
+    if (err > 0)
+      std::cerr << "Error in clfft_base::wait: " << err << std::endl;
   }
 
 };
@@ -156,8 +166,8 @@ public:
 				&buf,
 				NULL,
 				NULL);
+    if (err > 0)
+      std::cerr << "Error in clfft1::forward_ram: " << err << std::endl;
   }
-
-
 
 };

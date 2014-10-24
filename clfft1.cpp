@@ -55,10 +55,7 @@ int main() {
   init(X,nx);
   //show(X,nx);
 
-  cl_int err;
-  /* Prepare OpenCL memory objects and place data inside them. */
   clfft1 fft1(nx,queue,ctx);
-  
   fft1.create_clbuf();
 
   fft1.ram_to_cl(X);
@@ -77,7 +74,7 @@ int main() {
     seconds();
     fft1.ram_to_cl(X);
     fft1.forward();
-    err = clFinish(queue);
+    fft1.wait();
     fft1.cl_to_ram(X);
     T[i]=seconds();
   }
@@ -88,7 +85,7 @@ int main() {
     seconds();
     fft1.ram_to_cl(X);
     fft1.forward();
-    err = clFinish(queue);
+    fft1.wait();
     fft1.cl_to_ram(X);
     T[i]=seconds();
   }

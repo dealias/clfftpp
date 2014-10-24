@@ -19,10 +19,8 @@ endif
 
 CXXFLAGS+=-I.
 
-#CXXFLAGS+=-Ofast
+CXXFLAGS+=-Ofast
 CXXFLAGS+=-Wall
-
-
 
 LDFLAGS=
 
@@ -45,7 +43,7 @@ clfft.o: clfft.cpp clfft.hpp
 	g++ $(CXXFLAGS) clfft.cpp  -c 
 
 clfft1.o: clfft1.cpp
-	g++ $(CXXFLAGS) $^  -c 
+	g++ $(CXXFLAGS) $^ -c 
 
 clfft1: clfft1.o clfft.o platform.o 
 	g++ $^ $(LDFLAGS) -o $@
