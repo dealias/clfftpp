@@ -11,6 +11,7 @@
 /* No need to explicitely include the OpenCL headers */
 #include <clFFT.h>
 
+template<class T>
 void show(float *X, int n)
 {
   for(unsigned int i=0; i < n; ++i) {
@@ -18,7 +19,8 @@ void show(float *X, int n)
   }
 }
 
-void init(float *X, int n)
+template<class T>
+void init(T *X, int n)
 {
   for(unsigned int i=0; i < n; ++i) {
     X[2*i] = i;
