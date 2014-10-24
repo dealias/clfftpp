@@ -29,7 +29,7 @@ void init(T *X, int nx, int ny)
     for(unsigned int j=0; j < ny; ++j) {
       unsigned pos = i*ny + j; 
       X[2*pos] = i;
-      X[2*pos + 1] = 0.0;
+      X[2*pos + 1] = j;
     }
   }
 }
