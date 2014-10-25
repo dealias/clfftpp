@@ -44,6 +44,7 @@ int main(int argc, char* argv[]) {
   int platnum=0;
   int devnum=0;
 
+  bool time_copy=false;
 
   int nx = 4;
   int ny = 4;
@@ -57,7 +58,7 @@ int main(int argc, char* argv[]) {
   optind=0;
 #endif	
   for (;;) {
-    int c = getopt(argc,argv,"p:d:m:x:y:N:S:h");
+    int c = getopt(argc,argv,"p:d:c:m:x:y:N:S:h");
     if (c == -1) break;
     
     switch (c) {
@@ -66,6 +67,12 @@ int main(int argc, char* argv[]) {
       break;
     case 'd':
       devnum=atoi(optarg);
+      break;
+    case 'c':
+      if(atoi(optarg) == 0)
+	time_copy = false;
+      else
+	time_copy = true;
       break;
     case 'x':
       nx=atoi(optarg);
@@ -139,29 +146,29 @@ int main(int argc, char* argv[]) {
 
   std::cout << "\nTimings:" << std::endl;
   double *T=new double[N];
-
-  for(int i=0; i < N; ++i) {
-    init(X,nx,ny);
-    seconds();
-    fft.ram_to_cl(X);
-    fft.forward();
-    fft.wait();
-    fft.cl_to_ram(X);
-    T[i]=seconds();
+  if(time_copy) {
+    for(int i=0; i < N; ++i) {
+      init(X,nx,ny);
+      seconds();
+      fft.ram_to_cl(X);
+      fft.forward();
+      fft.wait();
+      fft.cl_to_ram(X);
+      T[i]=seconds();
+    }
+    timings("fft with copy",nx,T,N,stats);
+  } else {
+    for(int i=0; i < N; ++i) {
+      init(X,nx,ny);
+      seconds();
+      fft.ram_to_cl(X);
+      fft.forward();
+      fft.wait();
+      fft.cl_to_ram(X);
+      T[i]=seconds();
+    }
+    timings("fft without copy",nx,T,N,stats);
   }
-  timings("fft with copy",nx,T,N,stats);
-
-  for(int i=0; i < N; ++i) {
-    init(X,nx,ny);
-    seconds();
-    fft.ram_to_cl(X);
-    fft.forward();
-    fft.wait();
-    fft.cl_to_ram(X);
-    T[i]=seconds();
-  }
-  timings("fft without copy",nx,T,N,stats);
-
   free(X);
 
   /* Release OpenCL working objects. */

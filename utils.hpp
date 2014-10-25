@@ -6,6 +6,7 @@ void usage(unsigned int dim)
 	    << "./clfft1 \n"
 	    << "\t-p <int>\tOpenCL platform number \n"
 	    << "\t-d <int>\tOpenCL device number \n"
+	    << "\t-c <0 or 1>\tinclude memory copy in time \n"
 	    << "\t-m <int>\tproblem size \n"
 	    << "\t-x <int>\tproblem size in first dimension \n";
   if(dim > 1)
