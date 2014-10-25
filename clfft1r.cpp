@@ -103,7 +103,7 @@ int main(int argc, char* argv[]) {
   clfft1r fft(nx,queue,ctx);
   fft.create_clbuf();
 
-  float *X = fft.create_rambuf();
+  double *X = fft.create_rambuf();
 
   std::cout << "\nInput:" << std::endl;
   initR(X,nx);

@@ -92,12 +92,11 @@ int main(int argc, char* argv[]) {
 
   cl_context ctx = create_context(platform, device);
   cl_command_queue queue = create_queue(ctx, device);
-
   
   clfft1 fft(nx,queue,ctx);
   fft.create_clbuf();
 
-  float *X = fft.create_rambuf();
+  double *X = fft.create_rambuf();
 
   std::cout << "\nInput:" << std::endl;
   init(X,nx);

@@ -14,12 +14,14 @@ protected:
   cl_command_queue queue;
   cl_mem bufX;
   int buf_size;
+  clfftPrecision precision;
 
 public:
   clfft_base(){
     if(count_zero == 0)
       clfft_setup();
     ++count_zero;
+    precision=CLFFT_DOUBLE;
   }
 
   ~clfft_base(){
@@ -37,8 +39,8 @@ public:
       std::cerr << "clfft::clfft_setup error "<< err << std::endl;
   }
 
-  float * create_rambuf() {
-    return new float[buf_size];
+  double * create_rambuf() {
+    return new double[buf_size];
   }
  
   cl_mem create_clbuf() {
@@ -53,7 +55,7 @@ public:
     return bufX;
   }
 
-  void cl_to_ram(float *X, cl_mem bufX0=NULL) {
+  void cl_to_ram(double *X, cl_mem bufX0=NULL) {
     cl_mem buf = (bufX0 != NULL) ? bufX0 : bufX;
     cl_int err;
     err = clEnqueueReadBuffer(queue,
@@ -69,7 +71,7 @@ public:
       std::cerr << "Error in clfft_base::cl_to_ram: " << std::endl;
   }
 
-  void ram_to_cl(float *X, cl_mem bufX0=NULL) {
+  void ram_to_cl(double *X, cl_mem bufX0=NULL) {
     cl_mem buf = (bufX0 != NULL) ? bufX0 : bufX;
     cl_int err;
     err = clEnqueueWriteBuffer(queue,
@@ -99,7 +101,7 @@ private:
   unsigned nx; // size of problem
 
   void set_buf_size() {
-    buf_size = nx * 2 * sizeof(float); // TODO: variable precision
+    buf_size = nx * 2 * sizeof(double); // TODO: variable precision
   }
 
   void setup() {
@@ -114,7 +116,7 @@ private:
 				 dim, 
 				 clLengths);
     err = clfftSetPlanPrecision(plan, 
-				CLFFT_SINGLE);
+				precision);
     err = clfftSetLayout(plan, 
 			 CLFFT_COMPLEX_INTERLEAVED, 
 			 CLFFT_COMPLEX_INTERLEAVED);
@@ -199,7 +201,7 @@ private:
   unsigned nx, ny; // size of problem
 
   void set_buf_size() {
-    buf_size = nx *ny * 2 * sizeof(float); // TODO: variable precision
+    buf_size = nx *ny * 2 * sizeof(double); // TODO: variable precision
   }
 
   void setup() {
@@ -214,7 +216,7 @@ private:
 				 dim, 
 				 clLengths);
     err = clfftSetPlanPrecision(plan, 
-				CLFFT_SINGLE);
+				precision);
     err = clfftSetLayout(plan, 
 			 CLFFT_COMPLEX_INTERLEAVED, 
 			 CLFFT_COMPLEX_INTERLEAVED);
@@ -301,7 +303,7 @@ private:
   unsigned nx; // size of problem
 
   void set_buf_size() {
-    buf_size = (nx + 1) * 2 * sizeof(float); // TODO: variable precision
+    buf_size = (nx + 1) * 2 * sizeof(double); // TODO: variable precision
   }
 
   void setup() {
@@ -316,7 +318,7 @@ private:
 				 dim, 
 				 clLengths);
     err = clfftSetPlanPrecision(plan, 
-				CLFFT_SINGLE);
+				precision);
     err = clfftSetLayout(plan, 
 			 CLFFT_COMPLEX_INTERLEAVED, 
 			 CLFFT_REAL);
