@@ -8,6 +8,8 @@
 
 #include<vector>
 
+#include <getopt.h>
+
 template<class T>
 void show(T *X, int n)
 {
@@ -25,12 +27,71 @@ void init(T *X, int n)
   }
 }
 
-int main() {
+void usage() 
+{
+  std::cout << "usage:\n"
+	    << "./clfft1 \n"
+	    << "\t-p <int>\tOpenCL platform number \n"
+	    << "\t-d <int>\tOpenCL device number \n"
+	    << "\t-x <int>\tproblem size \n"
+	    << "\t-m <int>\tproblem size \n"
+	    << "\t-N <int>\tNumber of tests \n"
+	    << "\t-S <int>\tStatistical measure to use \n"
+	    << std::endl;
+}
+
+int main(int argc, char* argv[]) {
 
   show_devices();
 
   int platnum=0;
   int devnum=0;
+  
+  int nx = 1024;
+  //nx=262144;
+
+  int N=10;
+
+  unsigned int stats=0; // Type of statistics used in timing test.
+
+  
+#ifdef __GNUC__	
+  optind=0;
+#endif	
+  for (;;) {
+    int c = getopt(argc,argv,"p:d:m:x:N:S:h");
+    if (c == -1) break;
+    
+    switch (c) {
+    case 'p':
+      platnum=atoi(optarg);
+      break;
+    case 'd':
+      devnum=atoi(optarg);
+      break;
+    case 'x':
+      nx=atoi(optarg);
+      break;
+    case 'm':
+      nx=atoi(optarg);
+      break;
+    case 'N':
+      N=atoi(optarg);
+      break;
+    case 'S':
+      nx=atoi(optarg);
+      break;
+    case 'h':
+      usage();
+      exit(0);
+      break;
+    default:
+      std::cout << "Invalid option" << std::endl;
+      usage();
+      exit(1);
+    }
+  }
+
 
   std::vector<std::vector<cl_device_id> > dev_ids;
   create_device_tree(dev_ids);
@@ -43,11 +104,7 @@ int main() {
   cl_context ctx = create_context(platform, device);
   cl_command_queue queue = create_queue(ctx, device);
 
-  int nx = 1024;
-  //nx=262144;
-
-  nx=4;
-
+  
   clfft1 fft(nx,queue,ctx);
   fft.create_clbuf();
 
@@ -79,7 +136,7 @@ int main() {
     std::cout << X[0] << std::endl;
 
 
-  int N=10;
+
   double *T=new double[N];
 
   
@@ -93,7 +150,7 @@ int main() {
     fft.cl_to_ram(X);
     T[i]=seconds();
   }
-  timings("fft with copy",nx,T,N,MEDIAN);
+  timings("fft with copy",nx,T,N,stats);
 
   for(int i=0; i < N; ++i) {
     init(X,nx);
@@ -104,7 +161,7 @@ int main() {
     fft.cl_to_ram(X);
     T[i]=seconds();
   }
-  timings("fft without copy",nx,T,N,MEDIAN);
+  timings("fft without copy",nx,T,N,stats);
 
   free(X);
 
