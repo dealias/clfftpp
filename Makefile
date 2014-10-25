@@ -62,4 +62,4 @@ clfft1r: clfft1r.o clfft.o platform.o
 
 
 clean:
-	rm -f *.o clfft1 clfft2
+	rm -f *.o clfft1 clfft2 clfft1r
