@@ -9,6 +9,7 @@
 #include<vector>
 
 #include <getopt.h>
+#include <utils.h>
 
 template<class T>
 void show(T *X, int n)
@@ -27,18 +28,6 @@ void init(T *X, int n)
   }
 }
 
-void usage() 
-{
-  std::cout << "usage:\n"
-	    << "./clfft1 \n"
-	    << "\t-p <int>\tOpenCL platform number \n"
-	    << "\t-d <int>\tOpenCL device number \n"
-	    << "\t-x <int>\tproblem size \n"
-	    << "\t-m <int>\tproblem size \n"
-	    << "\t-N <int>\tNumber of tests \n"
-	    << "\t-S <int>\tStatistical measure to use \n"
-	    << std::endl;
-}
 
 int main(int argc, char* argv[]) {
 
@@ -82,12 +71,12 @@ int main(int argc, char* argv[]) {
       nx=atoi(optarg);
       break;
     case 'h':
-      usage();
+      usage(1);
       exit(0);
       break;
     default:
       std::cout << "Invalid option" << std::endl;
-      usage();
+      usage(1);
       exit(1);
     }
   }

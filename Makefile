@@ -42,13 +42,13 @@ platform.o: platform.hpp platform.cpp
 clfft.o: clfft.cpp clfft.hpp
 	g++ $(CXXFLAGS) clfft.cpp  -c 
 
-clfft1.o: clfft1.cpp
+clfft1.o: clfft1.cpp utils.hpp
 	g++ $(CXXFLAGS) $^ -c 
 
-clfft2.o: clfft2.cpp
+clfft2.o: clfft2.cpp utils.hpp
 	g++ $(CXXFLAGS) $^ -c 
 
-clfft1r.o: clfft1r.cpp
+clfft1r.o: clfft1r.cpp utils.hpp
 	g++ $(CXXFLAGS) $^ -c 
 
 clfft1: clfft1.o clfft.o platform.o 

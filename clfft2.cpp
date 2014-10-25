@@ -8,6 +8,9 @@
 
 #include<vector>
 
+#include <getopt.h>
+#include <utils.h>
+
 template<class T>
 void show(T *X, int nx, int ny)
 {
@@ -34,12 +37,63 @@ void init(T *X, int nx, int ny)
   }
 }
 
-int main() {
+int main(int argc, char* argv[]) {
 
   show_devices();
 
   int platnum=0;
   int devnum=0;
+
+
+  int nx = 4;
+  int ny = 4;
+  //nx=262144;
+
+  int N=10;
+
+  unsigned int stats=0; // Type of statistics used in timing test.
+
+#ifdef __GNUC__	
+  optind=0;
+#endif	
+  for (;;) {
+    int c = getopt(argc,argv,"p:d:m:x:y:N:S:h");
+    if (c == -1) break;
+    
+    switch (c) {
+    case 'p':
+      platnum=atoi(optarg);
+      break;
+    case 'd':
+      devnum=atoi(optarg);
+      break;
+    case 'x':
+      nx=atoi(optarg);
+      break;
+    case 'y':
+      ny=atoi(optarg);
+      break;
+    case 'm':
+      nx=atoi(optarg);
+      ny=atoi(optarg);
+      break;
+    case 'N':
+      N=atoi(optarg);
+      break;
+    case 'S':
+      nx=atoi(optarg);
+      break;
+    case 'h':
+      usage(1);
+      exit(0);
+      break;
+    default:
+      std::cout << "Invalid option" << std::endl;
+      usage(1);
+      exit(1);
+    }
+  }
+
 
   std::vector<std::vector<cl_device_id> > dev_ids;
   create_device_tree(dev_ids);
@@ -51,10 +105,6 @@ int main() {
 
   cl_context ctx = create_context(platform, device);
   cl_command_queue queue = create_queue(ctx, device);
-
-  int nx = 4;
-  int ny = 4;
-  //nx=262144;
   
   clfft2 fft(nx,ny,queue,ctx);
   fft.create_clbuf();
@@ -86,8 +136,8 @@ int main() {
   else 
     std::cout << X[0] << std::endl;
 
+
   std::cout << "\nTimings:" << std::endl;
-  int N=10;
   double *T=new double[N];
 
   for(int i=0; i < N; ++i) {
@@ -99,7 +149,7 @@ int main() {
     fft.cl_to_ram(X);
     T[i]=seconds();
   }
-  timings("fft with copy",nx,T,N,MEDIAN);
+  timings("fft with copy",nx,T,N,stats);
 
   for(int i=0; i < N; ++i) {
     init(X,nx,ny);
@@ -110,7 +160,7 @@ int main() {
     fft.cl_to_ram(X);
     T[i]=seconds();
   }
-  timings("fft without copy",nx,T,N,MEDIAN);
+  timings("fft without copy",nx,T,N,stats);
 
   free(X);
 
