@@ -52,17 +52,17 @@ unsigned int even(const unsigned int l2n,
 void fft(double *x, unsigned int n) {
   const unsigned int l2n=log2(n);
   unsigned int *kb=new unsigned int[l2n];
-  const int kmax=n/2;
+  const unsigned int kmax=n/2;
   unsigned int twoj=n/2;
   for(unsigned int j=0; j < l2n; ++j) {
     for(unsigned int k=0; k < kmax; ++k) {
 
       unsigned int ke, ko;
-      uint2binary(k,kb,l2n-1);      
+      uint2binary(k,kb,l2n-1);
       ke = even(l2n, j, kb);
       ko = ke + twoj;
-      uint2binary(ke,kb,l2n);
-      uint2binary(ko,kb,l2n);
+      // uint2binary(ke,kb,l2n);
+      // uint2binary(ko,kb,l2n);
 
       double xe[2]={x[2*ke],x[2*ke+1]};
       double xo[2]={x[2*ko],x[2*ko+1]};
@@ -85,7 +85,7 @@ void fft(double *x, unsigned int n) {
 
 int main()
 {
-  unsigned int n=1024; 
+  unsigned int n=4;//1024; 
  
   double *x=new double[2*n];
 
