@@ -1,12 +1,15 @@
-__kernel void fft1cc(int n, __global float *f)
+__kernel void fft1cc(int nx, int ny, __global float *f)
 {
   /* const unsigned int l2n=log2(n); */
-  
-  int i;
-  for(i=0; i < n; ++i) {
-    f[2*i]=2*i;
-    f[2*i+1]=2*i+1;
+
+  const int idx = get_global_id(0);
+
+  int ix=idx;
+  int iy;
+  for(iy=0; iy < ny; ++iy) {
+    int pos=2*(idx*ny + iy);
+    f[pos]=idx;
+    f[pos+1]=iy+1;
   }
-  
-  f[0]=3.4;
+
 }

@@ -69,36 +69,53 @@ int main()
   cl_kernel kernel = clCreateKernel(program, "fft1cc", &ret);
   check_cl_ret(ret,"create kernel");
 
-  int n=8;
+  unsigned int nx=4;
+  unsigned int ny=4;
 
-  float *f=new float[2*n];
+  float *f=new float[2*nx*ny];
 
   cl_mem memobj = clCreateBuffer(ctx, 
 				 CL_MEM_READ_WRITE ,
-				 2 * n * sizeof(float), 
+				 2 * nx * ny * sizeof(float), 
 				 NULL, 
 				 &ret);
 
   // Set OpenCL Kernel Parameters
 
-  ret = clSetKernelArg(kernel, 0, sizeof(unsigned int),  (void *)&n);
+  ret = clSetKernelArg(kernel, 0, sizeof(unsigned int),  (void *)&nx);
   check_cl_ret(ret,"setargs0");
-  ret = clSetKernelArg(kernel, 1, sizeof(cl_mem), &memobj);
+  ret = clSetKernelArg(kernel, 1, sizeof(unsigned int),  (void *)&nx);
+  check_cl_ret(ret,"setargs0");
+  ret = clSetKernelArg(kernel, 2, sizeof(cl_mem), &memobj);
   check_cl_ret(ret,"setargs1");
   
-  // Execute OpenCL Kernel
-  ret = clEnqueueTask(queue, 
-		      kernel, 
-		      0,
-		      NULL,
-		      NULL);
-  check_cl_ret(ret,"clEnqueueTask");
+  // // Execute OpenCL Kernel
+  // ret = clEnqueueTask(queue, 
+  // 		      kernel, 
+  // 		      0,
+  // 		      NULL,
+  // 		      NULL);
+  // check_cl_ret(ret,"clEnqueueTask");
+
+  const size_t global_work_size=nx;
+  const size_t local_work_size=nx;
+  ret = clEnqueueNDRangeKernel(queue,
+			       kernel,
+			       1 ,//cl_uint work_dim,
+			       NULL, //const size_t *global_work_offset,
+			       &global_work_size, //const size_t *global_work_size,
+			       &local_work_size, //const size_t *local_work_size,
+			       0, //cl_uint num_events_in_wait_list,
+			       NULL, //const cl_event *event_wait_list,
+			       NULL //cl_event *event
+			       );
+  check_cl_ret(ret,"clEnqueueNDRangeKernel");
 
   ret = clEnqueueReadBuffer(queue,
 			    memobj,
 			    CL_TRUE,
 			    0,
-			    2* n * sizeof(float),
+			    2 * nx * ny * sizeof(float),
 			    f,
 			    0,
 			    NULL,
@@ -108,8 +125,15 @@ int main()
   ret = clFinish(queue);
   check_cl_ret(ret,"clFinish");
 
-  std::cout << f[1] << std::endl;
-  
+  {
+    for(unsigned int ix=0; ix < nx; ++ix) {
+      for(unsigned int iy=0; iy < ny; ++iy) {
+	int pos=2*(ix*ny + iy); 
+	std::cout << "(" << f[pos] << "," << f[pos+1] << ") ";
+      }
+      std::cout << std::endl;
+    }
+  }
 
   /* Release OpenCL working objects. */
   clReleaseCommandQueue(queue);
