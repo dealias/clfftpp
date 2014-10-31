@@ -36,6 +36,9 @@ LDFLAGS+=-lclFFT
 
 all: clfft1 clfft2 clfft1r
 
+clutils.o: clutils.c clutils.h
+	g++ $(CXXFLAGS) clutils.c -c
+
 platform.o: platform.hpp platform.cpp
 	g++ $(CXXFLAGS) platform.cpp -c
 
@@ -51,13 +54,13 @@ clfft2.o: clfft2.cpp utils.hpp
 clfft1r.o: clfft1r.cpp utils.hpp
 	g++ $(CXXFLAGS) $^ -c 
 
-clfft1: clfft1.o clfft.o platform.o 
+clfft1: clfft1.o clfft.o platform.o clutils.o 
 	g++ $^ $(LDFLAGS) -o $@
 
-clfft2: clfft2.o clfft.o platform.o 
+clfft2: clfft2.o clfft.o platform.o clutils.o
 	g++ $^ $(LDFLAGS) -o $@
 
-clfft1r: clfft1r.o clfft.o platform.o 
+clfft1r: clfft1r.o clfft.o platform.o clutils.o
 	g++ $^ $(LDFLAGS) -o $@
 
 

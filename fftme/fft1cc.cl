@@ -4,7 +4,7 @@ __kernel void fft1cc(int nx, int ny, __global float *f)
 
   const int idx = get_global_id(0);
 
-  int ix=idx;
+  const int ix=idx;
   int iy;
   for(iy=0; iy < ny; ++iy) {
     int pos=2*(idx*ny + iy);

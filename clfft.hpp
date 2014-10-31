@@ -1,6 +1,7 @@
 /* No need to explicitely include the OpenCL headers */
 #include <clFFT.h>
 #include <iostream>
+#include <clutils.h>
 
 void clfft_setup();
 
@@ -34,9 +35,9 @@ public:
     cl_int err;  
     clfftSetupData fftSetup;
     err = clfftInitSetupData(&fftSetup);
+    if(err != CL_SUCCESS) std::cerr << clErrorString(err) << std::endl;
     err = clfftSetup(&fftSetup);
-    if(err > 0) 
-      std::cerr << "clfft::clfft_setup error "<< err << std::endl;
+    if(err != CL_SUCCESS) std::cerr << clErrorString(err) << std::endl;
   }
 
   double * create_rambuf() {
@@ -50,8 +51,7 @@ public:
 			  buf_size,
 			  NULL,
 			  &err);
-    if(err > 0) 
-      std::cerr << "clfft::create_clbuf error "<< err << std::endl;
+    if(err != CL_SUCCESS) std::cerr << clErrorString(err) << std::endl;
     return bufX;
   }
 
@@ -67,8 +67,7 @@ public:
 			      0,
 			      NULL,
 			      NULL );
-    if (err > 0)
-      std::cerr << "Error in clfft_base::cl_to_ram: " << std::endl;
+    if(err != CL_SUCCESS) std::cerr << clErrorString(err) << std::endl;
   }
 
   void ram_to_cl(double *X, cl_mem bufX0=NULL) {
@@ -83,14 +82,12 @@ public:
 			       0,
 			       NULL,
 			       NULL);
-    if (err > 0)
-      std::cerr << "Error in clfft_base::ram_to_cl: " << std::endl;
+    if(err != CL_SUCCESS) std::cerr << clErrorString(err) << std::endl;
   }
 
   void wait() {
     cl_int err = clFinish(queue);
-    if (err > 0)
-      std::cerr << "Error in clfft_base::wait: " << err << std::endl;
+    if(err != CL_SUCCESS) std::cerr << clErrorString(err) << std::endl;
   }
 
 };
@@ -115,23 +112,24 @@ private:
 				 ctx, 
 				 dim, 
 				 clLengths);
+    if(err != CL_SUCCESS) std::cerr << clErrorString(err) << std::endl;
     err = clfftSetPlanPrecision(plan, 
 				precision);
+    if(err != CL_SUCCESS) std::cerr << clErrorString(err) << std::endl;
     err = clfftSetLayout(plan, 
 			 CLFFT_COMPLEX_INTERLEAVED, 
 			 CLFFT_COMPLEX_INTERLEAVED);
+    if(err != CL_SUCCESS) std::cerr << clErrorString(err) << std::endl;
     err = clfftSetResultLocation(plan, 
 				 CLFFT_INPLACE);
+    if(err != CL_SUCCESS) std::cerr << clErrorString(err) << std::endl;
     err = clfftBakePlan(plan,
 			1, // numQueues: number of experiments 
 			&queue, // commQueueFFT
 			NULL, // Always NULL
 			NULL // Always NULL
 			);
-
-    if(err > 0) 
-      std::cerr << "clfft1::setup error "<< err << std::endl;
-    
+    if(err != CL_SUCCESS) std::cerr << clErrorString(err) << std::endl;
   }
 public:
   clfft1() {
@@ -154,8 +152,7 @@ public:
   ~clfft1() {
     cl_int err;
     err = clfftDestroyPlan(&plan);
-    if(err > 0) 
-      std::cerr << "clfft::~clfft1 error "<< err << std::endl;
+    if(err != CL_SUCCESS) std::cerr << clErrorString(err) << std::endl;
 
   }
 
@@ -172,8 +169,7 @@ public:
 				&buf,
 				NULL,
 				NULL);
-    if (err > 0)
-      std::cerr << "Error in clfft1::forward: " << err << std::endl;
+    if(err != CL_SUCCESS) std::cerr << clErrorString(err) << std::endl;
   }
 
   void backward(cl_mem bufX0=NULL) {
@@ -189,8 +185,7 @@ public:
 				&buf,
 				NULL,
 				NULL);
-    if (err > 0)
-      std::cerr << "Error in clfft1::backward: " << err << std::endl;
+    if(err != CL_SUCCESS) std::cerr << clErrorString(err) << std::endl;
   }
 
 };
@@ -215,23 +210,24 @@ private:
 				 ctx, 
 				 dim, 
 				 clLengths);
+    if(err != CL_SUCCESS) std::cerr << clErrorString(err) << std::endl;
     err = clfftSetPlanPrecision(plan, 
 				precision);
+    if(err != CL_SUCCESS) std::cerr << clErrorString(err) << std::endl;
     err = clfftSetLayout(plan, 
 			 CLFFT_COMPLEX_INTERLEAVED, 
 			 CLFFT_COMPLEX_INTERLEAVED);
+    if(err != CL_SUCCESS) std::cerr << clErrorString(err) << std::endl;
     err = clfftSetResultLocation(plan, 
 				 CLFFT_INPLACE);
+    if(err != CL_SUCCESS) std::cerr << clErrorString(err) << std::endl;
     err = clfftBakePlan(plan,
 			1, // numQueues: number of experiments 
 			&queue, // commQueueFFT
 			NULL, // Always NULL
 			NULL // Always NULL
 			);
-
-    if(err > 0) 
-      std::cerr << "clfft2::setup error "<< err << std::endl;
-    
+    if(err != CL_SUCCESS) std::cerr << clErrorString(err) << std::endl;
   }
 public:
   clfft2() {
@@ -256,8 +252,7 @@ public:
   ~clfft2() {
     cl_int err;
     err = clfftDestroyPlan(&plan);
-    if(err > 0) 
-      std::cerr << "clfft::~clfft2 error "<< err << std::endl;
+    if(err != CL_SUCCESS) std::cerr << clErrorString(err) << std::endl;
   }
 
   void forward(cl_mem bufX0=NULL) {
@@ -273,8 +268,7 @@ public:
     				&buf,
     				NULL,
     				NULL);
-    if (err > 0)
-      std::cerr << "Error in clfft2::backward: " << err << std::endl;
+    if(err != CL_SUCCESS) std::cerr << clErrorString(err) << std::endl;
   }
 
   void backward(cl_mem bufX0=NULL) {
@@ -290,10 +284,8 @@ public:
     				&buf,
     				NULL,
     				NULL);
-    if (err > 0)
-      std::cerr << "Error in clfft2::backward: " << err << std::endl;
+    if(err != CL_SUCCESS) std::cerr << clErrorString(err) << std::endl;
   }
-
 };
 
 
@@ -317,23 +309,24 @@ private:
 				 ctx, 
 				 dim, 
 				 clLengths);
+    if(err != CL_SUCCESS) std::cerr << clErrorString(err) << std::endl;
     err = clfftSetPlanPrecision(plan, 
 				precision);
+    if(err != CL_SUCCESS) std::cerr << clErrorString(err) << std::endl;
     err = clfftSetLayout(plan, 
 			 CLFFT_COMPLEX_INTERLEAVED, 
 			 CLFFT_REAL);
+    if(err != CL_SUCCESS) std::cerr << clErrorString(err) << std::endl;
     err = clfftSetResultLocation(plan, 
 				 CLFFT_INPLACE);
+    if(err != CL_SUCCESS) std::cerr << clErrorString(err) << std::endl;
     err = clfftBakePlan(plan,
 			1, // numQueues: number of experiments 
 			&queue, // commQueueFFT
 			NULL, // Always NULL
 			NULL // Always NULL
 			);
-
-    if(err > 0) 
-      std::cerr << "clfft1r::setup error "<< err << std::endl;
-    
+    if(err != CL_SUCCESS) std::cerr << clErrorString(err) << std::endl;
   }
 public:
   clfft1r() {
@@ -356,9 +349,7 @@ public:
   ~clfft1r() {
     cl_int err;
     err = clfftDestroyPlan(&plan);
-    if(err > 0) 
-      std::cerr << "clfft::~clfft1r error "<< err << std::endl;
-
+    if(err != CL_SUCCESS) std::cerr << clErrorString(err) << std::endl;
   }
 
   void forward(cl_mem bufX0=NULL) {
@@ -374,8 +365,7 @@ public:
 				&buf,
 				NULL,
 				NULL);
-    if (err > 0)
-      std::cerr << "Error in clfft1r::forward: " << err << std::endl;
+    if(err != CL_SUCCESS) std::cerr << clErrorString(err) << std::endl;
   }
 
   void backward(cl_mem bufX0=NULL) {
@@ -391,8 +381,7 @@ public:
 				&buf,
 				NULL,
 				NULL);
-    if (err > 0)
-      std::cerr << "Error in clfft1r::backward: " << err << std::endl;
+    if(err != CL_SUCCESS) std::cerr << clErrorString(err) << std::endl;
   }
 
 };
