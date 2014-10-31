@@ -8,8 +8,10 @@ endif
 
 CXXFLAGS+=-I.
 
+CXXFLAGS+=-I..
+
 CXXFLAGS+=-Ofast
-CXXFLAGS+=-Wall
+CXXFLAGS+=-Wall 
 
 LDFLAGS=
 
@@ -18,10 +20,12 @@ ifneq ($(strip $(OPENCL_LIB_PATH)),)
 LDFLAGS+=-L$(OPENCL_LIB_PATH)
 endif
 
+vpath %.hpp ../
+
 all: fft1
 
-platform.o: platform.hpp platform.cpp
-	g++ $(CXXFLAGS) platform.cpp -c
+platform.o: platform.hpp ../platform.cpp
+	g++ $(CXXFLAGS) ../platform.cpp -c
 
 fft1.o: fft1.cpp
 	g++ $(CXXFLAGS) $^ -c 
