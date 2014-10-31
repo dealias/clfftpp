@@ -13,3 +13,4 @@ __kernel void fft1cc(int nx, int ny, __global float *f)
   }
 
 }
+

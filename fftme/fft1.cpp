@@ -4,6 +4,8 @@
 #include <iostream>
 #include <platform.hpp>
 
+#include <clutils.h>
+
 #include <CL/cl.hpp>
 
 void read_file(std::string &str, const char* filename)
@@ -21,7 +23,11 @@ void read_file(std::string &str, const char* filename)
 void check_cl_ret(cl_int ret, const char* msg) 
 {
   if(ret != CL_SUCCESS) {
-    std::cout << "ERROR: " << msg << " with retval: " << ret << std::endl;
+    
+    std::cerr << "ERROR: " << msg 
+	      << " with retval: " << ret 
+	      << " : " << clErrorString(ret) 
+	      << std::endl;
   }
 }
 

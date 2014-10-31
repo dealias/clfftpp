@@ -21,8 +21,12 @@ LDFLAGS+=-L$(OPENCL_LIB_PATH)
 endif
 
 vpath %.hpp ../
+vpath %.h ../
 
 all: fft1
+
+clutils.o: ../clutils.c clutils.h
+	g++ $(CXXFLAGS) ../clutils.c -c
 
 platform.o: platform.hpp ../platform.cpp
 	g++ $(CXXFLAGS) ../platform.cpp -c
@@ -30,7 +34,7 @@ platform.o: platform.hpp ../platform.cpp
 fft1.o: fft1.cpp
 	g++ $(CXXFLAGS) $^ -c 
 
-fft1: fft1.o platform.o 
+fft1: fft1.o platform.o clutils.o
 	g++ $^ $(LDFLAGS) -o $@
 
 clean:
