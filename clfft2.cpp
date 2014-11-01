@@ -116,7 +116,9 @@ int main(int argc, char* argv[]) {
   clfft2 fft(nx,ny,queue,ctx);
   fft.create_clbuf();
 
-  double *X = fft.create_rambuf();
+  //  typedef double real;
+
+  REAL *X = fft.create_rambuf();
 
   std::cout << "\nInput:" << std::endl;
   init(X,nx,ny);

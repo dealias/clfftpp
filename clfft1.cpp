@@ -104,7 +104,9 @@ int main(int argc, char* argv[]) {
   clfft1 fft(nx,queue,ctx);
   fft.create_clbuf();
 
-  double *X = fft.create_rambuf();
+  //#typdef float float;
+
+  float *X = fft.create_rambuf();
 
   std::cout << "\nInput:" << std::endl;
   init(X,nx);
