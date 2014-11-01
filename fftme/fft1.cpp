@@ -8,6 +8,8 @@
 #include <timing.h>
 #include <seconds.h>
 
+#include <getopt.h>
+
 #include <CL/cl.hpp>
 
 void read_file(std::string &str, const char* filename)
@@ -33,7 +35,7 @@ void check_cl_ret(cl_int ret, const char* msg)
   }
 }
 
-int main()
+int main(int argc, char* argv[])
 {
 
   // Set up the OpenCL device, platform, queue, and context.
@@ -42,6 +44,53 @@ int main()
   int platnum=0;
   int devnum=0;
   
+  unsigned int nx = 4;
+  unsigned int ny = 4;
+  //nx=262144;
+
+  unsigned int N=10;
+
+  unsigned int stats=MEAN; // Type of statistics used in timing test.
+
+  for (;;) {
+    int c = getopt(argc,argv,"p:d:m:x:y:N:S:h");
+    if (c == -1) break;
+    
+    switch (c) {
+    case 'p':
+      platnum=atoi(optarg);
+      break;
+    case 'd':
+      devnum=atoi(optarg);
+      break;
+    case 'x':
+      nx=atoi(optarg);
+      break;
+    case 'y':
+      ny=atoi(optarg);
+      break;
+    case 'm':
+      nx=atoi(optarg);
+      ny=atoi(optarg);
+      break;
+    case 'N':
+      N=atoi(optarg);
+      break;
+    case 'S':
+      nx=atoi(optarg);
+      break;
+    case 'h':
+      //usage(1);
+      exit(0);
+      break;
+    default:
+      std::cout << "Invalid option" << std::endl;
+      //usage(1);
+      exit(1);
+    }
+  }
+
+
   std::vector<std::vector<cl_device_id> > dev_ids;
   create_device_tree(dev_ids);
   cl_device_id device = dev_ids[platnum][devnum];
@@ -77,9 +126,6 @@ int main()
   cl_kernel kernel = clCreateKernel(program, "fft1cc", &ret);
   check_cl_ret(ret,"create kernel");
 
-  unsigned int nx=4;
-  unsigned int ny=4;
-
   float *f=new float[2*nx*ny];
 
   cl_mem memobj = clCreateBuffer(ctx, 
@@ -109,10 +155,7 @@ int main()
   const size_t local_work_size=nx;
   
   
-  unsigned int N=100;
   double *T=new double[N];
-
-  unsigned int stats=MEDIAN;
 
   for(unsigned int i=0; i < N; ++i) {
     
