@@ -105,7 +105,7 @@ int main(int argc, char* argv[])
   // Read the kernel from a file.
   std::string source_str;
   read_file(source_str,"fft1cc.cl");
-  std::cout << source_str << std::endl;
+  //std::cout << source_str << std::endl;
 
   cl_int ret; // return valoes from the OpenCL operations.
 
