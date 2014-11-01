@@ -6,7 +6,7 @@
 #include <timing.h>
 #include <seconds.h>
 
-#include<vector>
+#include <vector>
 
 #include <getopt.h>
 #include <utils.h>

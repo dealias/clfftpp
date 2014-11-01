@@ -5,6 +5,8 @@
 #include <platform.hpp>
 
 #include <clutils.h>
+#include <timing.h>
+#include <seconds.h>
 
 #include <CL/cl.hpp>
 
@@ -105,17 +107,31 @@ int main()
 
   const size_t global_work_size=nx;
   const size_t local_work_size=nx;
-  ret = clEnqueueNDRangeKernel(queue,
-			       kernel,
-			       1 ,//cl_uint work_dim,
-			       NULL, //const size_t *global_work_offset,
-			       &global_work_size, //const size_t *global_work_size,
-			       &local_work_size, //const size_t *local_work_size,
-			       0, //cl_uint num_events_in_wait_list,
-			       NULL, //const cl_event *event_wait_list,
-			       NULL //cl_event *event
-			       );
+  
+  
+  unsigned int N=100;
+  double *T=new double[N];
+
+  unsigned int stats=MEDIAN;
+
+  for(unsigned int i=0; i < N; ++i) {
+    
+    seconds();
+    ret = clEnqueueNDRangeKernel(queue,
+				 kernel,
+				 1 ,//cl_uint work_dim,
+				 NULL, //const size_t *global_work_offset,
+				 &global_work_size, //const size_t *global_work_size,
+				 &local_work_size, //const size_t *local_work_size,
+				 0, //cl_uint num_events_in_wait_list,
+				 NULL, //const cl_event *event_wait_list,
+				 NULL //cl_event *event
+				 );
+
+    T[i]=seconds();
+  }
   check_cl_ret(ret,"clEnqueueNDRangeKernel");
+  timings("mfft1d",nx,T,N,stats);
 
   ret = clEnqueueReadBuffer(queue,
 			    memobj,
@@ -129,17 +145,19 @@ int main()
   check_cl_ret(ret,"clEnqueueReadBuffer");  
 
   ret = clFinish(queue);
+
+
   check_cl_ret(ret,"clFinish");
 
-  {
-    for(unsigned int ix=0; ix < nx; ++ix) {
-      for(unsigned int iy=0; iy < ny; ++iy) {
-	int pos=2*(ix*ny + iy); 
-	std::cout << "(" << f[pos] << "," << f[pos+1] << ") ";
-      }
-      std::cout << std::endl;
-    }
-  }
+  // {
+  //   for(unsigned int ix=0; ix < nx; ++ix) {
+  //     for(unsigned int iy=0; iy < ny; ++iy) {
+  // 	int pos=2*(ix*ny + iy); 
+  // 	std::cout << "(" << f[pos] << "," << f[pos+1] << ") ";
+  //     }
+  //     std::cout << std::endl;
+  //   }
+  // }
 
   /* Release OpenCL working objects. */
   clReleaseCommandQueue(queue);
