@@ -70,7 +70,7 @@ void fft(double *x, unsigned int n) {
       double w[2]={cos(-2.0*PI*k*j/(double)n),sin(-2.0*PI*k*j/(double)n)};
       
       double temp[2]={xo[0]*w[0] - xo[1]*w[1],
-		      xo[0]*w[1] + xo[2]*w[1]};
+		      xo[0]*w[1] + xo[1]*w[0]};
       
       x[2*ke]   = xe[0] + temp[0];
       x[2*ke+1] = xe[1] + temp[1];
@@ -90,8 +90,8 @@ int main()
   double *x=new double[2*n];
 
   for(unsigned int i=0; i < n; ++i) {
-    x[2*i] =i;
-    x[2*i+1] =0.0;
+    x[2*i] =0;
+    x[2*i+1] =i ; //0.0;
   }
   
   if(n < 100) {

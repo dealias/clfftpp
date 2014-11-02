@@ -35,6 +35,18 @@ void check_cl_ret(cl_int ret, const char* msg)
   }
 }
 
+void init(const unsigned int nx, const unsigned int ny, float*f)
+{
+  for(unsigned int ix=0; ix < nx; ++ix) {
+    unsigned int iy;
+    for(iy=0; iy < ny; ++iy) {
+      unsigned int pos=2*(ix*ny + iy);
+      f[pos]=ix;
+      f[pos+1]=iy; /* iy+1; */
+    }
+  }
+}
+
 int main(int argc, char* argv[])
 {
 
@@ -154,11 +166,33 @@ int main(int argc, char* argv[])
   const size_t global_work_size=nx;
   const size_t local_work_size=nx;
   
+
+  std::cout << "Input:" << std::endl;
+  init(nx,ny,f);
+  for(unsigned int ix=0; ix < nx; ++ix) {
+    for(unsigned int iy=0; iy < ny; ++iy) {
+      int pos=2*(ix*ny + iy); 
+      std::cout << "(" << f[pos] << "," << f[pos+1] << ") ";
+    }
+    std::cout << std::endl;
+  }
+
   
   double *T=new double[N];
-
   for(unsigned int i=0; i < N; ++i) {
+    init(nx,ny,f);
+    ret = clEnqueueWriteBuffer(queue,
+			      memobj,
+			      CL_TRUE,
+			      0,
+			      2 * nx * ny * sizeof(float),
+			      f,
+			      0,
+			      NULL,
+			      NULL );
+    check_cl_ret(ret,"clEnqueueWriteBuffer");  
     
+
     seconds();
     ret = clEnqueueNDRangeKernel(queue,
 				 kernel,
@@ -192,15 +226,16 @@ int main(int argc, char* argv[])
 
   check_cl_ret(ret,"clFinish");
 
-  // {
-  //   for(unsigned int ix=0; ix < nx; ++ix) {
-  //     for(unsigned int iy=0; iy < ny; ++iy) {
-  // 	int pos=2*(ix*ny + iy); 
-  // 	std::cout << "(" << f[pos] << "," << f[pos+1] << ") ";
-  //     }
-  //     std::cout << std::endl;
-  //   }
-  // }
+
+  std::cout << "Output:" << std::endl;
+  for(unsigned int ix=0; ix < nx; ++ix) {
+    for(unsigned int iy=0; iy < ny; ++iy) {
+      int pos=2*(ix*ny + iy); 
+      std::cout << "(" << f[pos] << "," << f[pos+1] << ") ";
+    }
+    std::cout << std::endl;
+  }
+
 
   /* Release OpenCL working objects. */
   clReleaseCommandQueue(queue);

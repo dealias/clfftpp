@@ -52,57 +52,39 @@ __kernel void fft1cc(unsigned int nx, unsigned int ny, __global float *f)
   /* const unsigned int l2n=log2(n); */
 
   const unsigned int idx = get_global_id(0);
-
-  /*
-    Initialize the data
-   */
-  const unsigned int ix=idx;
-  {
-    unsigned int iy;
-    for(iy=0; iy < ny; ++iy) {
-      unsigned int pos=2*(idx*ny + iy);
-      f[pos]=idx;
-      f[pos+1]=iy+1;
-    }
-  }
+  float *fx=f+2*(idx*ny);
 
   const unsigned int log2ny=uintlog2(ny);
-  {
-    float *fx=f+2*(idx*ny);
       
-    const float PI=4.0*atan(1.0);
-    unsigned int kb[sizeof(unsigned int)]; // this is too big, but it compiles!
-    /* unsigned int *kb=new unsigned int[log2ny]; */
-    const unsigned int kymax=ny/2;
-    unsigned int twojy=ny/2;
-    unsigned int iy;
-    for(iy=0; iy < log2ny; ++iy) {
-      unsigned int ky;
-      for(ky=0; ky < kymax; ++ky) {
-	uint2binary(ky,kb,log2ny-1);
-	
-	
-	const unsigned int ke = even(log2ny, iy, kb);
-	const unsigned int ko = ke + twojy;
+  const float PI=4.0*atan(1.0);
+  unsigned int kb[sizeof(unsigned int)]; // this is too big, but it compiles!
+  /* unsigned int *kb=new unsigned int[log2ny]; */
+  const unsigned int kymax = ny / 2;
 
-	float fe[2]={fx[2*ke],fx[2*ke+1]};
-	float fo[2]={fx[2*ko],fx[2*ko+1]};
-      
-	const float arg=-2.0*PI*ky*iy/(float)ny;
-	float w[2]={cos(arg),sin(arg)};
-      
-	float temp[2]={fo[0]*w[0] - fo[1]*w[1],
-			fo[0]*w[1] + fo[2]*w[1]};
-      
-	fx[2*ke]   = fe[0] + temp[0];
-	fx[2*ke+1] = fe[1] + temp[1];
-	fx[2*ko]   = fe[0] - temp[0];
-	fx[2*ko+1] = fe[1] - temp[1];
+  unsigned int twojy = ny / 2;
+  for(unsigned int iy = 0; iy < log2ny; ++iy) {
+    for(unsigned int ky = 0; ky < kymax; ++ky) {
+      uint2binary(ky,kb,log2ny-1);
+	
+      const unsigned int ke = even(log2ny, iy, kb);
+      const unsigned int ko = ke + twojy;
 
-      }
-      twojy /= 2;
+      float fe[2] = {fx[2*ke], fx[2*ke+1]};
+      float fo[2] = {fx[2*ko], fx[2*ko+1]};
+      
+      const float arg = -2.0 * PI * ky * iy / (float)ny;
+      float w[2] = {cos(arg), sin(arg)};
+      
+      float temp[2] = {fo[0]*w[0] - fo[1]*w[1],
+		       fo[0]*w[1] + fo[1]*w[0]};
+      
+      fx[2 * ke]     = fe[0] + temp[0];
+      fx[2 * ke + 1] = fe[1] + temp[1];
+      fx[2 * ko]     = fe[0] - temp[0];
+      fx[2 * ko + 1] = fe[1] - temp[1];
+
     }
-
+    twojy /= 2;
   }
 
 }
