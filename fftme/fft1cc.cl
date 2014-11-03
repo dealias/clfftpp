@@ -54,6 +54,8 @@ __kernel void fft1cc(unsigned int nx, unsigned int ny, __global float *f)
   const unsigned int idx = get_global_id(0);
   float *fx=f+2*(idx*ny);
 
+  const unsigned int offset=2*(idx*ny);
+
   const unsigned int log2ny=uintlog2(ny);
       
   const float PI=4.0*atan(1.0);
@@ -69,23 +71,24 @@ __kernel void fft1cc(unsigned int nx, unsigned int ny, __global float *f)
       const unsigned int ke = even(log2ny, iy, kb);
       const unsigned int ko = ke + twojy;
 
-      float fe[2] = {fx[2*ke], fx[2*ke+1]};
-      float fo[2] = {fx[2*ko], fx[2*ko+1]};
+      float fe[2] = {f[offset+2*ke], f[offset+2*ke+1]};
+      float fo[2] = {f[offset+2*ko], f[offset+2*ko+1]};
       
       /* const float arg = -2.0 * PI * ky * iy / (float)ny; */
       const float arg = -2.0 * PI * ke / (2.0 * twojy);
       const float w[2] = {cos(arg), sin(arg)};
       
-      fx[2*ke]   = fe[0] + fo[0];
-      fx[2*ke+1] = fe[1] + fo[1];
+      f[offset+2*ke]   = fe[0] + fo[0];
+      f[offset+2*ke+1] = fe[1] + fo[1];
 
       float t[2]={fe[0] - fo[0], fe[1] - fo[1]};
       
-      fx[2*ko]   = w[0]*t[0] - w[1]*t[1];
-      fx[2*ko+1] = w[1]*t[0] + w[0]*t[1];
+      f[offset+2*ko]   = w[0]*t[0] - w[1]*t[1];
+      f[offset+2*ko+1] = w[1]*t[0] + w[0]*t[1];
     }
     twojy /= 2;
   }
+   // f[offset+0]=ny; /* FIXME: temp*/
   
   /* FIXME: unshuffle fx */
   
