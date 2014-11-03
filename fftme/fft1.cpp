@@ -186,9 +186,11 @@ int main(int argc, char* argv[])
   const size_t local_work_size=nx;
   
 
+  unsigned int outlimit=100;
+
   std::cout << "Input:" << std::endl;
   init(nx,ny,f);
-  show(nx,ny,f,100);
+  show(nx,ny,f,outlimit);
     
   double *T=new double[N];
   for(unsigned int i=0; i < N; ++i) {
@@ -206,6 +208,7 @@ int main(int argc, char* argv[])
     
 
     seconds();
+
     ret = clEnqueueNDRangeKernel(queue,
 				 kernel,
 				 1 ,//cl_uint work_dim,
@@ -240,7 +243,7 @@ int main(int argc, char* argv[])
 
 
   std::cout << "Output:" << std::endl;
-  show(nx,ny,f,100);
+  show(nx,ny,f,outlimit);
 
   /* Release OpenCL working objects. */
   clReleaseCommandQueue(queue);

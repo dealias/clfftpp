@@ -59,7 +59,8 @@ __kernel void fft1cc(unsigned int nx, unsigned int ny, __global float *f)
   const unsigned int log2ny=uintlog2(ny);
       
   const float PI=4.0*atan(1.0);
-  unsigned int kb[sizeof(unsigned int)]; // this is too big, but it compiles!
+  //const unsinged int nbits=32;
+  unsigned int kb[32]; // this is too big, but it compiles!
   /* unsigned int *kb=new unsigned int[log2ny]; */
   const unsigned int kymax = ny / 2;
 
