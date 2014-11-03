@@ -72,20 +72,22 @@ __kernel void fft1cc(unsigned int nx, unsigned int ny, __global float *f)
       float fe[2] = {fx[2*ke], fx[2*ke+1]};
       float fo[2] = {fx[2*ko], fx[2*ko+1]};
       
-      const float arg = -2.0 * PI * ky * iy / (float)ny;
-      float w[2] = {cos(arg), sin(arg)};
+      /* const float arg = -2.0 * PI * ky * iy / (float)ny; */
+      const float arg = -2.0 * PI * ke / (2.0 * twojy);
+      const float w[2] = {cos(arg), sin(arg)};
       
-      float temp[2] = {fo[0]*w[0] - fo[1]*w[1],
-		       fo[0]*w[1] + fo[1]*w[0]};
-      
-      fx[2 * ke]     = fe[0] + temp[0];
-      fx[2 * ke + 1] = fe[1] + temp[1];
-      fx[2 * ko]     = fe[0] - temp[0];
-      fx[2 * ko + 1] = fe[1] - temp[1];
+      fx[2*ke]   = fe[0] + fo[0];
+      fx[2*ke+1] = fe[1] + fo[1];
 
+      float t[2]={fe[0] - fo[0], fe[1] - fo[1]};
+      
+      fx[2*ko]   = w[0]*t[0] - w[1]*t[1];
+      fx[2*ko+1] = w[1]*t[0] + w[0]*t[1];
     }
     twojy /= 2;
   }
-
+  
+  /* FIXME: unshuffle fx */
+  
 }
 
