@@ -7,6 +7,7 @@
 #include <clutils.h>
 #include <timing.h>
 #include <seconds.h>
+#include <assert.h>
 
 #include <getopt.h>
 
@@ -33,6 +34,7 @@ void check_cl_ret(cl_int ret, const char* msg)
 	      << " : " << clErrorString(ret) 
 	      << std::endl;
   }
+  assert(ret == CL_SUCCESS);
 }
 
 void init(const unsigned int nx, const unsigned int ny, float*f)
@@ -169,7 +171,7 @@ int main(int argc, char* argv[])
 
   ret = clSetKernelArg(kernel, 0, sizeof(unsigned int),  (void *)&nx);
   check_cl_ret(ret,"setargs0");
-  ret = clSetKernelArg(kernel, 1, sizeof(unsigned int),  (void *)&nx);
+  ret = clSetKernelArg(kernel, 1, sizeof(unsigned int),  (void *)&ny);
   check_cl_ret(ret,"setargs0");
   ret = clSetKernelArg(kernel, 2, sizeof(cl_mem), &memobj);
   check_cl_ret(ret,"setargs1");
