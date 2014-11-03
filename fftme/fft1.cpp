@@ -47,6 +47,25 @@ void init(const unsigned int nx, const unsigned int ny, float*f)
   }
 }
 
+
+void show(const unsigned int nx, const unsigned int ny, float*f, 
+	  unsigned int outlimit)
+{
+
+  if(nx*ny < outlimit) {
+    for(unsigned int ix=0; ix < nx; ++ix) {
+      for(unsigned int iy=0; iy < ny; ++iy) {
+	int pos=2*(ix*ny + iy); 
+	std::cout << "(" << f[pos] << "," << f[pos+1] << ") ";
+      }
+      std::cout << std::endl;
+    }
+  } else {
+    std::cout << "(" << f[0] << "," << f[1] << ") " << std::endl;
+  }
+}
+
+
 int main(int argc, char* argv[])
 {
 
@@ -169,15 +188,8 @@ int main(int argc, char* argv[])
 
   std::cout << "Input:" << std::endl;
   init(nx,ny,f);
-  for(unsigned int ix=0; ix < nx; ++ix) {
-    for(unsigned int iy=0; iy < ny; ++iy) {
-      int pos=2*(ix*ny + iy); 
-      std::cout << "(" << f[pos] << "," << f[pos+1] << ") ";
-    }
-    std::cout << std::endl;
-  }
-
-  
+  show(nx,ny,f,100);
+    
   double *T=new double[N];
   for(unsigned int i=0; i < N; ++i) {
     init(nx,ny,f);
@@ -228,14 +240,7 @@ int main(int argc, char* argv[])
 
 
   std::cout << "Output:" << std::endl;
-  for(unsigned int ix=0; ix < nx; ++ix) {
-    for(unsigned int iy=0; iy < ny; ++iy) {
-      int pos=2*(ix*ny + iy); 
-      std::cout << "(" << f[pos] << "," << f[pos+1] << ") ";
-    }
-    std::cout << std::endl;
-  }
-
+  show(nx,ny,f,100);
 
   /* Release OpenCL working objects. */
   clReleaseCommandQueue(queue);
