@@ -149,9 +149,8 @@ int main(int argc, char* argv[]) {
       fft.cl_to_ram(X);
       T[i]=seconds();
     }
-  } else {
     timings("fft with copy",nx,T,N,stats);
-    
+  } else {
     for(int i=0; i < N; ++i) {
       init(X,nx);
       seconds();
