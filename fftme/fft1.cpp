@@ -7,6 +7,7 @@
 #include <clutils.h>
 #include <timing.h>
 #include <seconds.h>
+#include <assert.h>
 
 #include <getopt.h>
 
@@ -33,6 +34,7 @@ void check_cl_ret(cl_int ret, const char* msg)
 	      << " : " << clErrorString(ret) 
 	      << std::endl;
   }
+  assert(ret == CL_SUCCESS);
 }
 
 void init(const unsigned int nx, const unsigned int ny, float*f)
