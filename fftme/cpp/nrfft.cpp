@@ -5,7 +5,7 @@ const double PI=4.0*atan(1.0);
 
 unsigned int log2(unsigned int n) 
 {
-  unsigned int r = 0; // r will be lg(v)
+  unsigned int r = 0;
   while (n >>= 1)
     r++;
   return r;

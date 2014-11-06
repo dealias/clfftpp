@@ -140,19 +140,22 @@ int main(int argc, char* argv[])
   read_file(source_str,"fft1cc.cl");
   //std::cout << source_str << std::endl;
 
-  cl_int ret; // return valoes from the OpenCL operations.
+  cl_int ret; // return values from the OpenCL operations.
 
   size_t source_size=source_str.length();
   // Create Kernel Program from the source
-  cl_program program = clCreateProgramWithSource(ctx, 
-						 1, 
-						 (const char **)&source_str,
-						 (const size_t *)&source_size,
-						 &ret);
-  check_cl_ret(ret,"clCreateProgrammWithSource");  
+  cl_program program 
+    = clCreateProgramWithSource(ctx, 
+				1, 
+				(const char **)&source_str,
+				(const size_t *)&source_size,
+				&ret);
+  check_cl_ret(ret,"clCreateProgrammWithSource"); 
 
   // Build Kernel Program
   ret = clBuildProgram(program, 1, &device, NULL, NULL, NULL);
+  if(ret != CL_SUCCESS)
+    std::cout <<  print_build_debug(program,&device) << std::endl;
   check_cl_ret(ret,"clBuildProgram");
 
   // Create OpenCL Kernel
@@ -198,14 +201,14 @@ int main(int argc, char* argv[])
   for(unsigned int i=0; i < N; ++i) {
     init(nx,ny,f);
     ret = clEnqueueWriteBuffer(queue,
-			      memobj,
-			      CL_TRUE,
-			      0,
-			      2 * nx * ny * sizeof(float),
-			      f,
-			      0,
-			      NULL,
-			      NULL );
+			       memobj,
+			       CL_TRUE,
+			       0,
+			       2 * nx * ny * sizeof(float),
+			       f,
+			       0,
+			       NULL,
+			       NULL );
     check_cl_ret(ret,"clEnqueueWriteBuffer");  
     
 
