@@ -40,23 +40,17 @@ unsigned int bitreverse(const unsigned int k, const unsigned int log2ny)
 {
   unsigned int kb[32]; // this is too big, but it compiles!
   uint2binary(k,kb,log2ny);
-  for(unsigned int i=1; i < log2ny; ++i)
-    kb[i] = ! kb[i];
-  return binary2uint(kb,log2ny);
+  /* for(unsigned int i=1; i < log2ny; ++i) */
+  /*   kb[i] = ! kb[i]; */
+  /* return binary2uint(kb,log2ny); */
+  unsigned int kr=0;
+  unsigned int p=1;
+  for(unsigned int i=log2ny; i-- > 0;) {
+    kr += kb[i] * p;
+    p *= 2;
+  }
+  return kr;
 }
-
-/* unsigned int bitreverse(unsigned int i, unsigned int size) */
-/* { */
-/*   long result,mask; */
-
-/*   result=0; */
-/*   for(; size > 1; size>>= 1){ */
-/*     mask=i&1; */
-/*     i>>=1; */
-/*     result<<=1; */
-/*     result|=mask; */
-/*   } */
-/* } */
 
 void unshuffle( __global float *fx, const unsigned int ny)
 {
@@ -66,13 +60,10 @@ void unshuffle( __global float *fx, const unsigned int ny)
 
   for(unsigned int k=0; k < ny; ++k) {
     unsigned int j=bitreverse(k,log2ny);
-    //unsigned int j=bitreverse(k,ny);
     if(j < k) swap(fx,j,k);
     //fx[2*k]=j;
   }
 }
-
-
 
 unsigned int even(const unsigned int l2n, 
 		  const unsigned int j, 
@@ -146,6 +137,7 @@ __kernel void fft1cc(unsigned int nx, unsigned int ny, __global float *f)
   /* FIXME: unshuffle fx */
   unshuffle(fx,ny);
   
+
 
   
 }
