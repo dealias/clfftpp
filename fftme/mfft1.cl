@@ -72,7 +72,7 @@ unsigned int even(const unsigned int l2n,
   return ke;
 }
 
-__kernel void fft1cc(unsigned int nx, unsigned int ny, __global float *f)
+__kernel void mfft1(unsigned int nx, unsigned int ny, __global float *f)
 {
   /* const unsigned int l2n=log2(n); */
 

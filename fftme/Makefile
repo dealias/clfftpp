@@ -29,6 +29,9 @@ vpath %.h ../
 
 all: mfft1
 
+fft.o: fft.hpp fft.cpp 
+	g++ $(CXXFLAGS) fft.cpp -c
+
 clutils.o: ../clutils.c clutils.h
 	g++ $(CXXFLAGS) ../clutils.c -c
 
@@ -36,10 +39,10 @@ platform.o: platform.hpp ../platform.cpp
 	g++ $(CXXFLAGS) ../platform.cpp -c
 
 mfft1.o: mfft1.cpp
-	g++ $(CXXFLAGS) $^ -c 
+	g++ $(CXXFLAGS) $^ -c
 
-mfft1: mfft1.o platform.o clutils.o
-	g++ $^ $(LDFLAGS) -o $@
+mfft1: mfft1.o platform.o clutils.o fft.o
+	g++ mfft1.o platform.o clutils.o $(LDFLAGS) -o $@
 
 clean:
 	rm -f mfft1 *.o

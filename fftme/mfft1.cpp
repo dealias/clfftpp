@@ -9,6 +9,8 @@
 #include <seconds.h>
 #include <assert.h>
 
+#include <fft.hpp>
+
 #include <getopt.h>
 #include <CL/cl.hpp>
 
@@ -120,7 +122,6 @@ int main(int argc, char* argv[])
     }
   }
 
-
   std::vector<std::vector<cl_device_id> > dev_ids;
   create_device_tree(dev_ids);
   cl_device_id device = dev_ids[platnum][devnum];
@@ -156,7 +157,7 @@ int main(int argc, char* argv[])
   check_cl_ret(ret,"clBuildProgram");
 
   // Create OpenCL Kernel
-  cl_kernel kernel = clCreateKernel(program, "fft1cc", &ret);
+  cl_kernel kernel = clCreateKernel(program, "mfft1", &ret);
   check_cl_ret(ret,"create kernel");
 
   float *f=new float[2*nx*ny];
@@ -239,12 +240,24 @@ int main(int argc, char* argv[])
 
   ret = clFinish(queue);
 
+  std::cout << "Output:" << std::endl;
+  show(nx,ny,f,outlimit);
 
   check_cl_ret(ret,"clFinish");
 
+  std::cout << "With class:" << std::endl;
 
-  std::cout << "Output:" << std::endl;
+  //mfft1d <float>fft(platnum,devnum,nx,ny);
+  mfft1d <float>fft(queue,ctx,device,nx,ny);
+  fft.build();
+  fft.set_args(memobj);
+  //fft.alloc_rw();
+  init(nx,ny,f);
+  fft.write_buffer(f,memobj);
+  fft.forward();
+  fft.read_buffer(f,memobj);
   show(nx,ny,f,outlimit);
+ 
 
   /* Release OpenCL working objects. */
   clReleaseCommandQueue(queue);
