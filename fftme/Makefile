@@ -27,7 +27,7 @@ endif
 vpath %.hpp ../
 vpath %.h ../
 
-all: fft1
+all: mfft1
 
 clutils.o: ../clutils.c clutils.h
 	g++ $(CXXFLAGS) ../clutils.c -c
@@ -35,11 +35,11 @@ clutils.o: ../clutils.c clutils.h
 platform.o: platform.hpp ../platform.cpp
 	g++ $(CXXFLAGS) ../platform.cpp -c
 
-fft1.o: fft1.cpp
+mfft1.o: mfft1.cpp
 	g++ $(CXXFLAGS) $^ -c 
 
-fft1: fft1.o platform.o clutils.o
+mfft1: mfft1.o platform.o clutils.o
 	g++ $^ $(LDFLAGS) -o $@
 
 clean:
-	rm -f fft1 *.o
+	rm -f mfft1 *.o

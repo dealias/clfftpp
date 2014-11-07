@@ -10,7 +10,6 @@
 #include <assert.h>
 
 #include <getopt.h>
-
 #include <CL/cl.hpp>
 
 void read_file(std::string &str, const char* filename)
@@ -21,11 +20,11 @@ void read_file(std::string &str, const char* filename)
   str.reserve(t.tellg());
   t.seekg(0, std::ios::beg);
   
-  str.assign((std::istreambuf_iterator<char>(t)),
+  str.assign(std::istreambuf_iterator<char>(t),
 	     std::istreambuf_iterator<char>());
 }
 
-void check_cl_ret(cl_int ret, const char* msg) 
+void check_cl_ret(cl_int ret, const char* msg)
 {
   if(ret != CL_SUCCESS) {
     
@@ -49,7 +48,6 @@ void init(const unsigned int nx, const unsigned int ny, float*f)
   }
 }
 
-
 void show(const unsigned int nx, const unsigned int ny, float*f, 
 	  unsigned int outlimit)
 {
@@ -70,7 +68,6 @@ void show(const unsigned int nx, const unsigned int ny, float*f,
 
 int main(int argc, char* argv[])
 {
-
   // Set up the OpenCL device, platform, queue, and context.
   show_devices();
 
@@ -137,7 +134,7 @@ int main(int argc, char* argv[])
 
   // Read the kernel from a file.
   std::string source_str;
-  read_file(source_str,"fft1cc.cl");
+  read_file(source_str,"mfft1.cl");
   //std::cout << source_str << std::endl;
 
   cl_int ret; // return values from the OpenCL operations.
@@ -189,7 +186,6 @@ int main(int argc, char* argv[])
 
   const size_t global_work_size=nx;
   const size_t local_work_size=nx;
-  
 
   unsigned int outlimit=100;
 
