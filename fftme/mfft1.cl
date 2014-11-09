@@ -88,13 +88,14 @@ __kernel void mfft1(unsigned int nx, unsigned int mx,
   /* unsigned int *kb=new unsigned int[log2ny]; */
   const unsigned int kymax = ny / 2;
   
-  unsigned int twojy = ny / 2;
+
   // Loop from idx to idx+mx
   const unsigned int ixstart = mx * idx;
   const unsigned int ixstop = min(ixstart + mx, nx);
   for(unsigned int ix = ixstart; ix < ixstop; ++ix) {
     double *fx = f + 2 * (ix * ny);
-  
+
+    unsigned int twojy = ny / 2;  
     for(unsigned int iy = 0; iy < log2ny; ++iy) {
       for(unsigned int ky = 0; ky < kymax; ++ky) {
 	uint2binary(ky, kb,log2ny - 1);
@@ -120,6 +121,7 @@ __kernel void mfft1(unsigned int nx, unsigned int mx,
       }
       twojy /= 2;
     }
+
     // Bit-reversal stage
     unshuffle(fx, ny);
   }

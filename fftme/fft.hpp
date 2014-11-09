@@ -149,12 +149,17 @@ class mfft1d : public cl_base {
 private:
   unsigned int nx, mx, ny;
 public:
+  void set_size()
+  {
+    size = sizeof(double);
+  }
+
   mfft1d() {
-    size=sizeof(T);
+    set_size();
   }
 
   mfft1d(unsigned int n0) {
-    size=sizeof(T);
+    set_size();
     n=n0;
   }
 
@@ -164,7 +169,7 @@ public:
 
   mfft1d(unsigned int nplat, unsigned int ndev,
 	 unsigned int nx0, unsigned int ny0) {
-    size=sizeof(T);
+    set_size();
     nx = nx0;
     ny = ny0;
     n = nx * ny;
@@ -178,7 +183,7 @@ public:
 
   mfft1d(cl_command_queue queue0, cl_context context0, cl_device_id device0,
 	 unsigned int nx0, unsigned int ny0) {
-    size=sizeof(T);
+    set_size();
     nx = nx0;
     ny = ny0;
     n = nx * ny;
