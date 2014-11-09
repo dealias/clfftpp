@@ -11,7 +11,6 @@
 
 #include <platform.hpp>
 
-
 class cl_base
 {
 private:
@@ -24,6 +23,7 @@ protected:
   cl_kernel kernel;
   cl_mem memobj;
   unsigned int n;
+  size_t maxworkgroupsize;
   std::string source_str;
   size_t size;
 public:
@@ -85,6 +85,15 @@ public:
     check_cl_ret(ret,"clCreateBuffer");
   }
 
+  void set_maxworkgroupsize() {
+    cl_int ret;
+    ret = clGetDeviceInfo(device,
+			  CL_DEVICE_MAX_WORK_GROUP_SIZE,
+			  sizeof(maxworkgroupsize),
+			  &maxworkgroupsize,
+			  NULL);
+    check_cl_ret(ret,"max_workgroup_size");
+  }
 
   void read_file(const char* filename)
   {
@@ -156,10 +165,11 @@ public:
     ny = ny0;
     n=nx*ny;
     set_device(nplat,ndev);
+    set_maxworkgroupsize();
+    std::cout << "maxworkgroupsize: " << maxworkgroupsize << std::endl;
     set_context();
     set_queue();
   }
-
 
   mfft1d(cl_command_queue queue0, cl_context context0, cl_device_id device0,
 	 unsigned int nx0, unsigned int ny0) {
@@ -168,6 +178,8 @@ public:
     ny = ny0;
     n=nx*ny;
     device=device0;
+    set_maxworkgroupsize();
+    std::cout << "maxworkgroupsize: " << maxworkgroupsize << std::endl;
     queue=queue0;
     context=context0;
   }

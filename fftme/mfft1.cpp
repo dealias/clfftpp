@@ -257,7 +257,6 @@ int main(int argc, char* argv[])
   fft.forward();
   fft.read_buffer(f,memobj);
   show(nx,ny,f,outlimit);
- 
 
   /* Release OpenCL working objects. */
   clReleaseCommandQueue(queue);
