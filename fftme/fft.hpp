@@ -190,7 +190,6 @@ public:
     device = device0;
     set_maxworkgroupsize();
     set_mx();
-    std::cout << "maxworkgroupsize: " << maxworkgroupsize << std::endl;
     queue = queue0;
     context = context0;
   }
