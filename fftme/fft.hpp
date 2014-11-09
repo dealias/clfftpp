@@ -171,6 +171,7 @@ public:
     set_device(nplat,ndev);
     set_maxworkgroupsize();
     set_mx();
+
     set_context();
     set_queue();
   }
@@ -192,9 +193,11 @@ public:
   ~mfft1d() {
     // FIXME
   }
-
+  
   void build() {
-    build_kernel_from_file("mfft1.cl","mfft1");
+    char filename[] = "mfft1.cl";
+    char kernelname[] = "mfft1";
+    build_kernel_from_file(filename, kernelname);
   }
   
   void set_args(cl_mem buf=0) {
