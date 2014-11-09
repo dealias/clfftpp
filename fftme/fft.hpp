@@ -223,7 +223,7 @@ public:
   			       buf == 0 ? memobj : buf,
   			       CL_TRUE,
   			       0,
-  			       2 * n * sizeof(float),
+  			       2 * n * sizeof(T),
   			       f,
   			       0,
   			       NULL,

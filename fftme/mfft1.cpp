@@ -148,7 +148,8 @@ int main(int argc, char* argv[])
 
   unsigned int outlimit=100;
 
-  float *f=new float[2*nx*ny];
+
+  double *f=new double[2*nx*ny];
 
   std::cout << "Input:" << std::endl;
   init(nx,ny,f);
@@ -165,7 +166,7 @@ int main(int argc, char* argv[])
 
 
   //mfft1d <float>fft(platnum,devnum,nx,ny);
-  mfft1d <float>fft(queue,ctx,device,nx,ny);
+  mfft1d <double>fft(queue,ctx,device,nx,ny);
   fft.build();
   fft.alloc_rw();
   fft.set_args();
