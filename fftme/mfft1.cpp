@@ -38,7 +38,8 @@ void check_cl_ret(cl_int ret, const char* msg)
   assert(ret == CL_SUCCESS);
 }
 
-void init(const unsigned int nx, const unsigned int ny, float*f)
+template< class T>
+void init(const unsigned int nx, const unsigned int ny, T *f)
 {
   for(unsigned int ix=0; ix < nx; ++ix) {
     unsigned int iy;
@@ -50,7 +51,8 @@ void init(const unsigned int nx, const unsigned int ny, float*f)
   }
 }
 
-void show(const unsigned int nx, const unsigned int ny, float*f, 
+template< class T>
+void show(const unsigned int nx, const unsigned int ny, T *f, 
 	  unsigned int outlimit)
 {
 
@@ -133,62 +135,9 @@ int main(int argc, char* argv[])
   const cl_context ctx = create_context(platform, {device});
   const cl_command_queue queue = create_queue(ctx, {device});
 
-  // Read the kernel from a file.
-  std::string source_str;
-  read_file(source_str,"mfft1.cl");
-  //std::cout << source_str << std::endl;
-
-  cl_int ret; // return values from the OpenCL operations.
-
-  size_t source_size=source_str.length();
-  // Create Kernel Program from the source
-  cl_program program 
-    = clCreateProgramWithSource(ctx, 
-				1, 
-				(const char **)&source_str,
-				(const size_t *)&source_size,
-				&ret);
-  check_cl_ret(ret,"clCreateProgrammWithSource"); 
-
-  // Build Kernel Program
-  ret = clBuildProgram(program, 1, &device, NULL, NULL, NULL);
-  if(ret != CL_SUCCESS)
-    std::cout <<  print_build_debug(program,&device) << std::endl;
-  check_cl_ret(ret,"clBuildProgram");
-
-  // Create OpenCL Kernel
-  cl_kernel kernel = clCreateKernel(program, "mfft1", &ret);
-  check_cl_ret(ret,"create kernel");
+  unsigned int outlimit=100;
 
   float *f=new float[2*nx*ny];
-
-  cl_mem memobj = clCreateBuffer(ctx, 
-				 CL_MEM_READ_WRITE ,
-				 2 * nx * ny * sizeof(float), 
-				 NULL, 
-				 &ret);
-
-  // Set OpenCL Kernel Parameters
-
-  ret = clSetKernelArg(kernel, 0, sizeof(unsigned int),  (void *)&nx);
-  check_cl_ret(ret,"setargs0");
-  ret = clSetKernelArg(kernel, 1, sizeof(unsigned int),  (void *)&ny);
-  check_cl_ret(ret,"setargs0");
-  ret = clSetKernelArg(kernel, 2, sizeof(cl_mem), &memobj);
-  check_cl_ret(ret,"setargs1");
-  
-  // // Execute OpenCL Kernel
-  // ret = clEnqueueTask(queue, 
-  // 		      kernel, 
-  // 		      0,
-  // 		      NULL,
-  // 		      NULL);
-  // check_cl_ret(ret,"clEnqueueTask");
-
-  const size_t global_work_size=nx;
-  const size_t local_work_size=nx;
-
-  unsigned int outlimit=100;
 
   std::cout << "Input:" << std::endl;
   init(nx,ny,f);
@@ -196,66 +145,24 @@ int main(int argc, char* argv[])
     
   double *T=new double[N];
   for(unsigned int i=0; i < N; ++i) {
-    init(nx,ny,f);
-    ret = clEnqueueWriteBuffer(queue,
-			       memobj,
-			       CL_TRUE,
-			       0,
-			       2 * nx * ny * sizeof(float),
-			       f,
-			       0,
-			       NULL,
-			       NULL );
-    check_cl_ret(ret,"clEnqueueWriteBuffer");  
-    
-
+    // FIXME
     seconds();
-
-    ret = clEnqueueNDRangeKernel(queue,
-				 kernel,
-				 1 ,//cl_uint work_dim,
-				 NULL, //const size_t *global_work_offset,
-				 &global_work_size, //const size_t *global_work_size,
-				 &local_work_size, //const size_t *local_work_size,
-				 0, //cl_uint num_events_in_wait_list,
-				 NULL, //const cl_event *event_wait_list,
-				 NULL //cl_event *event
-				 );
-
+    // FIXME
     T[i]=seconds();
   }
-  check_cl_ret(ret,"clEnqueueNDRangeKernel");
-  timings("mfft1d",nx,T,N,stats);
+  //timings("mfft1d",nx,T,N,stats);
 
-  ret = clEnqueueReadBuffer(queue,
-			    memobj,
-			    CL_TRUE,
-			    0,
-			    2 * nx * ny * sizeof(float),
-			    f,
-			    0,
-			    NULL,
-			    NULL );
-  check_cl_ret(ret,"clEnqueueReadBuffer");  
-
-  ret = clFinish(queue);
-
-  std::cout << "Output:" << std::endl;
-  show(nx,ny,f,outlimit);
-
-  check_cl_ret(ret,"clFinish");
-
-  std::cout << "With class:" << std::endl;
 
   //mfft1d <float>fft(platnum,devnum,nx,ny);
   mfft1d <float>fft(queue,ctx,device,nx,ny);
   fft.build();
-  fft.set_args(memobj);
-  //fft.alloc_rw();
+  fft.alloc_rw();
+  fft.set_args();
   init(nx,ny,f);
-  fft.write_buffer(f,memobj);
+  fft.write_buffer(f);
   fft.forward();
-  fft.read_buffer(f,memobj);
+  fft.finish();
+  fft.read_buffer(f);
   show(nx,ny,f,outlimit);
 
   /* Release OpenCL working objects. */

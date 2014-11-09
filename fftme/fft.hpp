@@ -77,11 +77,11 @@ public:
 
   void alloc_rw() {
     cl_int ret;
-    clCreateBuffer(context, 
-		   CL_MEM_READ_WRITE ,
-		   n * size, 
-		   NULL, 
-		   &ret);
+    memobj = clCreateBuffer(context, 
+			    CL_MEM_READ_WRITE ,
+			    2 * n * size, // factor of two for complex 
+			    NULL, 
+			    &ret);
     check_cl_ret(ret,"clCreateBuffer");
   }
 
@@ -163,7 +163,7 @@ public:
     size=sizeof(T);
     nx = nx0;
     ny = ny0;
-    n=nx*ny;
+    n = nx * ny;
     set_device(nplat,ndev);
     set_maxworkgroupsize();
     std::cout << "maxworkgroupsize: " << maxworkgroupsize << std::endl;
@@ -176,12 +176,12 @@ public:
     size=sizeof(T);
     nx = nx0;
     ny = ny0;
-    n=nx*ny;
-    device=device0;
+    n = nx * ny;
+    device = device0;
     set_maxworkgroupsize();
     std::cout << "maxworkgroupsize: " << maxworkgroupsize << std::endl;
-    queue=queue0;
-    context=context0;
+    queue = queue0;
+    context = context0;
   }
 
   ~mfft1d() {
@@ -213,7 +213,7 @@ public:
   			       buf == 0 ? memobj : buf,
   			       CL_TRUE,
   			       0,
-  			       n * sizeof(T),
+  			       2 * n * sizeof(float),
   			       f,
   			       0,
   			       NULL,
@@ -226,9 +226,9 @@ public:
     cl_int ret;
     ret = clEnqueueReadBuffer(queue,
 			      buf == 0 ? memobj : buf,
-  			      CL_TRUE,
-  			      0,
-  			      n * sizeof(T),
+  			      CL_TRUE, // cl_bool blocking_read,
+  			      0, // offset
+  			      2 * n * sizeof(T), //size_t cb
   			      f,
   			      0,
   			      NULL,
@@ -240,8 +240,15 @@ public:
   void forward() {
     cl_int ret;
     // FIXME: work sizes must change based on problem size and device
-    const size_t global_work_size=nx;
-    const size_t local_work_size=nx;
+    const size_t global_work_size = nx;
+    //= nx <= maxworkgroupsize ? nx : maxworkgroupsize;
+    const size_t local_work_size = nx;
+    //= nx <= maxworkgroupsize ? nx : maxworkgroupsize;
+    
+    std::cout << "global_work_size: " << global_work_size << std::endl;
+    std::cout << "nx: " << nx << std::endl;
+    std::cout << "ny: " << ny << std::endl;
+
     ret = clEnqueueNDRangeKernel(queue,
     				 kernel,
     				 1 ,//cl_uint work_dim,
