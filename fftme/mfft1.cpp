@@ -14,11 +14,22 @@
 #include <getopt.h>
 #include <CL/cl.hpp>
 
+#include "Complex.h"
+#include "fftw++.h"
+#include "Array.h"
+
+inline void init(Array::array2<Complex>& f, unsigned int mx, unsigned int my) 
+{
+  for(unsigned int i=0; i < mx; ++i)
+    for(unsigned int j=0; j < my; j++)
+      f[i][j]=Complex(i,j);
+}
+
 void read_file(std::string &str, const char* filename)
 {
   std::ifstream t(filename);
 
-  t.seekg(0, std::ios::end);  
+  t.seekg(0, std::ios::end);
   str.reserve(t.tellg());
   t.seekg(0, std::ios::beg);
   
@@ -164,6 +175,38 @@ int main(int argc, char* argv[])
   fft.finish();
   fft.read_buffer(f);
   show(nx,ny,f,outlimit);
+
+  {
+    std::cout << "\nOutput of mfft1d using FFTW++:" << std::endl; 
+
+    size_t align=sizeof(Complex);
+    Array::array2<Complex> F(nx,ny,align);
+    fftwpp::mfft1d Forward(ny,-1,nx,1,ny);
+    init(F,nx,ny);
+    Forward.fft(F);
+    if(nx*ny < outlimit) {
+      for(unsigned int i=0; i < nx; i++) {
+	for(unsigned int j=0; j < ny; j++)
+	  std::cout << F[i][j] << "\t";
+	std::cout << std::endl;
+      }
+    } else { 
+      std::cout << F[0][0] << std::endl;
+    }
+
+    double err=0.0;
+    for(unsigned int i=0; i < nx; i++) {
+      for(unsigned int j=0; j < ny; j++) {
+	double fr = F[i][j].re - f[2*(i*ny +j)];
+	double fi = F[i][j].im - f[2*(i*ny +j)+1];
+	err += fr*fr + fi*fi;
+      }
+    }
+    err = sqrt(err)/(double)(nx*ny);
+    
+    std::cout << "\nL2 difference: " << err << std::endl;
+    
+  }
 
   /* Release OpenCL working objects. */
   clReleaseCommandQueue(queue);
