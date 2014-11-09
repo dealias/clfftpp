@@ -98,11 +98,9 @@ public:
   void read_file(const char* filename)
   {
     std::ifstream t(filename);
-
     t.seekg(0, std::ios::end);  
     source_str.reserve(t.tellg());
     t.seekg(0, std::ios::beg);
-  
     source_str.assign(std::istreambuf_iterator<char>(t),
 		      std::istreambuf_iterator<char>());
   }
@@ -149,15 +147,21 @@ public:
 template<class T>
 class mfft1d : public cl_base {
 private:
-  unsigned int nx, ny;
+  unsigned int nx, mx, ny;
 public:
   mfft1d() {
     size=sizeof(T);
   }
+
   mfft1d(unsigned int n0) {
     size=sizeof(T);
     n=n0;
   }
+
+  void set_mx() {
+    mx = (nx + maxworkgroupsize -1) / maxworkgroupsize;
+  }
+
   mfft1d(unsigned int nplat, unsigned int ndev,
 	 unsigned int nx0, unsigned int ny0) {
     size=sizeof(T);
@@ -166,7 +170,7 @@ public:
     n = nx * ny;
     set_device(nplat,ndev);
     set_maxworkgroupsize();
-    std::cout << "maxworkgroupsize: " << maxworkgroupsize << std::endl;
+    set_mx();
     set_context();
     set_queue();
   }
@@ -179,6 +183,7 @@ public:
     n = nx * ny;
     device = device0;
     set_maxworkgroupsize();
+    set_mx();
     std::cout << "maxworkgroupsize: " << maxworkgroupsize << std::endl;
     queue = queue0;
     context = context0;
@@ -197,9 +202,11 @@ public:
     assert(kernel != 0);
     ret = clSetKernelArg(kernel, 0, sizeof(unsigned int),  (void *)&nx);
     check_cl_ret(ret,"setargs0");
-    ret = clSetKernelArg(kernel, 1, sizeof(unsigned int),  (void *)&ny);
+    ret = clSetKernelArg(kernel, 1, sizeof(unsigned int),  (void *)&mx);
     check_cl_ret(ret,"setargs0");
-    ret = clSetKernelArg(kernel, 2, sizeof(cl_mem), &(buf == 0 ? memobj : buf));
+    ret = clSetKernelArg(kernel, 2, sizeof(unsigned int),  (void *)&ny);
+    check_cl_ret(ret,"setargs0");
+    ret = clSetKernelArg(kernel, 3, sizeof(cl_mem), &(buf == 0 ? memobj : buf));
     check_cl_ret(ret,"setargs1");
   }
 
@@ -239,22 +246,13 @@ public:
   
   void forward() {
     cl_int ret;
-    // FIXME: work sizes must change based on problem size and device
-    const size_t global_work_size = nx;
-    //= nx <= maxworkgroupsize ? nx : maxworkgroupsize;
-    const size_t local_work_size = nx;
-    //= nx <= maxworkgroupsize ? nx : maxworkgroupsize;
-    
-    std::cout << "global_work_size: " << global_work_size << std::endl;
-    std::cout << "nx: " << nx << std::endl;
-    std::cout << "ny: " << ny << std::endl;
-
+    const size_t global_work_size = (nx+mx-1)/mx;
     ret = clEnqueueNDRangeKernel(queue,
     				 kernel,
     				 1 ,//cl_uint work_dim,
     				 NULL, //const size_t *global_work_offset,
     				 &global_work_size, //const size_t *global_work_size,
-    				 &local_work_size, //const size_t *local_work_size,
+    				 NULL, // &local_work_size, //const size_t *local_work_size,
     				 0, //cl_uint num_events_in_wait_list,
     				 NULL, //const cl_event *event_wait_list,
     				 NULL //cl_event *event
@@ -262,8 +260,6 @@ public:
     check_cl_ret(ret,"Forward");
     finish();
   }
-  
-  // FIXME
 };
 
 #endif

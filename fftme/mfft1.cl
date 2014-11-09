@@ -39,10 +39,10 @@ unsigned int bitreverse(const unsigned int k, const unsigned int log2ny)
 
 void unshuffle( __global float *fx, const unsigned int ny)
 {
-  const unsigned int log2ny=uintlog2(ny);
-  for(unsigned int k=0; k < ny; ++k) {
-    unsigned int j=bitreverse(k,log2ny);
-    if(j < k) swap(fx,j,k);
+  const unsigned int log2ny = uintlog2(ny);
+  for(unsigned int k = 0; k < ny; ++k) {
+    unsigned int j = bitreverse(k, log2ny);
+    if(j < k) swap(fx, j, k);
   }
 }
 
@@ -50,14 +50,14 @@ unsigned int even(const unsigned int l2n,
 		  const unsigned int j, 
 		  const unsigned int *kb)
 {
-  const unsigned int l2nm1=l2n-1;
-  const unsigned int j0=l2nm1-j;
+  const unsigned int l2nm1 = l2n - 1;
+  const unsigned int j0 = l2nm1 - j;
 
-  unsigned int ke=0;
-  unsigned int p=1;
+  unsigned int ke = 0;
+  unsigned int p = 1;
  
   for (unsigned int i = 0; i < j0; ++i) {
-    unsigned int pkb=p*kb[i];
+    unsigned int pkb = p * kb[i];
     ke += pkb;
     p *= 2;
   }
@@ -65,23 +65,21 @@ unsigned int even(const unsigned int l2n,
   p *= 2; // Skip one power of two
 
   for (unsigned int i = j0; i < l2nm1; ++i) {
-    unsigned int pkb=p*kb[i];
+    unsigned int pkb = p*kb[i];
     ke += pkb;
     p *= 2;
   }
   return ke;
 }
 
-__kernel void mfft1(unsigned int nx, unsigned int ny, __global float *f)
+__kernel void mfft1(unsigned int nx, unsigned int mx, 
+		    unsigned int ny, __global float *f)
 {
   /* const unsigned int l2n=log2(n); */
 
   const unsigned int idx = get_global_id(0);
-  float *fx=f+2*(idx*ny);
 
-  const unsigned int offset=2*(idx*ny);
-
-  const unsigned int log2ny=uintlog2(ny);
+  const unsigned int log2ny = uintlog2(ny);
   
   const float PI=4.0*atan(1.0);
   unsigned int kb[32]; // this is too big, but it compiles!
@@ -89,32 +87,38 @@ __kernel void mfft1(unsigned int nx, unsigned int ny, __global float *f)
   const unsigned int kymax = ny / 2;
   
   unsigned int twojy = ny / 2;
-  for(unsigned int iy = 0; iy < log2ny; ++iy) {
-    for(unsigned int ky = 0; ky < kymax; ++ky) {
-      uint2binary(ky,kb,log2ny-1);
+  // Loop from idx to idx+mx
+  const unsigned int ixstart = mx * idx;
+  const unsigned int ixstop = min(ixstart + mx, nx);
+  for(unsigned int ix = ixstart; ix < ixstop; ++ix) {
+    float *fx = f + 2 * (ix * ny);
+  
+    for(unsigned int iy = 0; iy < log2ny; ++iy) {
+      for(unsigned int ky = 0; ky < kymax; ++ky) {
+	uint2binary(ky, kb,log2ny - 1);
 	
-      const unsigned int ke = even(log2ny, iy, kb);
-      const unsigned int ko = ke + twojy;
+	const unsigned int ke = even(log2ny, iy, kb);
+	const unsigned int ko = ke + twojy;
 
-      float fe[2] = {fx[2*ke], fx[2*ke+1]};
-      float fo[2] = {fx[2*ko], fx[2*ko+1]};
+	float fe[2] = {fx[2*ke], fx[2*ke+1]};
+	float fo[2] = {fx[2*ko], fx[2*ko+1]};
       
-      // TODO: move w to a lookup table (in local memory?)
-      /* const float arg = -2.0 * PI * ky * iy / (float)ny; */
-      const float arg = -2.0 * PI * ke / (2.0 * twojy);
-      const float w[2] = {cos(arg), sin(arg)};
+	// TODO: move w to a lookup table (in local memory?)
+	/* const float arg = -2.0 * PI * ky * iy / (float)ny; */
+	const float arg = -2.0 * PI * ke / (2.0 * twojy);
+	const float w[2] = {cos(arg), sin(arg)};
       
-      fx[2*ke]   = fe[0] + fo[0];
-      fx[2*ke+1] = fe[1] + fo[1];
+	fx[2*ke]   = fe[0] + fo[0];
+	fx[2*ke+1] = fe[1] + fo[1];
 
-      float t[2]={fe[0] - fo[0], fe[1] - fo[1]};
+	float t[2] = {fe[0] - fo[0], fe[1] - fo[1]};
       
-      fx[2*ko]   = w[0]*t[0] - w[1]*t[1];
-      fx[2*ko+1] = w[1]*t[0] + w[0]*t[1];
+	fx[2*ko]   = w[0]*t[0] - w[1]*t[1];
+	fx[2*ko+1] = w[1]*t[0] + w[0]*t[1];
+      }
+      twojy /= 2;
     }
-    twojy /= 2;
+    // Bit-reversal stage
+    unshuffle(fx, ny);
   }
-
-  // Bit-reversal stage
-  unshuffle(fx,ny);
 }
