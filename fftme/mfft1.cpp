@@ -14,6 +14,7 @@
 #include <getopt.h>
 #include <CL/cl.hpp>
 
+// For fftw++ comparison
 #include "Complex.h"
 #include "fftw++.h"
 #include "Array.h"
@@ -148,10 +149,17 @@ int main(int argc, char* argv[])
 
   unsigned int outlimit=100;
 
-  double *f=new double[2*nx*ny];
+  // bool pdouble=false;
+  // auto ff = pdouble ? (double) 1 : (float)1;
+  // std::cout << sizeof(ff) << std::endl;
+
+  //typedef double REAL;
+  typedef float REAL;
+
+  REAL *f=new REAL[2*nx*ny];
 
   //mfft1d <float>fft(platnum,devnum,nx,ny);
-  mfft1d <double>fft(queue,ctx,device,nx,ny);
+  mfft1d <REAL>fft(queue,ctx,device,nx,ny);
   fft.build();
   fft.alloc_rw();
   fft.set_args();

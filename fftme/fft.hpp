@@ -98,7 +98,7 @@ public:
   void read_file(const char* filename)
   {
     std::ifstream t(filename);
-    t.seekg(0, std::ios::end);  
+    t.seekg(0, std::ios::end);
     source_str.reserve(t.tellg());
     t.seekg(0, std::ios::beg);
     source_str.assign(std::istreambuf_iterator<char>(t),
@@ -116,9 +116,14 @@ public:
     check_cl_ret(ret,"clCreateProgrammWithSource"); 
   }
 
-  void build_program() {
+  void build_program(const char *options = NULL) {
         cl_int ret;
-    ret = clBuildProgram(program, 1, &device, NULL, NULL, NULL);
+    ret = clBuildProgram(program, 
+			 1, 
+			 &device, 
+			 options, // Options
+			 NULL, 
+			 NULL);
     if(ret != CL_SUCCESS)
       std::cout <<  print_build_debug(program,&device) << std::endl;
     check_cl_ret(ret,"clBuildProgram");
@@ -130,10 +135,11 @@ public:
     check_cl_ret(ret,"create kernel");
   }
 
-  void build_kernel_from_file(const char* filename, char* kernelname) {
+  void build_kernel_from_file(const char* filename, char* kernelname,
+			      const char *options = NULL) {
     read_file(filename);
     create_program();
-    build_program();
+    build_program(options);
     create_kernel(kernelname);
   }
 
@@ -151,7 +157,7 @@ private:
 public:
   void set_size()
   {
-    size = sizeof(double);
+    size = sizeof(T);
   }
 
   mfft1d() {
@@ -201,7 +207,10 @@ public:
   void build() {
     char filename[] = "mfft1.cl";
     char kernelname[] = "mfft1";
-    build_kernel_from_file(filename, kernelname);
+    if(std::is_same<T, double>::value)
+      build_kernel_from_file(filename, kernelname,"-I double/");
+    if(std::is_same<T, float>::value)
+      build_kernel_from_file(filename, kernelname,"-I float/");
   }
   
   void set_args(cl_mem buf=0) {

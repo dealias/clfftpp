@@ -1,4 +1,8 @@
-#pragma OPENCL EXTENSION cl_khr_fp64: enable
+/* #pragma OPENCL EXTENSION cl_khr_fp64: enable */
+/* #define REAL double */
+//#define REAL float
+
+#include "fft_double.cl" // defines REAL as float or double.
 
 unsigned int uintlog2(unsigned int n)
 {
@@ -8,11 +12,9 @@ unsigned int uintlog2(unsigned int n)
   return r;
 }
 
-//#define double double;
-
-void swap(__global double *f, const unsigned int a, const unsigned int b)
+void swap(__global REAL *f, const unsigned int a, const unsigned int b)
 {
-  double temp[2]={f[2*a],f[2*a+1]};
+  REAL temp[2]={f[2*a],f[2*a+1]};
   f[2*a]   = f[2*b];
   f[2*a+1] = f[2*b+1];
   f[2*b]   = temp[0];
@@ -41,7 +43,7 @@ unsigned int bitreverse(const unsigned int k, const unsigned int log2ny)
   return kr;
 }
 
-void unshuffle( __global double *fx, const unsigned int ny)
+void unshuffle( __global REAL *fx, const unsigned int ny)
 {
   const unsigned int log2ny = uintlog2(ny);
   for(unsigned int k = 0; k < ny; ++k) {
@@ -77,7 +79,7 @@ unsigned int even(const unsigned int l2n,
 }
 
 __kernel void mfft1(unsigned int nx, unsigned int mx, 
-		    unsigned int ny, __global double *f)
+		    unsigned int ny, __global REAL *f)
 {
   /* const unsigned int l2n=log2(n); */
 
@@ -85,7 +87,7 @@ __kernel void mfft1(unsigned int nx, unsigned int mx,
 
   const unsigned int log2ny = uintlog2(ny);
   
-  const double PI=4.0*atan(1.0);
+  const REAL PI=4.0*atan(1.0);
   unsigned int kb[32]; // this is too big, but it compiles!
   /* unsigned int *kb=new unsigned int[log2ny]; */
   const unsigned int kymax = ny / 2;
@@ -95,7 +97,7 @@ __kernel void mfft1(unsigned int nx, unsigned int mx,
   const unsigned int ixstart = mx * idx;
   const unsigned int ixstop = min(ixstart + mx, nx);
   for(unsigned int ix = ixstart; ix < ixstop; ++ix) {
-    double *fx = f + 2 * (ix * ny);
+    REAL *fx = f + 2 * (ix * ny);
 
     unsigned int twojy = ny / 2;  
     for(unsigned int iy = 0; iy < log2ny; ++iy) {
@@ -105,18 +107,18 @@ __kernel void mfft1(unsigned int nx, unsigned int mx,
 	const unsigned int ke = even(log2ny, iy, kb);
 	const unsigned int ko = ke + twojy;
 
-	double fe[2] = {fx[2*ke], fx[2*ke+1]};
-	double fo[2] = {fx[2*ko], fx[2*ko+1]};
+	REAL fe[2] = {fx[2*ke], fx[2*ke+1]};
+	REAL fo[2] = {fx[2*ko], fx[2*ko+1]};
       
 	// TODO: move w to a lookup table (in local memory?)
-	/* const double arg = -2.0 * PI * ky * iy / (double)ny; */
-	const double arg = -2.0 * PI * ke / (2.0 * twojy);
-	const double w[2] = {cos(arg), sin(arg)};
+	/* const REAL arg = -2.0 * PI * ky * iy / (REAL)ny; */
+	const REAL arg = -2.0 * PI * ke / (2.0 * twojy);
+	const REAL w[2] = {cos(arg), sin(arg)};
       
 	fx[2*ke]   = fe[0] + fo[0];
 	fx[2*ke+1] = fe[1] + fo[1];
 
-	double t[2] = {fe[0] - fo[0], fe[1] - fo[1]};
+	REAL t[2] = {fe[0] - fo[0], fe[1] - fo[1]};
       
 	fx[2*ko]   = w[0]*t[0] - w[1]*t[1];
 	fx[2*ko+1] = w[1]*t[0] + w[0]*t[1];
