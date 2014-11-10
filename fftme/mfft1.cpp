@@ -153,8 +153,8 @@ int main(int argc, char* argv[])
   // auto ff = pdouble ? (double) 1 : (float)1;
   // std::cout << sizeof(ff) << std::endl;
 
-  //typedef double REAL;
-  typedef float REAL;
+  typedef double REAL;
+  //typedef float REAL;
 
   REAL *f=new REAL[2*nx*ny];
 

@@ -97,7 +97,7 @@ __kernel void mfft1(unsigned int nx, unsigned int mx,
   const unsigned int ixstart = mx * idx;
   const unsigned int ixstop = min(ixstart + mx, nx);
   for(unsigned int ix = ixstart; ix < ixstop; ++ix) {
-    REAL *fx = f + 2 * (ix * ny);
+    const unsigned int offset=2 * (ix * ny);
 
     unsigned int twojy = ny / 2;  
     for(unsigned int iy = 0; iy < log2ny; ++iy) {
@@ -107,26 +107,27 @@ __kernel void mfft1(unsigned int nx, unsigned int mx,
 	const unsigned int ke = even(log2ny, iy, kb);
 	const unsigned int ko = ke + twojy;
 
-	REAL fe[2] = {fx[2*ke], fx[2*ke+1]};
-	REAL fo[2] = {fx[2*ko], fx[2*ko+1]};
+	REAL fe[2] = {f[offset+2*ke], f[offset+2*ke+1]};
+	REAL fo[2] = {f[offset+2*ko], f[offset+2*ko+1]};
       
 	// TODO: move w to a lookup table (in local memory?)
 	/* const REAL arg = -2.0 * PI * ky * iy / (REAL)ny; */
 	const REAL arg = -2.0 * PI * ke / (2.0 * twojy);
 	const REAL w[2] = {cos(arg), sin(arg)};
       
-	fx[2*ke]   = fe[0] + fo[0];
-	fx[2*ke+1] = fe[1] + fo[1];
+	f[offset+2*ke]   = fe[0] + fo[0];
+	f[offset+2*ke+1] = fe[1] + fo[1];
 
 	REAL t[2] = {fe[0] - fo[0], fe[1] - fo[1]};
       
-	fx[2*ko]   = w[0]*t[0] - w[1]*t[1];
-	fx[2*ko+1] = w[1]*t[0] + w[0]*t[1];
+	f[offset+2*ko]   = w[0]*t[0] - w[1]*t[1];
+	f[offset+2*ko+1] = w[1]*t[0] + w[0]*t[1];
       }
       twojy /= 2;
     }
 
     // Bit-reversal stage
+    REAL *fx = f + 2 * (ix * ny);
     unshuffle(fx, ny);
   }
 }
