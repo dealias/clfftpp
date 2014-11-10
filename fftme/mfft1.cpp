@@ -148,33 +148,22 @@ int main(int argc, char* argv[])
 
   unsigned int outlimit=100;
 
-
   double *f=new double[2*nx*ny];
-
-  std::cout << "Input:" << std::endl;
-  init(nx,ny,f);
-  show(nx,ny,f,outlimit);
-    
-  double *T=new double[N];
-  for(unsigned int i=0; i < N; ++i) {
-    // FIXME
-    seconds();
-    // FIXME
-    T[i]=seconds();
-  }
-  //timings("mfft1d",nx,T,N,stats);
-
 
   //mfft1d <float>fft(platnum,devnum,nx,ny);
   mfft1d <double>fft(queue,ctx,device,nx,ny);
   fft.build();
   fft.alloc_rw();
   fft.set_args();
+
+  std::cout << "Input:" << std::endl;
   init(nx,ny,f);
+  show(nx,ny,f,outlimit);
   fft.write_buffer(f);
   fft.forward();
   fft.finish();
   fft.read_buffer(f);
+  std::cout << "\nOutput:" << std::endl;
   show(nx,ny,f,outlimit);
 
   {
@@ -208,6 +197,20 @@ int main(int argc, char* argv[])
     std::cout << "\nL2 difference: " << err << std::endl;
     
   }
+
+
+
+  init(nx,ny,f);
+  double *T=new double[N];
+  for(unsigned int i=0; i < N; ++i) {
+    // FIXME
+    seconds();
+    // FIXME
+    T[i]=seconds();
+  }
+  //timings("mfft1d",nx,T,N,stats);
+
+  
 
   /* Release OpenCL working objects. */
   clReleaseCommandQueue(queue);
