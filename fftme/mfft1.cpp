@@ -192,13 +192,11 @@ int main(int argc, char* argv[])
 	err += fr*fr + fi*fi;
       }
     }
-    err = sqrt(err)/(double)(nx*ny);
+    err = sqrt(err/(double)(nx*ny));
     
     std::cout << "\nL2 difference: " << err << std::endl;
     
   }
-
-
 
   init(nx,ny,f);
   double *T=new double[N];
