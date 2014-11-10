@@ -209,12 +209,16 @@ int main(int argc, char* argv[])
   init(nx,ny,f);
   double *T=new double[N];
   for(unsigned int i=0; i < N; ++i) {
-    // FIXME
+    init(nx,ny,f);
+    fft.write_buffer(f);
     seconds();
-    // FIXME
+    fft.forward();
+    fft.finish();
     T[i]=seconds();
+    fft.read_buffer(f);
   }
-  //timings("mfft1d",nx,T,N,stats);
+  std::cout << std::endl;
+  timings("mfft1d",nx,T,N,stats);
 
   
 
