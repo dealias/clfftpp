@@ -1,3 +1,5 @@
+#pragma OPENCL EXTENSION cl_khr_fp64: enable
+
 unsigned int uintlog2(unsigned int n)
 {
   unsigned int r = 0;
