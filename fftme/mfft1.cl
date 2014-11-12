@@ -43,7 +43,7 @@ unsigned int bitreverse(const unsigned int k, const unsigned int log2ny)
   return kr;
 }
 
-void unshuffle( __global REAL *fx, const unsigned int ny)
+void unshuffle(__global REAL *fx, const unsigned int ny)
 {
   const unsigned int log2ny = uintlog2(ny);
   for(unsigned int k = 0; k < ny; ++k) {
@@ -127,7 +127,7 @@ __kernel void mfft1(unsigned int nx, unsigned int mx,
     }
 
     // Bit-reversal stage
-    REAL *fx = f + 2 * (ix * ny);
-    unshuffle(fx, ny);
+    //REAL *fx = f + 2 * (ix * ny);
+    unshuffle( f + 2 * (ix * ny), ny);
   }
 }
