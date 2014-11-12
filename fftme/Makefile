@@ -1,4 +1,5 @@
 CXXFLAGS=
+CCFLAGS=
 
 CXXFLAGS+=-std=c++0x
 
@@ -50,7 +51,7 @@ fft.o: fft.hpp fft.cpp
 	$(CXX) $(CXXFLAGS) fft.cpp -c
 
 clutils.o: ../clutils.c clutils.h
-	$(CC) $(CCFLAGS) ../clutils.c -c
+	$(CXX) $(CCFLAGS) ../clutils.c -c
 
 platform.o: platform.hpp ../platform.cpp
 	$(CXX) $(CXXFLAGS) ../platform.cpp -c
