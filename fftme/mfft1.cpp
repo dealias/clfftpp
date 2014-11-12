@@ -89,7 +89,6 @@ int main(int argc, char* argv[])
 
   int platnum=0;
   int devnum=0;
-  
   unsigned int nx = 4;
   unsigned int ny = 4;
   //nx=262144;
@@ -153,8 +152,8 @@ int main(int argc, char* argv[])
   // auto ff = pdouble ? (double) 1 : (float)1;
   // std::cout << sizeof(ff) << std::endl;
 
-  typedef double REAL;
-  //typedef float REAL;
+  typedef float REAL;
+  //typedef double REAL;
 
   REAL *f=new REAL[2*nx*ny];
 
@@ -218,7 +217,7 @@ int main(int argc, char* argv[])
     fft.read_buffer(f);
   }
   std::cout << std::endl;
-  timings("mfft1d",nx,T,N,stats);
+  timings("mfft1d timing",nx,T,N,stats);
 
   
 
