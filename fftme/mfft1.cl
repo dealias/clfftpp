@@ -78,14 +78,13 @@ unsigned int even(const unsigned int l2n,
   return ke;
 }
 
-__kernel void mfft1(unsigned int nx,
-		    //unsigned int mx, 
-		    unsigned int ny, 
-		    __global REAL *f)
+__kernel 
+void mfft1(unsigned int nx,
+	   unsigned int mx, 
+	   unsigned int ny, 
+	   __global REAL *f)
 {
   /* const unsigned int l2n=log2(n); */
-
-  unsigned int mx=1;
 
   const unsigned int idx = get_global_id(0);
 

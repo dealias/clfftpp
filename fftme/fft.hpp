@@ -221,8 +221,8 @@ public:
     unsigned int narg=0;
     ret = clSetKernelArg(kernel, narg++, sizeof(unsigned int),  (void *)&nx);
     check_cl_ret(ret,"setargs0");
-    // ret = clSetKernelArg(kernel, narg++, sizeof(unsigned int),  (void *)&mx);
-    // check_cl_ret(ret,"setargs0");
+    ret = clSetKernelArg(kernel, narg++, sizeof(unsigned int),  (void *)&mx);
+    check_cl_ret(ret,"setargs0");
     ret = clSetKernelArg(kernel, narg++, sizeof(unsigned int),  (void *)&ny);
     check_cl_ret(ret,"setargs0");
     ret = clSetKernelArg(kernel, narg++, 
