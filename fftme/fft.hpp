@@ -266,15 +266,15 @@ public:
   
   inline void forward(cl_event *event=NULL) {
     cl_int ret;
-    //const size_t global_work_size = (nx+mx-1)/mx;
-    const size_t global_work_size = nx;//(nx+mx-1)/mx;
+    const size_t global_work_size = (nx+mx-1)/mx;
+    //const size_t global_work_size = nx;//(nx+mx-1)/mx;
     const size_t local_work_size = nx;//global_work_size;
     ret = clEnqueueNDRangeKernel(queue,
     				 kernel,
     				 1 ,//cl_uint work_dim,
     				 NULL, //const size_t *global_work_offset,
     				 &global_work_size, //const size_t *global_work_size,
-    				 &local_work_size, //const size_t *local_work_size,
+    				 NULL, //&local_work_size, //const size_t *local_work_size,
     				 0, //cl_uint num_events_in_wait_list,
     				 NULL, //const cl_event *event_wait_list,
     				 event//NULL //cl_event *event
