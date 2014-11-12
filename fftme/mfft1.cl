@@ -78,10 +78,14 @@ unsigned int even(const unsigned int l2n,
   return ke;
 }
 
-__kernel void mfft1(unsigned int nx, unsigned int mx, 
-		    unsigned int ny, __global REAL *f)
+__kernel void mfft1(unsigned int nx,
+		    //unsigned int mx, 
+		    unsigned int ny, 
+		    __global REAL *f)
 {
   /* const unsigned int l2n=log2(n); */
+
+  unsigned int mx=1;
 
   const unsigned int idx = get_global_id(0);
 
@@ -91,43 +95,44 @@ __kernel void mfft1(unsigned int nx, unsigned int mx,
   unsigned int kb[32]; // this is too big, but it compiles!
   /* unsigned int *kb=new unsigned int[log2ny]; */
   const unsigned int kymax = ny / 2;
-  
+ 
 
   // Loop from idx to idx+mx
   const unsigned int ixstart = mx * idx;
   const unsigned int ixstop = min(ixstart + mx, nx);
   for(unsigned int ix = ixstart; ix < ixstop; ++ix) {
     const unsigned int offset=2 * (ix * ny);
+    __global REAL *fx=f+offset;
 
     unsigned int twojy = ny / 2;  
     for(unsigned int iy = 0; iy < log2ny; ++iy) {
       for(unsigned int ky = 0; ky < kymax; ++ky) {
 	uint2binary(ky, kb,log2ny - 1);
 	
-	const unsigned int ke = even(log2ny, iy, kb);
-	const unsigned int ko = ke + twojy;
+	const unsigned int ke = 2*even(log2ny, iy, kb);
+	const unsigned int ko = ke + 2*twojy;
 
-	REAL fe[2] = {f[offset+2*ke], f[offset+2*ke+1]};
-	REAL fo[2] = {f[offset+2*ko], f[offset+2*ko+1]};
+	REAL fe[2] = {fx[ke], fx[ke+1]};
+	REAL fo[2] = {fx[ko], fx[ko+1]};
       
 	// TODO: move w to a lookup table (in local memory?)
 	/* const REAL arg = -2.0 * PI * ky * iy / (REAL)ny; */
-	const REAL arg = -2.0 * PI * ke / (2.0 * twojy);
+	const REAL arg = -0.5 * PI * ke / twojy;
 	const REAL w[2] = {cos(arg), sin(arg)};
       
-	f[offset+2*ke]   = fe[0] + fo[0];
-	f[offset+2*ke+1] = fe[1] + fo[1];
+	fx[ke]   = fe[0] + fo[0];
+	fx[ke+1] = fe[1] + fo[1];
 
 	REAL t[2] = {fe[0] - fo[0], fe[1] - fo[1]};
       
-	f[offset+2*ko]   = w[0]*t[0] - w[1]*t[1];
-	f[offset+2*ko+1] = w[1]*t[0] + w[0]*t[1];
+	fx[ko]   = w[0]*t[0] - w[1]*t[1];
+	fx[ko+1] = w[1]*t[0] + w[0]*t[1];
       }
       twojy /= 2;
     }
 
     // Bit-reversal stage
     //REAL *fx = f + 2 * (ix * ny);
-    unshuffle( f + 2 * (ix * ny), ny);
+    unshuffle(fx, ny);
   }
 }

@@ -218,13 +218,15 @@ public:
   void set_args(cl_mem buf=0) {
     cl_int ret;
     assert(kernel != 0);
-    ret = clSetKernelArg(kernel, 0, sizeof(unsigned int),  (void *)&nx);
+    unsigned int narg=0;
+    ret = clSetKernelArg(kernel, narg++, sizeof(unsigned int),  (void *)&nx);
     check_cl_ret(ret,"setargs0");
-    ret = clSetKernelArg(kernel, 1, sizeof(unsigned int),  (void *)&mx);
+    // ret = clSetKernelArg(kernel, narg++, sizeof(unsigned int),  (void *)&mx);
+    // check_cl_ret(ret,"setargs0");
+    ret = clSetKernelArg(kernel, narg++, sizeof(unsigned int),  (void *)&ny);
     check_cl_ret(ret,"setargs0");
-    ret = clSetKernelArg(kernel, 2, sizeof(unsigned int),  (void *)&ny);
-    check_cl_ret(ret,"setargs0");
-    ret = clSetKernelArg(kernel, 3, sizeof(cl_mem), &(buf == 0 ? memobj : buf));
+    ret = clSetKernelArg(kernel, narg++, 
+			 sizeof(cl_mem), &(buf == 0 ? memobj : buf));
     check_cl_ret(ret,"setargs1");
   }
 
