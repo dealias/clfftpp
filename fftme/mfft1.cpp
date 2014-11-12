@@ -26,6 +26,21 @@ inline void init(Array::array2<Complex>& f, unsigned int mx, unsigned int my)
       f[i][j]=Complex(i,j);
 }
 
+template<class T>
+double l2error(Array::array2<Complex>& F, T *f, 
+	       unsigned int nx, unsigned int ny) 
+{
+  double err=0.0;
+  for(unsigned int i=0; i < nx; i++) {
+    for(unsigned int j=0; j < ny; j++) {
+      double fr = F[i][j].re - f[2*(i*ny +j)];
+      double fi = F[i][j].im - f[2*(i*ny +j)+1];
+      err += fr*fr + fi*fi;
+    }
+  }
+  return sqrt(err/(double)(nx*ny));
+}
+
 void read_file(std::string &str, const char* filename)
 {
   std::ifstream t(filename);
@@ -92,13 +107,14 @@ int main(int argc, char* argv[])
   unsigned int nx = 4;
   unsigned int ny = 4;
   //nx=262144;
-
+  unsigned int fprecision = 0;
+  
   unsigned int N=10;
 
   unsigned int stats=MEAN; // Type of statistics used in timing test.
 
   for (;;) {
-    int c = getopt(argc,argv,"p:d:m:x:y:N:S:h");
+    int c = getopt(argc,argv,"p:d:m:x:y:N:S:f:h");
     if (c == -1) break;
     
     switch (c) {
@@ -122,7 +138,10 @@ int main(int argc, char* argv[])
       N=atoi(optarg);
       break;
     case 'S':
-      nx=atoi(optarg);
+      stats=atoi(optarg);
+      break;
+    case 'f':
+      fprecision=atoi(optarg);
       break;
     case 'h':
       //usage(1);
@@ -148,77 +167,97 @@ int main(int argc, char* argv[])
 
   unsigned int outlimit=100;
 
-  // bool pdouble=false;
-  // auto ff = pdouble ? (double) 1 : (float)1;
-  // std::cout << sizeof(ff) << std::endl;
 
-  typedef float REAL;
-  //typedef double REAL;
-
-  REAL *f=new REAL[2*nx*ny];
-
-  //mfft1d <float>fft(platnum,devnum,nx,ny);
-  mfft1d <REAL>fft(queue,ctx,device,nx,ny);
-  fft.build();
-  fft.alloc_rw();
-  fft.set_args();
-
-  std::cout << "Input:" << std::endl;
-  init(nx,ny,f);
-  show(nx,ny,f,outlimit);
-  fft.write_buffer(f);
-  fft.forward();
-  fft.finish();
-  fft.read_buffer(f);
-  std::cout << "\nOutput:" << std::endl;
-  show(nx,ny,f,outlimit);
-
-  {
-    std::cout << "\nOutput of mfft1d using FFTW++:" << std::endl; 
-
-    size_t align=sizeof(Complex);
-    Array::array2<Complex> F(nx,ny,align);
-    fftwpp::mfft1d Forward(ny,-1,nx,1,ny);
-    init(F,nx,ny);
-    Forward.fft(F);
-    if(nx*ny < outlimit) {
-      for(unsigned int i=0; i < nx; i++) {
-	for(unsigned int j=0; j < ny; j++)
-	  std::cout << F[i][j] << "\t";
-	std::cout << std::endl;
-      }
-    } else { 
-      std::cout << F[0][0] << std::endl;
-    }
-
-    double err=0.0;
+  
+  std::cout << "\nOutput of mfft1d using FFTW++:" << std::endl; 
+  
+  size_t align=sizeof(Complex);
+  Array::array2<Complex> F(nx,ny,align);
+  fftwpp::mfft1d Forward(ny,-1,nx,1,ny);
+  init(F,nx,ny);
+  Forward.fft(F);
+  if(nx*ny < outlimit) {
     for(unsigned int i=0; i < nx; i++) {
-      for(unsigned int j=0; j < ny; j++) {
-	double fr = F[i][j].re - f[2*(i*ny +j)];
-	double fi = F[i][j].im - f[2*(i*ny +j)+1];
-	err += fr*fr + fi*fi;
-      }
+      for(unsigned int j=0; j < ny; j++)
+	std::cout << F[i][j] << "\t";
+      std::cout << std::endl;
     }
-    err = sqrt(err/(double)(nx*ny));
-    
-    std::cout << "\nL2 difference: " << err << std::endl;
-    
+  } else { 
+    std::cout << F[0][0] << std::endl;
   }
 
-  init(nx,ny,f);
-  double *T=new double[N];
-  for(unsigned int i=0; i < N; ++i) {
+  if(fprecision == 0 || fprecision == 1) {
+    std::cout << "Float version:" << std::endl;
+    float *f=new float[2*nx*ny];
+
+    mfft1d <float>fft(queue,ctx,device,nx,ny);
+    fft.build();
+    fft.alloc_rw();
+    fft.set_args();
+
+    std::cout << "\nInput:" << std::endl;
     init(nx,ny,f);
+    show(nx,ny,f,outlimit);
     fft.write_buffer(f);
-    seconds();
     fft.forward();
     fft.finish();
-    T[i]=seconds();
     fft.read_buffer(f);
-  }
-  std::cout << std::endl;
-  timings("mfft1d timing",nx,T,N,stats);
+    std::cout << "\nOutput:" << std::endl;
+    show(nx,ny,f,outlimit);
 
+    std::cout << "\nL2 difference:  " << l2error(F,f,nx,ny) << std::endl;
+
+    init(nx,ny,f);
+    double *T=new double[N];
+    for(unsigned int i=0; i < N; ++i) {
+      init(nx,ny,f);
+      fft.write_buffer(f);
+      seconds();
+      fft.forward();
+      fft.finish();
+      T[i]=seconds();
+      fft.read_buffer(f);
+    }
+    std::cout << std::endl;
+    timings("mfft1d float timing",nx,T,N,stats);
+  }
+  
+
+  if(fprecision == 0 || fprecision == 2) {
+    std::cout << "Double version:" << std::endl;
+    double *f=new double[2*nx*ny];
+
+    mfft1d <double>fft(queue,ctx,device,nx,ny);
+    fft.build();
+    fft.alloc_rw();
+    fft.set_args();
+
+    std::cout << "\nInput:" << std::endl;
+    init(nx,ny,f);
+    show(nx,ny,f,outlimit);
+    fft.write_buffer(f);
+    fft.forward();
+    fft.finish();
+    fft.read_buffer(f);
+    std::cout << "\nOutput:" << std::endl;
+    show(nx,ny,f,outlimit);
+
+    std::cout << "\nL2 difference:  " << l2error(F,f,nx,ny) << std::endl;
+
+    init(nx,ny,f);
+    double *T=new double[N];
+    for(unsigned int i=0; i < N; ++i) {
+      init(nx,ny,f);
+      fft.write_buffer(f);
+      seconds();
+      fft.forward();
+      fft.finish();
+      T[i]=seconds();
+      fft.read_buffer(f);
+    }
+    std::cout << std::endl;
+    timings("mfft1d double timing",nx,T,N,stats);
+  }
   
 
   /* Release OpenCL working objects. */
