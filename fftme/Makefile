@@ -55,7 +55,7 @@ fft.o: fft.hpp fft.cpp
 	$(CXX) $(CXXFLAGS) fft.cpp -c
 
 clutils.o: ../clutils.c clutils.h
-	$(CXX) $(CCFLAGS) ../clutils.c -c
+	$(CXX) $(CXXFLAGS) ../clutils.c -c
 
 platform.o: platform.hpp ../platform.cpp
 	$(CXX) $(CXXFLAGS) ../platform.cpp -c
