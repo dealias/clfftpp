@@ -29,11 +29,15 @@ CXXFLAGS+=-Wall
 
 LDFLAGS=
 
-LDFLAGS+=-lOpenCL
 ifneq ($(strip $(OPENCL_LIB_PATH)),)
 LDFLAGS+=-L$(OPENCL_LIB_PATH)
 endif
+LDFLAGS+=-lOpenCL
 
+
+ifneq ($(strip $(FFTW_LIB_PATH)),)
+LDFLAGS+=-L$(FFTW_LIB_PATH)
+endif
 LDFLAGS += -lfftw3
 LDFLAGS += -lm
 
