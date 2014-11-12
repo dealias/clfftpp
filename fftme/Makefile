@@ -22,7 +22,8 @@ endif
 CXXFLAGS+=-I.
 CXXFLAGS+=-I..
 
-CXXFLAGS+=-Ofast
+#CXXFLAGS+=-Ofast
+CXXFLAGS+=-O3
 CXXFLAGS+=-Wall 
 
 LDFLAGS=
@@ -46,19 +47,19 @@ fftw++.o: $(FFTWPP_INCLUDE_PATH)/fftw++.cc $(FFTWPP_INCLUDE_PATH)/fftw++.h
 	$(CXX) $(CXXFLAGS) -o $@ -c $<
 
 fft.o: fft.hpp fft.cpp 
-	g++ $(CXXFLAGS) fft.cpp -c
+	$(CXX) $(CXXFLAGS) fft.cpp -c
 
 clutils.o: ../clutils.c clutils.h
-	g++ $(CXXFLAGS) ../clutils.c -c
+	$(CC) $(CCFLAGS) ../clutils.c -c
 
 platform.o: platform.hpp ../platform.cpp
-	g++ $(CXXFLAGS) ../platform.cpp -c
+	$(CXX) $(CXXFLAGS) ../platform.cpp -c
 
 mfft1.o: mfft1.cpp
-	g++ $(CXXFLAGS) $^ -c
+	$(CXX) $(CXXFLAGS) $^ -c
 
 mfft1: mfft1.o platform.o clutils.o fft.o fftw++.o
-	g++ mfft1.o platform.o clutils.o fftw++.o $(LDFLAGS) -o $@
+	$(CXX) mfft1.o platform.o clutils.o fftw++.o $(LDFLAGS) -o $@
 
 clean:
 	rm -f mfft1 *.o

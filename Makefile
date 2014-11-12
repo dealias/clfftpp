@@ -19,7 +19,7 @@ endif
 
 CXXFLAGS+=-I.
 
-CXXFLAGS+=-Ofast
+CXXFLAGS+=-O3
 CXXFLAGS+=-Wall
 
 LDFLAGS=
