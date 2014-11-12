@@ -20,13 +20,13 @@ protected:
   cl_context context;
   cl_command_queue queue;
   cl_program program;
-  cl_kernel kernel;
   cl_mem memobj;
   unsigned int n;
   size_t maxworkgroupsize;
   std::string source_str;
   size_t size;
 public:
+  cl_kernel kernel;
   cl_base(){
     // FIXME: set up OpenCL environment?
 
@@ -264,21 +264,22 @@ public:
     finish();
   }
   
-  void forward() {
+  inline void forward() {
     cl_int ret;
-    const size_t global_work_size = (nx+mx-1)/mx;
+    //const size_t global_work_size = (nx+mx-1)/mx;
+    const size_t global_work_size = nx;//(nx+mx-1)/mx;
+    const size_t local_work_size = nx;//global_work_size;
     ret = clEnqueueNDRangeKernel(queue,
     				 kernel,
     				 1 ,//cl_uint work_dim,
     				 NULL, //const size_t *global_work_offset,
     				 &global_work_size, //const size_t *global_work_size,
-    				 NULL, // &local_work_size, //const size_t *local_work_size,
+    				 &local_work_size, //const size_t *local_work_size,
     				 0, //cl_uint num_events_in_wait_list,
     				 NULL, //const cl_event *event_wait_list,
     				 NULL //cl_event *event
     				 );
     check_cl_ret(ret,"Forward");
-    finish();
   }
 };
 

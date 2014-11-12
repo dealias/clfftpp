@@ -214,9 +214,10 @@ int main(int argc, char* argv[])
     for(unsigned int i=0; i < N; ++i) {
       init(nx,ny,f);
       fft.write_buffer(f);
+
       seconds();
       fft.forward();
-      fft.finish();
+     //fft.finish();
       T[i]=seconds();
       fft.read_buffer(f);
     }
