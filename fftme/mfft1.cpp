@@ -161,9 +161,11 @@ int main(int argc, char* argv[])
   std::vector<cl_platform_id> plat_ids;
   find_platform_ids(plat_ids);
   cl_platform_id platform = plat_ids[devnum];
+  
 
-  const cl_context ctx = create_context(platform, {device});
-  const cl_command_queue queue = create_queue(ctx, {device});
+  cl_device_id devicelist={device};
+  const cl_context ctx = create_context(platform, devicelist);
+  const cl_command_queue queue = create_queue(ctx, devicelist);
 
   unsigned int outlimit=100;
 

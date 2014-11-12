@@ -67,12 +67,14 @@ public:
 
   void set_context() {
     assert(device != 0);
-    context=create_context(platform, {device});
+    cl_device_id devicelist={device};
+    context=create_context(platform, devicelist);
   }
 
   void set_queue() {
     assert(context != 0);
-    queue = create_queue(context, {device});
+    cl_device_id devicelist={device};
+    queue = create_queue(context, devicelist);
   }
 
   void alloc_rw() {

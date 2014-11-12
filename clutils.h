@@ -5,6 +5,7 @@
 #ifndef CLUTILS_H_INC
 #define CLUTILS_H_INC
 
+#include <cstdlib>
 #include <CL/cl.h>
 
 const char* clErrorString(const cl_int err);
