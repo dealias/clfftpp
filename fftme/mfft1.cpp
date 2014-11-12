@@ -210,14 +210,16 @@ int main(int argc, char* argv[])
     std::cout << "\nL2 difference:  " << l2error(F,f,nx,ny) << std::endl;
 
     init(nx,ny,f);
+    cl_event forward_event;
     double *T=new double[N];
     for(unsigned int i=0; i < N; ++i) {
       init(nx,ny,f);
       fft.write_buffer(f);
 
       seconds();
-      fft.forward();
+      fft.forward(&forward_event);
      //fft.finish();
+      clWaitForEvents(1, &forward_event);
       T[i]=seconds();
       fft.read_buffer(f);
     }
