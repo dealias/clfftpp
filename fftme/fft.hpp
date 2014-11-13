@@ -219,15 +219,26 @@ public:
     cl_int ret;
     assert(kernel != 0);
     unsigned int narg=0;
+
     ret = clSetKernelArg(kernel, narg++, sizeof(unsigned int),  (void *)&nx);
-    check_cl_ret(ret,"setargs0");
+    check_cl_ret(ret,"setargs nx");
+
     ret = clSetKernelArg(kernel, narg++, sizeof(unsigned int),  (void *)&mx);
-    check_cl_ret(ret,"setargs0");
+    check_cl_ret(ret,"setargs mx");
+
     ret = clSetKernelArg(kernel, narg++, sizeof(unsigned int),  (void *)&ny);
-    check_cl_ret(ret,"setargs0");
-    ret = clSetKernelArg(kernel, narg++, 
+    check_cl_ret(ret,"setargs ny");
+
+    ret = clSetKernelArg(kernel, narg++,
 			 sizeof(cl_mem), &(buf == 0 ? memobj : buf));
-    check_cl_ret(ret,"setargs1");
+    check_cl_ret(ret,"setargs buf");
+
+    ret = clSetKernelArg(kernel, 
+			 narg++,
+			 sizeof(T)*(nx+mx-1)/mx, // FIXME: put in class!
+			 NULL // passing NULL allocates local memory
+			 );
+    check_cl_ret(ret,"setargs local");
   }
 
   void create_kernel() {
@@ -266,7 +277,7 @@ public:
   
   inline void forward(cl_event *event=NULL) {
     cl_int ret;
-    const size_t global_work_size = (nx+mx-1)/mx;
+    const size_t global_work_size = (nx+mx-1)/mx;  // FIXME: put in class!
     //const size_t global_work_size = nx;//(nx+mx-1)/mx;
     const size_t local_work_size = nx;//global_work_size;
     ret = clEnqueueNDRangeKernel(queue,
@@ -274,7 +285,7 @@ public:
     				 1 ,//cl_uint work_dim,
     				 NULL, //const size_t *global_work_offset,
     				 &global_work_size, //const size_t *global_work_size,
-    				 NULL, //&local_work_size, //const size_t *local_work_size,
+    				 &local_work_size, //const size_t *local_work_size,
     				 0, //cl_uint num_events_in_wait_list,
     				 NULL, //const cl_event *event_wait_list,
     				 event//NULL //cl_event *event

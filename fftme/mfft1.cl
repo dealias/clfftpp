@@ -82,7 +82,8 @@ __kernel
 void mfft1(unsigned int nx,
 	   unsigned int mx, 
 	   unsigned int ny, 
-	   __global REAL *f)
+	   __global REAL *f,
+	   __local REAL *lf)
 {
   /* const unsigned int l2n=log2(n); */
 
@@ -100,8 +101,16 @@ void mfft1(unsigned int nx,
   const unsigned int ixstart = mx * idx;
   const unsigned int ixstop = min(ixstart + mx, nx);
   for(unsigned int ix = ixstart; ix < ixstop; ++ix) {
+
+    
     const unsigned int offset=2 * (ix * ny);
     __global REAL *fx=f+offset;
+
+    __local REAL *lfx = lf + 2 * idx * ny;
+
+    // Copy to local memory
+    for(unsigned int iy=0; iy < 2*ny; ++iy)
+      lfx[iy] = fx[iy];
 
     unsigned int twojy = ny / 2;  
     for(unsigned int iy = 0; iy < log2ny; ++iy) {
@@ -111,27 +120,30 @@ void mfft1(unsigned int nx,
 	const unsigned int ke = 2*even(log2ny, iy, kb);
 	const unsigned int ko = ke + 2*twojy;
 
-	REAL fe[2] = {fx[ke], fx[ke+1]};
-	REAL fo[2] = {fx[ko], fx[ko+1]};
+	REAL fe[2] = {lfx[ke], lfx[ke+1]};
+	REAL fo[2] = {lfx[ko], lfx[ko+1]};
       
 	// TODO: move w to a lookup table (in local memory?)
 	/* const REAL arg = -2.0 * PI * ky * iy / (REAL)ny; */
 	const REAL arg = -0.5 * PI * ke / twojy;
 	const REAL w[2] = {cos(arg), sin(arg)};
       
-	fx[ke]   = fe[0] + fo[0];
-	fx[ke+1] = fe[1] + fo[1];
+	lfx[ke]   = fe[0] + fo[0];
+	lfx[ke+1] = fe[1] + fo[1];
 
 	REAL t[2] = {fe[0] - fo[0], fe[1] - fo[1]};
       
-	fx[ko]   = w[0]*t[0] - w[1]*t[1];
-	fx[ko+1] = w[1]*t[0] + w[0]*t[1];
+	lfx[ko]   = w[0]*t[0] - w[1]*t[1];
+	lfx[ko+1] = w[1]*t[0] + w[0]*t[1];
       }
       twojy /= 2;
     }
 
+    // Copy from local memory to global memory
+    for(unsigned int iy=0; iy < 2*ny; ++iy)
+      fx[iy] = lfx[iy];
+
     // Bit-reversal stage
-    //REAL *fx = f + 2 * (ix * ny);
-    unshuffle(fx, ny);
+    unshuffle(fx, ny); // FIXME: use local memory
   }
 }
