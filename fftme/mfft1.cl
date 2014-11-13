@@ -14,11 +14,13 @@ unsigned int uintlog2(unsigned int n)
 
 void swap(__local REAL *f, const unsigned int a, const unsigned int b)
 {
-  REAL temp[2]={f[2*a],f[2*a+1]};
-  f[2*a]   = f[2*b];
-  f[2*a+1] = f[2*b+1];
-  f[2*b]   = temp[0];
-  f[2*b+1] = temp[1];
+  const unsigned int twoa = 2 * a;
+  const unsigned int twob = 2 * b;
+  REAL temp[2]={f[twoa],f[twoa+1]};
+  f[twoa]     = f[twob];
+  f[twoa + 1] = f[twob + 1];
+  f[twob]     = temp[0];
+  f[twob + 1] = temp[1];
 }
 
 unsigned int bitreverse(const unsigned int k, const unsigned int log2ny)
@@ -100,9 +102,8 @@ void mfft1(unsigned int nx,
   const unsigned int log2ny = uintlog2(ny);
   
   const REAL PI=4.0*atan(1.0);
-  unsigned int kb[32]; // this is too big, but it compiles!
-  /* unsigned int *kb=new unsigned int[log2ny]; */
-  const unsigned int kymax = ny / 2;
+
+  const unsigned int kymax = ny >> 1;
  
   // Loop from idx to idx+mx
   const unsigned int ixstart = mx * idx;
@@ -113,8 +114,8 @@ void mfft1(unsigned int nx,
     
     /* Without stride */
     __global REAL *fx = f + 2 * ix * ny;
-      for(unsigned int iy=0; iy < 2*ny; ++iy)
-    lfx[iy] = fx[iy];
+    for(unsigned int iy = 0; iy < 2*ny; ++iy)
+      lfx[iy] = fx[iy];
 
     /* With stride */
     /* // Copy to local memory */
@@ -128,21 +129,26 @@ void mfft1(unsigned int nx,
     unsigned int twojy = ny / 2;  
     for(unsigned int iy = 0; iy < log2ny; ++iy) {
       
-    unsigned int mask = 0;
-    for(unsigned int jj=0; jj < log2ny - 1 - iy; ++jj)
-      mask = (mask << 1) +1;
+      unsigned int mask = 0;
+      for(unsigned int jj=0; jj < log2ny - 1 - iy; ++jj)
+	mask = (mask << 1) +1;
 
       for(unsigned int ky = 0; ky < kymax; ++ky) {
 
-	const unsigned int ke =  2*(((ky & ~mask) << 1) | (ky & mask));
-	const unsigned int ko = (ke|(1<<(log2ny-iy)));
+	const unsigned int ke = (((ky & ~mask) << 1) | (ky & mask)) << 1;
+	const unsigned int ko = (ke | (1 << (log2ny - iy)));
 
 	const REAL fe[2] = {lfx[ke], lfx[ke+1]};
 	const REAL fo[2] = {lfx[ko], lfx[ko+1]};
       
 	// TODO: move w to a lookup table (in local memory?)
-	/* const REAL arg = -2.0 * PI * ky * iy / (REAL)ny; */
-	const REAL arg = -0.5 * PI * ke / twojy;
+	//const REAL arg = -2.0 * PI * ky * iy / (REAL)ny;
+	//const unsigned int key = (ky) % ny;
+	//const REAL arg = -2.0 * PI * key / (REAL) ny;
+
+	//twojy,ke // TODO: use bitshift operators to recover ny and then
+	// use lookup table. to get twiddle factors
+	const REAL arg = -0.5 * PI * ke / (REAL) twojy;
 	const REAL w[2] = {cos(arg), sin(arg)};
       
 	lfx[ke]   = fe[0] + fo[0];
@@ -153,16 +159,16 @@ void mfft1(unsigned int nx,
 	lfx[ko]   = w[0]*t[0] - w[1]*t[1];
 	lfx[ko+1] = w[1]*t[0] + w[0]*t[1];
       }
-      twojy /= 2;
+      twojy = twojy >> 1;
     }
 
     // Bit-reversal stage
-    unshuffle(lfx, ny); // FIXME: use local memory
+    unshuffle(lfx, ny);
 
     // Copy from local memory to global memory
 
     /* Without stride: */
-    for(unsigned int iy=0; iy < 2*ny; ++iy)
+    for(unsigned int iy = 0; iy < 2*ny; ++iy)
       fx[iy] = lfx[iy];
 
     /* With stride: */
