@@ -21,15 +21,6 @@ void swap(__local REAL *f, const unsigned int a, const unsigned int b)
   f[2*b+1] = temp[1];
 }
 
-void uint2binary(unsigned int n, unsigned int *bn, const unsigned int l2n) 
-{
-  unsigned int i;
-  for (i = 0; i < l2n; ++i) {
-    bn[i] = n & 1;
-    n /= 2;
-  }
-}
-
 unsigned int bitreverse(const unsigned int k, const unsigned int log2ny)
 {
   //http://www.katjaas.nl/bitreversal/bitreversal.html
@@ -93,32 +84,6 @@ unsigned int keven(unsigned int j, unsigned int k)
   return ((k  & ~kb) << 1 ) ^ kb;
 }
 
-unsigned int even(const unsigned int l2n, 
-		  const unsigned int j, 
-		  const unsigned int *kb)
-{
-  const unsigned int l2nm1 = l2n - 1;
-  const unsigned int j0 = l2nm1 - j;
-
-  unsigned int ke = 0;
-  unsigned int p = 1;
- 
-  for (unsigned int i = 0; i < j0; ++i) {
-    unsigned int pkb = p * kb[i];
-    ke += pkb;
-    p *= 2;
-  }
-
-  p *= 2; // Skip one power of two
-
-  for (unsigned int i = j0; i < l2nm1; ++i) {
-    unsigned int pkb = p*kb[i];
-    ke += pkb;
-    p *= 2;
-  }
-  return ke;
-}
-
 __kernel 
 void mfft1(unsigned int nx,
 	   unsigned int mx, 
@@ -168,7 +133,6 @@ void mfft1(unsigned int nx,
       mask = (mask << 1) +1;
 
       for(unsigned int ky = 0; ky < kymax; ++ky) {
-	uint2binary(ky, kb,log2ny - 1);
 
 	const unsigned int ke =  2*(((ky & ~mask) << 1) | (ky & mask));
 	const unsigned int ko = (ke|(1<<(log2ny-iy)));
