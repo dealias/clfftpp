@@ -108,13 +108,17 @@ int main(int argc, char* argv[])
   unsigned int ny = 4;
   //nx=262144;
   unsigned int fprecision = 0;
-  
+
+  unsigned int stride = nx; //1;
+  unsigned int dist = 1; //ny;
+    
   unsigned int N=10;
+  bool do_fftw=true;
 
   unsigned int stats=MEAN; // Type of statistics used in timing test.
 
   for (;;) {
-    int c = getopt(argc,argv,"p:d:m:x:y:N:S:f:h");
+    int c = getopt(argc,argv,"p:d:m:x:y:N:S:f:w:h");
     if (c == -1) break;
     
     switch (c) {
@@ -143,6 +147,9 @@ int main(int argc, char* argv[])
     case 'f':
       fprecision=atoi(optarg);
       break;
+    case 'w':
+      do_fftw = atoi(optarg) > 0;
+      break;
     case 'h':
       //usage(1);
       exit(0);
@@ -168,25 +175,24 @@ int main(int argc, char* argv[])
 					      CL_QUEUE_PROFILING_ENABLE);
 
   unsigned int outlimit=100; // don't cout when there is too much data.
-  
-  std::cout << "\nOutput of mfft1d using FFTW++:" << std::endl; 
-  
-  unsigned int stride = nx; //1;
-  unsigned int dist = 1; //ny;
 
-  size_t align=sizeof(Complex);
-  Array::array2<Complex> F(nx,ny,align);
-  fftwpp::mfft1d Forward(ny,-1,nx,stride,dist);
-  init(F,nx,ny);
-  Forward.fft(F);
-  if(nx*ny < outlimit) {
-    for(unsigned int i=0; i < nx; i++) {
-      for(unsigned int j=0; j < ny; j++)
-	std::cout << F[i][j] << "\t";
-      std::cout << std::endl;
+  
+  Array::array2<Complex> F(nx,ny,sizeof(Complex));
+  if(do_fftw) {
+    std::cout << "\nOutput of mfft1d using FFTW++:" << std::endl; 
+    
+    fftwpp::mfft1d Forward(ny,-1,nx,stride,dist);
+    init(F,nx,ny);
+    Forward.fft(F);
+    if(nx*ny < outlimit) {
+      for(unsigned int i=0; i < nx; i++) {
+	for(unsigned int j=0; j < ny; j++)
+	  std::cout << F[i][j] << "\t";
+	std::cout << std::endl;
+      }
+    } else { 
+      std::cout << F[0][0] << std::endl;
     }
-  } else { 
-    std::cout << F[0][0] << std::endl;
   }
 
   if(fprecision == 0 || fprecision == 1) {
@@ -208,7 +214,8 @@ int main(int argc, char* argv[])
     std::cout << "\nOutput:" << std::endl;
     show(nx,ny,f,outlimit);
 
-    std::cout << "\nL2 difference:  " << l2error(F,f,nx,ny) << std::endl;
+    if(do_fftw)
+      std::cout << "\nL2 difference:  " << l2error(F,f,nx,ny) << std::endl;
 
     cl_event forward_event;
     cl_ulong time_start, time_end;
@@ -254,7 +261,9 @@ int main(int argc, char* argv[])
     std::cout << "\nOutput:" << std::endl;
     show(nx,ny,f,outlimit);
 
-    std::cout << "\nL2 difference:  " << l2error(F,f,nx,ny) << std::endl;
+
+    if(do_fftw)
+      std::cout << "\nL2 difference:  " << l2error(F,f,nx,ny) << std::endl;
     
     cl_event forward_event;
     cl_ulong time_start, time_end;
