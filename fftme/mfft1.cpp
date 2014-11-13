@@ -109,8 +109,8 @@ int main(int argc, char* argv[])
   //nx=262144;
   unsigned int fprecision = 0;
 
-  unsigned int stride = nx; //1;
-  unsigned int dist = 1; //ny;
+  unsigned int stride = 1;// nx; //1;
+  unsigned int dist = ny; //1; //ny;
     
   unsigned int N=10;
   bool do_fftw=true;

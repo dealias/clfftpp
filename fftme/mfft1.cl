@@ -74,6 +74,7 @@ unsigned int bitreverse(const unsigned int k, const unsigned int log2ny)
   /* return kr; */
 }
 
+// TODO: can we do the unshuffle and the copy-to-global at the same time?
 void unshuffle(__local REAL *lfx, const unsigned int ny)
 {
   const unsigned int log2ny = uintlog2(ny);
@@ -81,6 +82,15 @@ void unshuffle(__local REAL *lfx, const unsigned int ny)
     unsigned int j = bitreverse(k, log2ny);
     if(j < k) swap(lfx, j, k);
   }
+}
+
+unsigned int keven(unsigned int j, unsigned int k)
+{
+  unsigned int kb=0;
+  for(unsigned int jj=0; jj <= j; ++jj)
+    kb = (kb << 1) +1;
+
+  return ((k  & ~kb) << 1 ) ^ kb;
 }
 
 unsigned int even(const unsigned int l2n, 
@@ -133,25 +143,35 @@ void mfft1(unsigned int nx,
   const unsigned int ixstart = mx * idx;
   const unsigned int ixstop = min(ixstart + mx, nx);
   for(unsigned int ix = ixstart; ix < ixstop; ++ix) {
-    
-    //__global REAL *fx = f + 2 * ix * ny;
+
     __local REAL *lfx = lf + 2 * idx * ny;
     
-    // Copy to local memory
-    for(unsigned int iy=0; iy < ny; ++iy) {
-      unsigned int lpos = 2 * iy;
-      unsigned int rpos = 2 * (idx * dist + iy * stride);
-      lfx[lpos] = f[rpos];
-      lfx[lpos + 1] = f[rpos + 1];
-    }
+    /* Without stride */
+    __global REAL *fx = f + 2 * ix * ny;
+      for(unsigned int iy=0; iy < 2*ny; ++iy)
+    lfx[iy] = fx[iy];
 
+    /* With stride */
+    /* // Copy to local memory */
+    /* for(unsigned int iy=0; iy < ny; ++iy) { */
+    /*   unsigned int lpos = 2 * iy; */
+    /*   unsigned int rpos = 2 * (idx * dist + iy * stride); */
+    /*   lfx[lpos] = f[rpos]; */
+    /*   lfx[lpos + 1] = f[rpos + 1]; */
+    /* } */
+    
     unsigned int twojy = ny / 2;  
     for(unsigned int iy = 0; iy < log2ny; ++iy) {
+      
+    unsigned int mask = 0;
+    for(unsigned int jj=0; jj < log2ny - 1 - iy; ++jj)
+      mask = (mask << 1) +1;
+
       for(unsigned int ky = 0; ky < kymax; ++ky) {
 	uint2binary(ky, kb,log2ny - 1);
-	
-	const unsigned int ke = 2 * even(log2ny, iy, kb);
-	const unsigned int ko = ke + 2 * twojy;
+
+	const unsigned int ke =  2*(((ky & ~mask) << 1) | (ky & mask));
+	const unsigned int ko = (ke|(1<<(log2ny-iy)));
 
 	const REAL fe[2] = {lfx[ke], lfx[ke+1]};
 	const REAL fo[2] = {lfx[ko], lfx[ko+1]};
@@ -176,11 +196,18 @@ void mfft1(unsigned int nx,
     unshuffle(lfx, ny); // FIXME: use local memory
 
     // Copy from local memory to global memory
-    for(unsigned int iy=0; iy < ny; ++iy) {
-      unsigned int lpos = 2 * iy; 
-      unsigned int rpos = 2*(idx * dist + iy * stride);
-      f[rpos] = lfx[lpos];
-      f[rpos + 1] = lfx[lpos + 1];
-    }
+
+    /* Without stride: */
+    for(unsigned int iy=0; iy < 2*ny; ++iy)
+      fx[iy] = lfx[iy];
+
+    /* With stride: */
+    /* for(unsigned int iy=0; iy < ny; ++iy) { */
+    /*   unsigned int lpos = 2 * iy;  */
+    /*   unsigned int rpos = 2*(idx * dist + iy * stride); */
+    /*   f[rpos] = lfx[lpos]; */
+    /*   f[rpos + 1] = lfx[lpos + 1]; */
+    /* } */
+
   }
 }
