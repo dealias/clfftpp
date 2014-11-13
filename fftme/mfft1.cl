@@ -12,7 +12,7 @@ unsigned int uintlog2(unsigned int n)
   return r;
 }
 
-void swap(__global REAL *f, const unsigned int a, const unsigned int b)
+void swap(__local REAL *f, const unsigned int a, const unsigned int b)
 {
   REAL temp[2]={f[2*a],f[2*a+1]};
   f[2*a]   = f[2*b];
@@ -43,12 +43,12 @@ unsigned int bitreverse(const unsigned int k, const unsigned int log2ny)
   return kr;
 }
 
-void unshuffle(__global REAL *fx, const unsigned int ny)
+void unshuffle(__local REAL *lfx, const unsigned int ny)
 {
   const unsigned int log2ny = uintlog2(ny);
   for(unsigned int k = 0; k < ny; ++k) {
     unsigned int j = bitreverse(k, log2ny);
-    if(j < k) swap(fx, j, k);
+    if(j < k) swap(lfx, j, k);
   }
 }
 
@@ -96,16 +96,12 @@ void mfft1(unsigned int nx,
   /* unsigned int *kb=new unsigned int[log2ny]; */
   const unsigned int kymax = ny / 2;
  
-
   // Loop from idx to idx+mx
   const unsigned int ixstart = mx * idx;
   const unsigned int ixstop = min(ixstart + mx, nx);
   for(unsigned int ix = ixstart; ix < ixstop; ++ix) {
-
     
-    const unsigned int offset=2 * (ix * ny);
-    __global REAL *fx=f+offset;
-
+    __global REAL *fx = f + 2 * ix * ny;
     __local REAL *lfx = lf + 2 * idx * ny;
 
     // Copy to local memory
@@ -117,8 +113,8 @@ void mfft1(unsigned int nx,
       for(unsigned int ky = 0; ky < kymax; ++ky) {
 	uint2binary(ky, kb,log2ny - 1);
 	
-	const unsigned int ke = 2*even(log2ny, iy, kb);
-	const unsigned int ko = ke + 2*twojy;
+	const unsigned int ke = 2 * even(log2ny, iy, kb);
+	const unsigned int ko = ke + 2 * twojy;
 
 	REAL fe[2] = {lfx[ke], lfx[ke+1]};
 	REAL fo[2] = {lfx[ko], lfx[ko+1]};
@@ -139,11 +135,11 @@ void mfft1(unsigned int nx,
       twojy /= 2;
     }
 
+    // Bit-reversal stage
+    unshuffle(lfx, ny); // FIXME: use local memory
+
     // Copy from local memory to global memory
     for(unsigned int iy=0; iy < 2*ny; ++iy)
       fx[iy] = lfx[iy];
-
-    // Bit-reversal stage
-    unshuffle(fx, ny); // FIXME: use local memory
   }
 }
