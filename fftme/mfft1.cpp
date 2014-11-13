@@ -171,9 +171,12 @@ int main(int argc, char* argv[])
   
   std::cout << "\nOutput of mfft1d using FFTW++:" << std::endl; 
   
+  unsigned int stride = nx; //1;
+  unsigned int dist = 1; //ny;
+
   size_t align=sizeof(Complex);
   Array::array2<Complex> F(nx,ny,align);
-  fftwpp::mfft1d Forward(ny,-1,nx,1,ny);
+  fftwpp::mfft1d Forward(ny,-1,nx,stride,dist);
   init(F,nx,ny);
   Forward.fft(F);
   if(nx*ny < outlimit) {
@@ -190,7 +193,7 @@ int main(int argc, char* argv[])
     std::cout << "Float version:" << std::endl;
     float *f=new float[2*nx*ny];
 
-    mfft1d <float>fft(queue,ctx,device,nx,ny);
+    mfft1d <float>fft(queue,ctx,device,nx,ny,stride,dist);
     fft.build();
     fft.alloc_rw();
     fft.set_args();
@@ -236,7 +239,7 @@ int main(int argc, char* argv[])
     std::cout << "\nDouble version:" << std::endl;
     double *f=new double[2*nx*ny];
 
-    mfft1d <double>fft(queue,ctx,device,nx,ny);
+    mfft1d <double>fft(queue,ctx,device,nx,ny,stride,dist);
     fft.build();
     fft.alloc_rw();
     fft.set_args();

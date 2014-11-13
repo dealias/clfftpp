@@ -82,6 +82,8 @@ __kernel
 void mfft1(unsigned int nx,
 	   unsigned int mx, 
 	   unsigned int ny, 
+	   unsigned int stride, 
+	   unsigned int dist, 
 	   __global REAL *f,
 	   __local REAL *lf)
 {
@@ -101,12 +103,16 @@ void mfft1(unsigned int nx,
   const unsigned int ixstop = min(ixstart + mx, nx);
   for(unsigned int ix = ixstart; ix < ixstop; ++ix) {
     
-    __global REAL *fx = f + 2 * ix * ny;
+    //__global REAL *fx = f + 2 * ix * ny;
     __local REAL *lfx = lf + 2 * idx * ny;
-
+    
     // Copy to local memory
-    for(unsigned int iy=0; iy < 2*ny; ++iy)
-      lfx[iy] = fx[iy];
+    for(unsigned int iy=0; iy < ny; ++iy) {
+      unsigned int lpos = 2 * iy;
+      unsigned int rpos = 2 * (idx * dist + iy * stride);
+      lfx[lpos] = f[rpos];
+      lfx[lpos + 1] = f[rpos + 1];
+    }
 
     unsigned int twojy = ny / 2;  
     for(unsigned int iy = 0; iy < log2ny; ++iy) {
@@ -116,8 +122,8 @@ void mfft1(unsigned int nx,
 	const unsigned int ke = 2 * even(log2ny, iy, kb);
 	const unsigned int ko = ke + 2 * twojy;
 
-	REAL fe[2] = {lfx[ke], lfx[ke+1]};
-	REAL fo[2] = {lfx[ko], lfx[ko+1]};
+	const REAL fe[2] = {lfx[ke], lfx[ke+1]};
+	const REAL fo[2] = {lfx[ko], lfx[ko+1]};
       
 	// TODO: move w to a lookup table (in local memory?)
 	/* const REAL arg = -2.0 * PI * ky * iy / (REAL)ny; */
@@ -139,7 +145,11 @@ void mfft1(unsigned int nx,
     unshuffle(lfx, ny); // FIXME: use local memory
 
     // Copy from local memory to global memory
-    for(unsigned int iy=0; iy < 2*ny; ++iy)
-      fx[iy] = lfx[iy];
+    for(unsigned int iy=0; iy < ny; ++iy) {
+      unsigned int lpos = 2 * iy; 
+      unsigned int rpos = 2*(idx * dist + iy * stride);
+      f[rpos] = lfx[lpos];
+      f[rpos + 1] = lfx[lpos + 1];
+    }
   }
 }

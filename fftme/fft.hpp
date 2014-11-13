@@ -155,7 +155,7 @@ public:
 template<class T>
 class mfft1d : public cl_base {
 private:
-  unsigned int nx, mx, ny;
+  unsigned int nx, mx, ny, stride, dist;
 public:
   void set_size()
   {
@@ -176,7 +176,8 @@ public:
   }
 
   mfft1d(unsigned int nplat, unsigned int ndev,
-	 unsigned int nx0, unsigned int ny0) {
+	 unsigned int nx0, unsigned int ny0, 
+	 unsigned int stride0=1, unsigned int dist0=0) {
     set_size();
     nx = nx0;
     ny = ny0;
@@ -184,13 +185,19 @@ public:
     set_device(nplat,ndev);
     set_maxworkgroupsize();
     set_mx();
+    stride = stride0;
+    if(dist == 0) 
+      dist = ny;
+    else
+      dist = dist0;
 
     set_context();
     set_queue();
   }
 
   mfft1d(cl_command_queue queue0, cl_context context0, cl_device_id device0,
-	 unsigned int nx0, unsigned int ny0) {
+	 unsigned int nx0, unsigned int ny0,
+	 unsigned int stride0=1, unsigned int dist0=0) {
     set_size();
     nx = nx0;
     ny = ny0;
@@ -200,6 +207,11 @@ public:
     set_mx();
     queue = queue0;
     context = context0;
+    stride = stride0;
+    if(dist == 0) 
+      dist = ny;
+    else
+      dist = dist0;
   }
 
   ~mfft1d() {
@@ -220,14 +232,20 @@ public:
     assert(kernel != 0);
     unsigned int narg=0;
 
-    ret = clSetKernelArg(kernel, narg++, sizeof(unsigned int),  (void *)&nx);
+    ret = clSetKernelArg(kernel, narg++, sizeof(unsigned int), (void *)&nx);
     check_cl_ret(ret,"setargs nx");
 
-    ret = clSetKernelArg(kernel, narg++, sizeof(unsigned int),  (void *)&mx);
+    ret = clSetKernelArg(kernel, narg++, sizeof(unsigned int), (void *)&mx);
     check_cl_ret(ret,"setargs mx");
 
-    ret = clSetKernelArg(kernel, narg++, sizeof(unsigned int),  (void *)&ny);
+    ret = clSetKernelArg(kernel, narg++, sizeof(unsigned int), (void *)&ny);
     check_cl_ret(ret,"setargs ny");
+
+    ret = clSetKernelArg(kernel, narg++, sizeof(unsigned int), (void *)&stride);
+    check_cl_ret(ret,"setargs stride");
+
+    ret = clSetKernelArg(kernel, narg++, sizeof(unsigned int), (void *)&dist);
+    check_cl_ret(ret,"setargs dist");
 
     ret = clSetKernelArg(kernel, narg++,
 			 sizeof(cl_mem), &(buf == 0 ? memobj : buf));
