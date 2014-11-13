@@ -32,15 +32,46 @@ void uint2binary(unsigned int n, unsigned int *bn, const unsigned int l2n)
 
 unsigned int bitreverse(const unsigned int k, const unsigned int log2ny)
 {
-  unsigned int kb[32]; // this is too big, but it compiles!
-  uint2binary(k,kb,log2ny);
-  unsigned int kr=0;
-  unsigned int p=1;
-  for(unsigned int i=log2ny; i-- > 0;) {
-    kr += kb[i] * p;
-    p *= 2;
+  //http://www.katjaas.nl/bitreversal/bitreversal.html
+  /* unsigned int n=k; */
+  /* unsigned int bits=log2ny; */
+
+  /* unsigned int nrev, N; */
+  /* unsigned int count;    */
+  /* N = 1<<bits; */
+  /* count = bits-1;   // initialize the count variable */
+  /* nrev = n; */
+  /* for(n>>=1; n; n>>=1) */
+  /*   { */
+  /*     nrev <<= 1; */
+  /*     nrev |= n & 1; */
+  /*     count--; */
+  /*   } */
+  /* nrev <<= count; */
+  /* nrev &= N - 1; */
+  /* return nrev; */
+
+  //http://www.openclblog.com/2014/11/fft-concern.html
+  unsigned int x = k;
+  unsigned int numBits = log2ny;
+  unsigned int ans = x & 1;
+  while(--numBits) {
+    x >>= 1;
+    ans <<= 1;
+    ans += x & 1;
   }
-  return kr;
+  return ans;
+
+  // The really slow way:
+  /* unsigned int kb[32]; // this is too big, but it compiles! */
+  /* uint2binary(k,kb,log2ny); */
+  /* unsigned int kr=0; */
+  /* unsigned int p=1; */
+  /* for(unsigned int i=log2ny; i-- > 0;) { */
+  /*   kr += kb[i] * p; */
+  /*   p *= 2; */
+  /* } */
+  /* return kr; */
 }
 
 void unshuffle(__local REAL *lfx, const unsigned int ny)
