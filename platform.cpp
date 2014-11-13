@@ -87,8 +87,13 @@ cl_context create_context(const cl_platform_id platform,
   return clCreateContext(props, 1, &device, NULL, NULL, &err);
 }
 
-cl_command_queue create_queue(const cl_context ctx, const cl_device_id device)
+cl_command_queue create_queue(const cl_context ctx, 
+			      const cl_device_id device,
+			      cl_command_queue_properties properties)
 {
   cl_int err;
-  return clCreateCommandQueue(ctx, device, 0, &err);
+  return clCreateCommandQueue(ctx, 
+			      device, 
+			      properties,
+			      &err);
 }

@@ -162,14 +162,12 @@ int main(int argc, char* argv[])
   find_platform_ids(plat_ids);
   cl_platform_id platform = plat_ids[devnum];
   
-
   cl_device_id devicelist={device};
   const cl_context ctx = create_context(platform, devicelist);
-  const cl_command_queue queue = create_queue(ctx, devicelist);
+  const cl_command_queue queue = create_queue(ctx, devicelist,
+					      CL_QUEUE_PROFILING_ENABLE);
 
-  unsigned int outlimit=100;
-
-
+  unsigned int outlimit=100; // don't cout when there is too much data.
   
   std::cout << "\nOutput of mfft1d using FFTW++:" << std::endl; 
   
@@ -209,18 +207,24 @@ int main(int argc, char* argv[])
 
     std::cout << "\nL2 difference:  " << l2error(F,f,nx,ny) << std::endl;
 
-    init(nx,ny,f);
     cl_event forward_event;
+    cl_ulong time_start, time_end;
+
     double *T=new double[N];
     for(unsigned int i=0; i < N; ++i) {
       init(nx,ny,f);
       fft.write_buffer(f);
-
-      seconds();
       fft.forward(&forward_event);
-     //fft.finish();
       clWaitForEvents(1, &forward_event);
-      T[i]=seconds();
+      clGetEventProfilingInfo(forward_event,
+			      CL_PROFILING_COMMAND_START,
+			      sizeof(time_start),
+			      &time_start, NULL);
+      clGetEventProfilingInfo(forward_event,
+			      CL_PROFILING_COMMAND_END,
+			      sizeof(time_end), 
+			      &time_end, NULL);
+      T[i] = 1e-9 * (time_end - time_start);
       fft.read_buffer(f);
     }
     std::cout << std::endl;
@@ -229,7 +233,7 @@ int main(int argc, char* argv[])
   
 
   if(fprecision == 0 || fprecision == 2) {
-    std::cout << "Double version:" << std::endl;
+    std::cout << "\nDouble version:" << std::endl;
     double *f=new double[2*nx*ny];
 
     mfft1d <double>fft(queue,ctx,device,nx,ny);
@@ -248,16 +252,26 @@ int main(int argc, char* argv[])
     show(nx,ny,f,outlimit);
 
     std::cout << "\nL2 difference:  " << l2error(F,f,nx,ny) << std::endl;
-
-    init(nx,ny,f);
+    
+    cl_event forward_event;
+    cl_ulong time_start, time_end;
     double *T=new double[N];
     for(unsigned int i=0; i < N; ++i) {
       init(nx,ny,f);
       fft.write_buffer(f);
       seconds();
-      fft.forward();
-      fft.finish();
-      T[i]=seconds();
+      fft.forward(&forward_event);
+      clWaitForEvents(1, &forward_event);
+      T[i] = 1e-9 * (time_end - time_start);
+      clGetEventProfilingInfo(forward_event,
+			      CL_PROFILING_COMMAND_START,
+			      sizeof(time_start),
+			      &time_start, NULL);
+      clGetEventProfilingInfo(forward_event,
+			      CL_PROFILING_COMMAND_END,
+			      sizeof(time_end), 
+			      &time_end, NULL);
+      T[i] = 1e-9 * (time_end - time_start);
       fft.read_buffer(f);
     }
     std::cout << std::endl;

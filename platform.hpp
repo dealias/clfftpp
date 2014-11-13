@@ -1,3 +1,6 @@
+#ifndef __platform_hpp__
+#define __platform_hpp__
+
 #include <vector>
 
 #include <CL/cl.h>
@@ -9,4 +12,6 @@ void find_platform_ids(std::vector<cl_platform_id > &A);
 cl_context create_context(const cl_platform_id platform,
 			  const cl_device_id device);
 cl_command_queue create_queue(const cl_context ctx,
-			      const cl_device_id device);
+			      const cl_device_id device,
+			      cl_command_queue_properties properties=0);
+#endif
