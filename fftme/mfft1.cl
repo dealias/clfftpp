@@ -126,19 +126,20 @@ void mfft1(unsigned int nx,
 
     __local REAL *lfx = lf + 2 * idx * ny;
     
+    /* // Copy to local memory */
+
     /* Without stride */
-    __global REAL *fx = f + 2 * ix * ny;
-    for(unsigned int iy = 0; iy < 2*ny; ++iy)
-      lfx[iy] = fx[iy];
+    /* __global REAL *fx = f + 2 * ix * ny; */
+    /* for(unsigned int iy = 0; iy < 2*ny; ++iy) */
+    /*   lfx[iy] = fx[iy]; */
 
     /* With stride */
-    /* // Copy to local memory */
-    /* for(unsigned int iy=0; iy < ny; ++iy) { */
-    /*   unsigned int lpos = 2 * iy; */
-    /*   unsigned int rpos = 2 * (idx * dist + iy * stride); */
-    /*   lfx[lpos] = f[rpos]; */
-    /*   lfx[lpos + 1] = f[rpos + 1]; */
-    /* } */
+    for(unsigned int iy=0; iy < ny; ++iy) {
+      unsigned int lpos = 2 * iy;
+      unsigned int rpos = 2 * (idx * dist + iy * stride);
+      lfx[lpos] = f[rpos];
+      lfx[lpos + 1] = f[rpos + 1];
+    }
     
     for(unsigned int iy = 0; iy < log2ny; ++iy) {
       
@@ -179,18 +180,17 @@ void mfft1(unsigned int nx,
     // Copy from local memory to global memory
 
     /* Without stride: */
-    for(unsigned int iy = 0; iy < 2 * ny; ++iy) {
-      fx[iy] = lfx[iy];
-      //fx[iy] = 0;  // FIXME: temp
-    }
+    /* for(unsigned int iy = 0; iy < 2 * ny; ++iy) { */
+    /*   fx[iy] = lfx[iy]; */
+    /* } */
 
     /* With stride: */
-    /* for(unsigned int iy=0; iy < ny; ++iy) { */
-    /*   unsigned int lpos = 2 * iy;  */
-    /*   unsigned int rpos = 2*(idx * dist + iy * stride); */
-    /*   f[rpos] = lfx[lpos]; */
-    /*   f[rpos + 1] = lfx[lpos + 1]; */
-    /* } */
+    for(unsigned int iy=0; iy < ny; ++iy) {
+      unsigned int lpos = 2 * iy;
+      unsigned int rpos = 2*(idx * dist + iy * stride);
+      f[rpos] = lfx[lpos];
+      f[rpos + 1] = lfx[lpos + 1];
+    }
 
   }
 }

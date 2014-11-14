@@ -162,6 +162,9 @@ int main(int argc, char* argv[])
   unsigned int stride = 1;// nx; //1;
   unsigned int dist = ny; //1; //ny;
 
+  stride=nx;
+  dist=1;
+
   std::vector<std::vector<cl_device_id> > dev_ids;
   create_device_tree(dev_ids);
   cl_device_id device = dev_ids[platnum][devnum];
@@ -247,7 +250,7 @@ int main(int argc, char* argv[])
     std::cout << "\nDouble version:" << std::endl;
     double *f=new double[2*nx*ny];
 
-    mfft1d <double>fft(queue,ctx,device,nx,ny,ny,1);
+    mfft1d <double>fft(queue,ctx,device,nx,ny,stride,dist);
     fft.build();
     fft.alloc_rw();
     fft.set_args();
