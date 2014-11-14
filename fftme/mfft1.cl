@@ -92,7 +92,7 @@ void set_zbuf(unsigned int n,
 {
   const REAL PI = 4.0 * atan(1.0);
   for(unsigned int i = 0; i < n; ++i) {
-    const REAL arg = -0.5 * PI * i / (REAL) n;
+    const REAL arg = -2.0 * PI * i / (REAL) n;
     lz[2 * i] = cos(arg);
     lz[2 * i + 1] = sin(arg);
   }
@@ -106,7 +106,7 @@ void mfft1(unsigned int nx,
 	   unsigned int dist, 
 	   __global REAL *f,
 	   __local REAL *lf,
-	   __global REAL *lz // TODO: make constant
+	   __global REAL *lz // TODO: make __constant
 	   )
 {
   /* const unsigned int l2n=log2(n); */
@@ -154,17 +154,14 @@ void mfft1(unsigned int nx,
 	const REAL fe[2] = {lfx[ke], lfx[ke+1]};
 	const REAL fo[2] = {lfx[ko], lfx[ko+1]};
       
-	// TODO: move w to a lookup table (in local memory?)
-	//const REAL arg = -2.0 * PI * ky * iy / (REAL)ny;
-	//const unsigned int key = (ky) % ny;
-	//const REAL arg = -2.0 * PI * key / (REAL) ny;
+	//unsigned int kk = (ke << (iy+1))>>2;
+	//const REAL arg = -2.0 * PI * kk / (REAL) ny;
+	//const REAL w[2] = {cos(arg), sin(arg)};
 
-	//twojy,ke // TODO: use bitshift operators to recover ny and then
-	// use lookup table. to get twiddle factors
-	//const REAL arg = -0.5 * PI * ke / (REAL) twojy;
-	const REAL arg = -0.5 * PI * (ke << (iy+1)) / (REAL) ny;
-	const REAL w[2] = {cos(arg), sin(arg)};
-      
+	const unsigned int kk = (((ke << (iy+1))>>2)%ny) << 1;
+	const REAL w[2] = {lz[kk], lz[kk+1]};
+	//printf("w[0]: %f, zl[%d]: %f,\t%f\n",w[0],kk/2,lz[2*kk],w[0]-lz[kk]);
+		
 	lfx[ke]   = fe[0] + fo[0];
 	lfx[ke+1] = fe[1] + fo[1];
 
@@ -182,8 +179,10 @@ void mfft1(unsigned int nx,
     // Copy from local memory to global memory
 
     /* Without stride: */
-    for(unsigned int iy = 0; iy < 2*ny; ++iy)
+    for(unsigned int iy = 0; iy < 2 * ny; ++iy) {
       fx[iy] = lfx[iy];
+      //fx[iy] = 0;  // FIXME: temp
+    }
 
     /* With stride: */
     /* for(unsigned int iy=0; iy < ny; ++iy) { */

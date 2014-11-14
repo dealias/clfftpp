@@ -108,8 +108,7 @@ public:
     check_cl_ret(ret,"max_workgroup_size");
   }
 
-  void read_file(const char* filename)
-  {
+  void read_file(std::string &contents, const char* filename) {
     std::ifstream t(filename);
     t.seekg(0, std::ios::end);
     source_str.reserve(t.tellg());
@@ -118,13 +117,13 @@ public:
 		      std::istreambuf_iterator<char>());
   }
 
-  cl_program create_program() {
+  cl_program create_program(std::string source) {
     cl_int ret;
-    size_t source_size=source_str.length();
+    size_t size=source.length();
     cl_program prog = clCreateProgramWithSource(context, 
 						1, //number of strings passed
-						(const char **)&source_str,
-						(const size_t *)&source_size,
+						(const char **)&source,
+						(const size_t *)&size,
 						&ret);
     check_cl_ret(ret,"clCreateProgrammWithSource"); 
     return prog;
@@ -143,7 +142,7 @@ public:
     check_cl_ret(ret,"clBuildProgram");
   }
 
-  cl_kernel create_kernel(const char *kernelname) {
+  cl_kernel create_kernel(cl_program program, const char *kernelname) {
     cl_int ret;
     cl_kernel kernel = clCreateKernel(program, kernelname, &ret);
     check_cl_ret(ret,"create kernel");
@@ -152,10 +151,10 @@ public:
 
   void build_kernel_from_file(const char* filename, char* kernelname,
 			      const char *options = NULL) {
-    read_file(filename);
-    program = create_program();
+    read_file(source_str,filename);
+    program = create_program(source_str);
     build_program(program, options);
-    kernel = create_kernel(kernelname);
+    kernel = create_kernel(program, kernelname);
   }
 
   void finish() {
@@ -233,7 +232,6 @@ public:
       dist = dist0;
 
     zbuf=alloc_rw(2 * ny * sizeof(T));
-    
     build_zl();
     set_zl_args();
     set_zlbuf();
@@ -253,15 +251,19 @@ public:
   }
   
   void build_zl() {
+    // std::cout << "build_zl" << std::endl;
     char filename[] = "mfft1.cl";
-    char kernelname[] = "set_zbuf";
-    read_file(filename);
-    cl_program zlprog = create_program();
+    read_file(source_str,filename);
+    // std::cout << source_str << std::endl;
+    cl_program zlprog = create_program(source_str);
+    
     if(std::is_same<T, double>::value)
       build_program(zlprog,"-I double/");
     if(std::is_same<T, float>::value)
       build_program(zlprog,"-I float/");
-    zkernel = create_kernel(kernelname);
+
+    zkernel = create_kernel(zlprog, "set_zbuf");
+    
   }
 
   void set_zl_args() {
@@ -323,10 +325,6 @@ public:
     ret = clSetKernelArg(kernel, narg++,
 			 sizeof(cl_mem), &zbuf);
     check_cl_ret(ret,"setargs twiddle buf");
-  }
-
-  void create_kernel() {
-    kernel = create_kernel("mfft1d");
   }
 
   void write_buffer(T *f, cl_mem buf=0) {
