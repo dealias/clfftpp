@@ -1,0 +1,8 @@
+Transposed data is faster; do this all the time?
+
+Copying to local memory: worth it?  As the outer loop?  Copying back
+using an out-of-place shuffle?
+
+Put zeta table in constant memory (alows for one read for all threads).
+
+Clean up fft.hpp.
