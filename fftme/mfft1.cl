@@ -126,7 +126,6 @@ void mfft1(unsigned int nx,
     /*   lfx[lpos + 1] = f[rpos + 1]; */
     /* } */
     
-    unsigned int twojy = ny / 2;  
     for(unsigned int iy = 0; iy < log2ny; ++iy) {
       
       unsigned int mask = 0;
@@ -148,7 +147,8 @@ void mfft1(unsigned int nx,
 
 	//twojy,ke // TODO: use bitshift operators to recover ny and then
 	// use lookup table. to get twiddle factors
-	const REAL arg = -0.5 * PI * ke / (REAL) twojy;
+	//const REAL arg = -0.5 * PI * ke / (REAL) twojy;
+	const REAL arg = -0.5 * PI * (ke << (iy+1)) / (REAL) ny;
 	const REAL w[2] = {cos(arg), sin(arg)};
       
 	lfx[ke]   = fe[0] + fo[0];
@@ -159,7 +159,7 @@ void mfft1(unsigned int nx,
 	lfx[ko]   = w[0]*t[0] - w[1]*t[1];
 	lfx[ko+1] = w[1]*t[0] + w[0]*t[1];
       }
-      twojy = twojy >> 1;
+
     }
 
     // Bit-reversal stage
