@@ -5,4 +5,6 @@ using an out-of-place shuffle?
 
 Put zeta table in constant memory (alows for one read for all threads).
 
+Mess around with local and global group size.
+
 Clean up fft.hpp.
