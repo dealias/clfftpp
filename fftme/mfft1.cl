@@ -86,6 +86,18 @@ unsigned int keven(unsigned int j, unsigned int k)
   return ((k  & ~kb) << 1 ) ^ kb;
 }
 
+__kernel
+void set_zbuf(unsigned int n, 
+	      __global REAL *lz)
+{
+  const REAL PI = 4.0 * atan(1.0);
+  for(unsigned int i = 0; i < n; ++i) {
+    const REAL arg = -0.5 * PI * i / (REAL) n;
+    lz[2 * i] = cos(arg);
+    lz[2 * i + 1] = sin(arg);
+  }
+}
+
 __kernel 
 void mfft1(unsigned int nx,
 	   unsigned int mx, 
@@ -93,7 +105,9 @@ void mfft1(unsigned int nx,
 	   unsigned int stride, 
 	   unsigned int dist, 
 	   __global REAL *f,
-	   __local REAL *lf)
+	   __local REAL *lf,
+	   __global REAL *lz // TODO: make constant
+	   )
 {
   /* const unsigned int l2n=log2(n); */
 

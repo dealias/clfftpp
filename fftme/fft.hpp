@@ -86,6 +86,17 @@ public:
 			    &ret);
     check_cl_ret(ret,"clCreateBuffer");
   }
+  
+  cl_mem alloc_rw(size_t bufsize) {
+    cl_int ret;
+    cl_mem buf = clCreateBuffer(context, 
+				CL_MEM_READ_WRITE ,
+				bufsize, 
+				NULL, 
+				&ret);
+    check_cl_ret(ret,"clCreateBuffer");
+    return buf;
+  }
 
   void set_maxworkgroupsize() {
     cl_int ret;
@@ -107,21 +118,22 @@ public:
 		      std::istreambuf_iterator<char>());
   }
 
-  void create_program() {
+  cl_program create_program() {
     cl_int ret;
     size_t source_size=source_str.length();
-    program = clCreateProgramWithSource(context, 
-					1, //number of strings passed
-					(const char **)&source_str,
-					(const size_t *)&source_size,
-					&ret);
+    cl_program prog = clCreateProgramWithSource(context, 
+						1, //number of strings passed
+						(const char **)&source_str,
+						(const size_t *)&source_size,
+						&ret);
     check_cl_ret(ret,"clCreateProgrammWithSource"); 
+    return prog;
   }
 
-  void build_program(const char *options = NULL) {
-        cl_int ret;
+  void build_program(cl_program program, const char *options = NULL) {
+    cl_int ret;
     ret = clBuildProgram(program, 
-			 1, 
+			 1,
 			 &device, 
 			 options, // Options
 			 NULL, 
@@ -131,31 +143,36 @@ public:
     check_cl_ret(ret,"clBuildProgram");
   }
 
-  void create_kernel(const char *kernelname) {
+  cl_kernel create_kernel(const char *kernelname) {
     cl_int ret;
-    kernel = clCreateKernel(program, kernelname, &ret);
+    cl_kernel kernel = clCreateKernel(program, kernelname, &ret);
     check_cl_ret(ret,"create kernel");
+    return kernel;
   }
 
   void build_kernel_from_file(const char* filename, char* kernelname,
 			      const char *options = NULL) {
     read_file(filename);
-    create_program();
-    build_program(options);
-    create_kernel(kernelname);
+    program = create_program();
+    build_program(program, options);
+    kernel = create_kernel(kernelname);
   }
 
   void finish() {
     cl_int ret = clFinish(queue);
     check_cl_ret(ret,"clFinish");
   }
-
 };
 
 template<class T>
 class mfft1d : public cl_base {
 private:
   unsigned int nx, mx, ny, stride, dist;
+
+  // For loading the zeta table.
+  cl_program zprogram;
+  cl_kernel zkernel;
+  cl_mem zbuf;
 public:
   void set_size()
   {
@@ -193,6 +210,8 @@ public:
 
     set_context();
     set_queue();
+    assert(false); // FIXME: do not use this constructor
+
   }
 
   mfft1d(cl_command_queue queue0, cl_context context0, cl_device_id device0,
@@ -212,6 +231,12 @@ public:
       dist = ny;
     else
       dist = dist0;
+
+    zbuf=alloc_rw(2 * ny * sizeof(T));
+    
+    build_zl();
+    set_zl_args();
+    set_zlbuf();
   }
 
   ~mfft1d() {
@@ -227,24 +252,60 @@ public:
       build_kernel_from_file(filename, kernelname,"-I float/");
   }
   
+  void build_zl() {
+    char filename[] = "mfft1.cl";
+    char kernelname[] = "set_zbuf";
+    read_file(filename);
+    cl_program zlprog = create_program();
+    if(std::is_same<T, double>::value)
+      build_program(zlprog,"-I double/");
+    if(std::is_same<T, float>::value)
+      build_program(zlprog,"-I float/");
+    zkernel = create_kernel(kernelname);
+  }
+
+  void set_zl_args() {
+    cl_int ret;
+    assert(kernel != 0);
+    unsigned int narg=0;
+
+    ret = clSetKernelArg(zkernel, narg++, sizeof(unsigned int), (void *)&ny);
+    check_cl_ret(ret,"setargs ny");
+
+    ret = clSetKernelArg(zkernel, narg++,
+			 sizeof(cl_mem), &zbuf);
+    check_cl_ret(ret,"setargs twiddle buf");
+  }
+
+  void set_zlbuf() {
+    cl_int ret;
+    ret= clEnqueueTask (queue,
+			zkernel,
+			0,
+			NULL,
+			NULL);
+    check_cl_ret(ret,"set_zlbuf");
+    clFinish(queue);
+  }
+
   void set_args(cl_mem buf=0) {
     cl_int ret;
     assert(kernel != 0);
     unsigned int narg=0;
 
-    ret = clSetKernelArg(kernel, narg++, sizeof(unsigned int), (void *)&nx);
+    ret = clSetKernelArg(kernel, narg++, sizeof(nx), (void *)&nx);
     check_cl_ret(ret,"setargs nx");
 
-    ret = clSetKernelArg(kernel, narg++, sizeof(unsigned int), (void *)&mx);
+    ret = clSetKernelArg(kernel, narg++, sizeof(mx), (void *)&mx);
     check_cl_ret(ret,"setargs mx");
 
-    ret = clSetKernelArg(kernel, narg++, sizeof(unsigned int), (void *)&ny);
+    ret = clSetKernelArg(kernel, narg++, sizeof(ny), (void *)&ny);
     check_cl_ret(ret,"setargs ny");
 
-    ret = clSetKernelArg(kernel, narg++, sizeof(unsigned int), (void *)&stride);
+    ret = clSetKernelArg(kernel, narg++, sizeof(stride), (void *)&stride);
     check_cl_ret(ret,"setargs stride");
 
-    ret = clSetKernelArg(kernel, narg++, sizeof(unsigned int), (void *)&dist);
+    ret = clSetKernelArg(kernel, narg++, sizeof(dist), (void *)&dist);
     check_cl_ret(ret,"setargs dist");
 
     ret = clSetKernelArg(kernel, narg++,
@@ -253,14 +314,19 @@ public:
 
     ret = clSetKernelArg(kernel, 
 			 narg++,
-			 sizeof(T)*(nx+mx-1)/mx, // FIXME: put in class!
+			 sizeof(T) * (nx + mx - 1)/mx, // FIXME: put in class!
 			 NULL // passing NULL allocates local memory
 			 );
-    check_cl_ret(ret,"setargs local");
+    check_cl_ret(ret,"setargs local work");
+
+      
+    ret = clSetKernelArg(kernel, narg++,
+			 sizeof(cl_mem), &zbuf);
+    check_cl_ret(ret,"setargs twiddle buf");
   }
 
   void create_kernel() {
-    create_kernel("mfft1d");
+    kernel = create_kernel("mfft1d");
   }
 
   void write_buffer(T *f, cl_mem buf=0) {
