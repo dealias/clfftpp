@@ -221,30 +221,30 @@ int main(int argc, char* argv[])
     if(do_fftw)
       std::cout << "\nL2 difference:  " << l2error(F,f,nx,ny) << std::endl;
 
-    cl_event forward_event;
-    cl_ulong time_start, time_end;
-
-    double *T=new double[N];
-    for(unsigned int i=0; i < N; ++i) {
-      init(nx,ny,f);
-      fft.write_buffer(f);
-      fft.forward(&forward_event);
-      clWaitForEvents(1, &forward_event);
-      clGetEventProfilingInfo(forward_event,
-			      CL_PROFILING_COMMAND_START,
-			      sizeof(time_start),
-			      &time_start, NULL);
-      clGetEventProfilingInfo(forward_event,
-			      CL_PROFILING_COMMAND_END,
-			      sizeof(time_end), 
-			      &time_end, NULL);
-      T[i] = 1e-9 * (time_end - time_start);
-      fft.read_buffer(f);
+    if(N > 0) {
+      cl_event forward_event;
+      cl_ulong time_start, time_end;
+      double *T=new double[N];
+      for(unsigned int i=0; i < N; ++i) {
+	init(nx,ny,f);
+	fft.write_buffer(f);
+	fft.forward(&forward_event);
+	clWaitForEvents(1, &forward_event);
+	clGetEventProfilingInfo(forward_event,
+				CL_PROFILING_COMMAND_START,
+				sizeof(time_start),
+				&time_start, NULL);
+	clGetEventProfilingInfo(forward_event,
+				CL_PROFILING_COMMAND_END,
+				sizeof(time_end), 
+				&time_end, NULL);
+	T[i] = 1e-9 * (time_end - time_start);
+	fft.read_buffer(f);
+      }
+      std::cout << std::endl;
+      timings("mfft1d float timing",nx,T,N,stats);
     }
-    std::cout << std::endl;
-    timings("mfft1d float timing",nx,T,N,stats);
-  }
-  
+  }  
 
   if(fprecision == 0 || fprecision == 2) {
     std::cout << "\nDouble version:" << std::endl;
@@ -269,29 +269,31 @@ int main(int argc, char* argv[])
     if(do_fftw)
       std::cout << "\nL2 difference:  " << l2error(F,f,nx,ny) << std::endl;
     
-    cl_event forward_event;
-    cl_ulong time_start, time_end;
-    double *T=new double[N];
-    for(unsigned int i=0; i < N; ++i) {
-      init(nx,ny,f);
-      fft.write_buffer(f);
-      seconds();
-      fft.forward(&forward_event);
-      clWaitForEvents(1, &forward_event);
-      T[i] = 1e-9 * (time_end - time_start);
-      clGetEventProfilingInfo(forward_event,
-			      CL_PROFILING_COMMAND_START,
-			      sizeof(time_start),
-			      &time_start, NULL);
-      clGetEventProfilingInfo(forward_event,
-			      CL_PROFILING_COMMAND_END,
-			      sizeof(time_end), 
-			      &time_end, NULL);
-      T[i] = 1e-9 * (time_end - time_start);
-      fft.read_buffer(f);
+    if(N > 0) {
+      cl_event forward_event;
+      cl_ulong time_start, time_end;
+      double *T=new double[N];
+      for(unsigned int i=0; i < N; ++i) {
+	init(nx,ny,f);
+	fft.write_buffer(f);
+	seconds();
+	fft.forward(&forward_event);
+	clWaitForEvents(1, &forward_event);
+	T[i] = 1e-9 * (time_end - time_start);
+	clGetEventProfilingInfo(forward_event,
+				CL_PROFILING_COMMAND_START,
+				sizeof(time_start),
+				&time_start, NULL);
+	clGetEventProfilingInfo(forward_event,
+				CL_PROFILING_COMMAND_END,
+				sizeof(time_end), 
+				&time_end, NULL);
+	T[i] = 1e-9 * (time_end - time_start);
+	fft.read_buffer(f);
+      }
+      std::cout << std::endl;
+      timings("mfft1d double timing",nx,T,N,stats);
     }
-    std::cout << std::endl;
-    timings("mfft1d double timing",nx,T,N,stats);
   }
   
 

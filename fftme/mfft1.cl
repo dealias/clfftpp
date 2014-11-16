@@ -115,8 +115,6 @@ void mfft1(unsigned int nx,
 
   const unsigned int log2ny = uintlog2(ny);
   
-  const REAL PI=4.0*atan(1.0);
-
   const unsigned int kymax = ny >> 1;
  
   // Loop from idx to idx+mx
@@ -140,7 +138,7 @@ void mfft1(unsigned int nx,
       lfx[lpos] = f[rpos];
       lfx[lpos + 1] = f[rpos + 1];
     }
-    
+
     for(unsigned int iy = 0; iy < log2ny; ++iy) {
       
       unsigned int mask = 0;
@@ -161,6 +159,7 @@ void mfft1(unsigned int nx,
 
 	const unsigned int kk = (((ke << (iy+1))>>2)%ny) << 1;
 	const REAL w[2] = {lz[kk], lz[kk+1]};
+	//printf("%d\n",kk);
 	//printf("w[0]: %f, zl[%d]: %f,\t%f\n",w[0],kk/2,lz[2*kk],w[0]-lz[kk]);
 		
 	lfx[ke]   = fe[0] + fo[0];
@@ -173,6 +172,7 @@ void mfft1(unsigned int nx,
       }
 
     }
+
 
     // Bit-reversal stage
     unshuffle(lfx, ny);

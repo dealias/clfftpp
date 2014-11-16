@@ -110,6 +110,8 @@ public:
 			  sizeof(maxworkgroupsize),
 			  &maxworkgroupsize,
 			  NULL);
+    std::cout << "CL_DEVICE_MAX_WORK_GROUP_SIZE: " << maxworkgroupsize 
+	      << std::endl;
     check_cl_ret(ret,"max_workgroup_size");
     assert(ret == CL_SUCCESS);
   }
