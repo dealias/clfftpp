@@ -106,7 +106,7 @@ void mfft1(unsigned int nx,
 	   unsigned int dist, 
 	   __global REAL *f,
 	   __local REAL *lf,
-	   __global REAL *lz // TODO: make __constant
+	   __constant REAL *lz // TODO: make __constant
 	   )
 {
   /* const unsigned int l2n=log2(n); */

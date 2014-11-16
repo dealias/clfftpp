@@ -3,6 +3,8 @@
 
 #include <CL/cl.hpp>
 
+#include <math.h>
+
 #include <streambuf>
 #include <iostream>
 #include <fstream>
@@ -27,6 +29,7 @@ protected:
   size_t size;
 public:
   cl_kernel kernel;
+
   cl_base(){
     // FIXME: set up OpenCL environment?
 
@@ -38,6 +41,7 @@ public:
     memobj = 0;
     n = 0;
   }
+
   ~cl_base() {
 
     // FIXME:only release if created by class
@@ -56,7 +60,6 @@ public:
 		<< " : " << clErrorString(ret) 
 		<< std::endl;
     }
-    assert(ret == CL_SUCCESS);
   }
 
   void set_device(const unsigned int nplatform, const unsigned int ndevice) {
@@ -85,6 +88,7 @@ public:
 			    NULL, 
 			    &ret);
     check_cl_ret(ret,"clCreateBuffer");
+    assert(ret == CL_SUCCESS);
   }
   
   cl_mem alloc_rw(size_t bufsize) {
@@ -95,6 +99,7 @@ public:
 				NULL, 
 				&ret);
     check_cl_ret(ret,"clCreateBuffer");
+    assert(ret == CL_SUCCESS);
     return buf;
   }
 
@@ -106,6 +111,7 @@ public:
 			  &maxworkgroupsize,
 			  NULL);
     check_cl_ret(ret,"max_workgroup_size");
+    assert(ret == CL_SUCCESS);
   }
 
   void read_file(std::string &contents, const char* filename) {
@@ -126,6 +132,7 @@ public:
 						(const size_t *)&size,
 						&ret);
     check_cl_ret(ret,"clCreateProgrammWithSource"); 
+    assert(ret == CL_SUCCESS);
     return prog;
   }
 
@@ -140,12 +147,14 @@ public:
     if(ret != CL_SUCCESS)
       std::cout <<  print_build_debug(program,&device) << std::endl;
     check_cl_ret(ret,"clBuildProgram");
+    assert(ret == CL_SUCCESS);
   }
 
   cl_kernel create_kernel(cl_program program, const char *kernelname) {
     cl_int ret;
     cl_kernel kernel = clCreateKernel(program, kernelname, &ret);
     check_cl_ret(ret,"create kernel");
+    assert(ret == CL_SUCCESS);
     return kernel;
   }
 
@@ -160,6 +169,7 @@ public:
   void finish() {
     cl_int ret = clFinish(queue);
     check_cl_ret(ret,"clFinish");
+    assert(ret == CL_SUCCESS);
   }
 };
 
@@ -172,9 +182,11 @@ private:
   cl_program zprogram;
   cl_kernel zkernel;
   cl_mem zbuf;
+
+  cl_mem cl_zetas;
+  T *zetas;
 public:
-  void set_size()
-  {
+  void set_size() {
     size = sizeof(T);
   }
 
@@ -191,26 +203,24 @@ public:
     mx = (nx + maxworkgroupsize -1) / maxworkgroupsize;
   }
 
-  mfft1d(unsigned int nplat, unsigned int ndev,
-	 unsigned int nx0, unsigned int ny0, 
-	 unsigned int stride0=1, unsigned int dist0=0) {
-    set_size();
-    nx = nx0;
-    ny = ny0;
-    n = nx * ny;
-    set_device(nplat,ndev);
-    set_maxworkgroupsize();
-    set_mx();
-    stride = stride0;
-    if(dist == 0) 
-      dist = ny;
-    else
-      dist = dist0;
+  void create_cl_zetas() {
+    cl_int ret;
+    cl_zetas = clCreateBuffer(context,
+			      CL_MEM_READ_ONLY | CL_MEM_USE_HOST_PTR,
+			      sizeof(T) * ny,
+			      zetas,
+			      &ret);
+    check_cl_ret(ret,"create clzetas");
+    assert(ret == CL_SUCCESS);
+  }
 
-    set_context();
-    set_queue();
-    assert(false); // FIXME: do not use this constructor
-
+  void compute_zetas() {
+    const T PI = 4.0 * atan(1.0);
+    for(unsigned int i = 0; i < ny; ++i) {
+      const T arg = -2.0 * PI * i / (T) ny;
+      zetas[2 * i] = cos(arg);
+      zetas[2 * i + 1] = sin(arg);
+    }
   }
 
   mfft1d(cl_command_queue queue0, cl_context context0, cl_device_id device0,
@@ -235,10 +245,15 @@ public:
     build_zl();
     set_zl_args();
     set_zlbuf();
+
+    zetas = new T[2 * ny];
+    compute_zetas();
+    create_cl_zetas();
   }
 
   ~mfft1d() {
     // FIXME
+    delete[] zetas;
   }
   
   void build() {
@@ -273,10 +288,12 @@ public:
 
     ret = clSetKernelArg(zkernel, narg++, sizeof(unsigned int), (void *)&ny);
     check_cl_ret(ret,"setargs ny");
+    assert(ret == CL_SUCCESS);
 
     ret = clSetKernelArg(zkernel, narg++,
 			 sizeof(cl_mem), &zbuf);
     check_cl_ret(ret,"setargs twiddle buf");
+    assert(ret == CL_SUCCESS);
   }
 
   void set_zlbuf() {
@@ -287,6 +304,7 @@ public:
 			NULL,
 			NULL);
     check_cl_ret(ret,"set_zlbuf");
+    assert(ret == CL_SUCCESS);
     clFinish(queue);
   }
 
@@ -297,34 +315,49 @@ public:
 
     ret = clSetKernelArg(kernel, narg++, sizeof(nx), (void *)&nx);
     check_cl_ret(ret,"setargs nx");
+    assert(ret == CL_SUCCESS);
 
     ret = clSetKernelArg(kernel, narg++, sizeof(mx), (void *)&mx);
     check_cl_ret(ret,"setargs mx");
+    assert(ret == CL_SUCCESS);
 
     ret = clSetKernelArg(kernel, narg++, sizeof(ny), (void *)&ny);
     check_cl_ret(ret,"setargs ny");
+    assert(ret == CL_SUCCESS);
 
     ret = clSetKernelArg(kernel, narg++, sizeof(stride), (void *)&stride);
     check_cl_ret(ret,"setargs stride");
+    assert(ret == CL_SUCCESS);
 
     ret = clSetKernelArg(kernel, narg++, sizeof(dist), (void *)&dist);
     check_cl_ret(ret,"setargs dist");
+    assert(ret == CL_SUCCESS);
 
     ret = clSetKernelArg(kernel, narg++,
 			 sizeof(cl_mem), &(buf == 0 ? memobj : buf));
     check_cl_ret(ret,"setargs buf");
+    assert(ret == CL_SUCCESS);
 
     ret = clSetKernelArg(kernel, 
-			 narg++,
-			 sizeof(T) * (nx + mx - 1)/mx, // FIXME: put in class!
-			 NULL // passing NULL allocates local memory
-			 );
+    			 narg++,
+    			 sizeof(T) * (nx + mx - 1)/mx, // FIXME: put in class!
+    			 NULL // passing NULL allocates local memory
+    			 );
     check_cl_ret(ret,"setargs local work");
 
-      
-    ret = clSetKernelArg(kernel, narg++,
-			 sizeof(cl_mem), &zbuf);
-    check_cl_ret(ret,"setargs twiddle buf");
+    // Contant-memory version:
+    ret = clSetKernelArg(kernel,
+			 narg++,
+			 sizeof(cl_mem),   
+			 &cl_zetas);
+    check_cl_ret(ret,"setargs zeta buf");
+    assert(ret == CL_SUCCESS);
+
+    // Local-memory version:
+    // ret = clSetKernelArg(kernel, narg++,
+    // 			 sizeof(cl_mem), &zbuf);
+    // check_cl_ret(ret,"setargs twiddle buf");
+    // assert(ret == CL_SUCCESS);
   }
 
   void write_buffer(T *f, cl_mem buf=0) {
@@ -339,6 +372,7 @@ public:
   			       NULL,
   			       NULL );
     check_cl_ret(ret,"clEnqueueWriteBuffer");  
+    assert(ret == CL_SUCCESS);
     finish();
   }
 
@@ -354,6 +388,7 @@ public:
   			      NULL,
   			      NULL );
     check_cl_ret(ret,"clEnqueueReadBuffer");
+    assert(ret == CL_SUCCESS);
     finish();
   }
   
@@ -373,6 +408,7 @@ public:
     				 event//NULL //cl_event *event
     				 );
     check_cl_ret(ret,"Forward");
+    assert(ret == CL_SUCCESS);
   }
 };
 
