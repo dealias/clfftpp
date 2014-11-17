@@ -12,7 +12,7 @@ unsigned int uintlog2(unsigned int n)
   return r;
 }
 
-void swap(__local REAL *f, const unsigned int a, const unsigned int b)
+void swap(__global REAL *f, const unsigned int a, const unsigned int b)
 {
   const unsigned int twoa = 2 * a;
   const unsigned int twob = 2 * b;
@@ -68,12 +68,12 @@ unsigned int bitreverse(const unsigned int k, const unsigned int log2ny)
 }
 
 // TODO: can we do the unshuffle and the copy-to-global at the same time?
-void unshuffle(__local REAL *lfx, const unsigned int ny)
+void unshuffle(__global REAL *fx, const unsigned int ny)
 {
   const unsigned int log2ny = uintlog2(ny);
   for(unsigned int k = 0; k < ny; ++k) {
     unsigned int j = bitreverse(k, log2ny);
-    if(j < k) swap(lfx, j, k);
+    if(j < k) swap(fx, j, k);
   }
 }
 
@@ -116,66 +116,68 @@ void mfft1(unsigned int nx,
   const unsigned int log2ny = uintlog2(ny);
   
   const unsigned int kymax = ny >> 1;
+
+  __local REAL *lfx = lf + 2 * idx * ny;
  
   // Loop from idx to idx+mx
   const unsigned int ixstart = mx * idx;
   const unsigned int ixstop = min(ixstart + mx, nx);
   for(unsigned int ix = ixstart; ix < ixstop; ++ix) {
 
-    __local REAL *lfx = lf + 2 * idx * ny;
+    __global REAL *fx = f + 2 * ix * ny;
     
     /* // Copy to local memory */
 
     /* Without stride */
-    /* __global REAL *fx = f + 2 * ix * ny; */
+    /* __global REAL *fx = f + 0 * 2 * ix * ny; */
     /* for(unsigned int iy = 0; iy < 2*ny; ++iy) */
-    /*   lfx[iy] = fx[iy]; */
+    /*   lfx[0*iy] = fx[0 * iy]; */
 
     /* With stride */
-    for(unsigned int iy=0; iy < ny; ++iy) {
-      unsigned int lpos = 2 * iy;
-      unsigned int rpos = 2 * (idx * dist + iy * stride);
-      lfx[lpos] = f[rpos];
-      lfx[lpos + 1] = f[rpos + 1];
-    }
+    /* for(unsigned int iy=0; iy < ny; ++iy) { */
+    /*   unsigned int lpos = 0 * 2 * iy; */
+    /*   unsigned int gpos = 0 * 2 * (ix * dist + iy * stride); */
+    /*   lfx[lpos]     = f[gpos]; */
+    /*   lfx[lpos + 1] = f[gpos + 1]; */
+    /* } */
 
     for(unsigned int iy = 0; iy < log2ny; ++iy) {
       
       unsigned int mask = 0;
       for(unsigned int jj=0; jj < log2ny - 1 - iy; ++jj)
-	mask = (mask << 1) +1;
+    	mask = (mask << 1) +1;
 
       for(unsigned int ky = 0; ky < kymax; ++ky) {
 
-	const unsigned int ke = (((ky & ~mask) << 1) | (ky & mask)) << 1;
-	const unsigned int ko = (ke | (1 << (log2ny - iy)));
+    	const unsigned int ke = (((ky & ~mask) << 1) | (ky & mask)) << 1;
+    	const unsigned int ko = (ke | (1 << (log2ny - iy)));
 
-	const REAL fe[2] = {lfx[ke], lfx[ke+1]};
-	const REAL fo[2] = {lfx[ko], lfx[ko+1]};
+    	const REAL fe[2] = {fx[ke], fx[ke+1]};
+    	const REAL fo[2] = {fx[ko], fx[ko+1]};
       
-	//unsigned int kk = (ke << (iy+1))>>2;
-	//const REAL arg = -2.0 * PI * kk / (REAL) ny;
-	//const REAL w[2] = {cos(arg), sin(arg)};
+    	//unsigned int kk = (ke << (iy+1))>>2;
+    	//const REAL arg = -2.0 * PI * kk / (REAL) ny;
+    	//const REAL w[2] = {cos(arg), sin(arg)};
 
-	const unsigned int kk = (((ke << (iy+1))>>2)%ny) << 1;
-	const REAL w[2] = {lz[kk], lz[kk+1]};
-	//printf("%d\n",kk);
-	//printf("w[0]: %f, zl[%d]: %f,\t%f\n",w[0],kk/2,lz[2*kk],w[0]-lz[kk]);
+    	const unsigned int kk = (((ke << (iy+1))>>2)%ny) << 1;
+    	const REAL w[2] = {lz[kk], lz[kk+1]};
+    	//printf("%d\n",kk);
+    	//printf("w[0]: %f, zl[%d]: %f,\t%f\n",w[0],kk/2,lz[2*kk],w[0]-lz[kk]);
 		
-	lfx[ke]   = fe[0] + fo[0];
-	lfx[ke+1] = fe[1] + fo[1];
+    	fx[ke]   = fe[0] + fo[0];
+    	fx[ke+1] = fe[1] + fo[1];
 
-	REAL t[2] = {fe[0] - fo[0], fe[1] - fo[1]};
+    	REAL t[2] = {fe[0] - fo[0], fe[1] - fo[1]};
       
-	lfx[ko]   = w[0]*t[0] - w[1]*t[1];
-	lfx[ko+1] = w[1]*t[0] + w[0]*t[1];
+    	fx[ko]   = w[0]*t[0] - w[1]*t[1];
+    	fx[ko+1] = w[1]*t[0] + w[0]*t[1];
       }
 
     }
 
 
     // Bit-reversal stage
-    unshuffle(lfx, ny);
+    unshuffle(fx, ny);
 
     // Copy from local memory to global memory
 
@@ -185,12 +187,12 @@ void mfft1(unsigned int nx,
     /* } */
 
     /* With stride: */
-    for(unsigned int iy=0; iy < ny; ++iy) {
-      unsigned int lpos = 2 * iy;
-      unsigned int rpos = 2*(idx * dist + iy * stride);
-      f[rpos] = lfx[lpos];
-      f[rpos + 1] = lfx[lpos + 1];
-    }
+    /* for(unsigned int iy=0; iy < ny; ++iy) { */
+    /*   unsigned int lpos = 2 * iy; */
+    /*   unsigned int rpos = 2 * (ix * dist + iy * stride); */
+    /*   f[rpos]     = lfx[lpos]; */
+    /*   f[rpos + 1] = lfx[lpos + 1]; */
+    /* } */
 
   }
 }

@@ -185,6 +185,8 @@ private:
   cl_kernel zkernel;
   cl_mem zbuf;
 
+  size_t global_work_size;
+
   cl_mem cl_zetas;
   T *zetas;
 public:
@@ -203,13 +205,14 @@ public:
 
   void set_mx() {
     mx = (nx + maxworkgroupsize -1) / maxworkgroupsize;
+    global_work_size = (nx+mx-1)/mx;
   }
 
   void create_cl_zetas() {
     cl_int ret;
     cl_zetas = clCreateBuffer(context,
 			      CL_MEM_READ_ONLY | CL_MEM_USE_HOST_PTR,
-			      sizeof(T) * ny,
+			      sizeof(T) * 2 * ny,
 			      zetas,
 			      &ret);
     check_cl_ret(ret,"create clzetas");
@@ -243,10 +246,10 @@ public:
     else
       dist = dist0;
 
-    zbuf=alloc_rw(2 * ny * sizeof(T));
-    build_zl();
-    set_zl_args();
-    set_zlbuf();
+    // zbuf=alloc_rw(2 * ny * sizeof(T));
+    // build_zl();
+    // set_zl_args();
+    // set_zlbuf();
 
     zetas = new T[2 * ny];
     compute_zetas();
@@ -342,7 +345,8 @@ public:
 
     ret = clSetKernelArg(kernel, 
     			 narg++,
-    			 sizeof(T) * (nx + mx - 1)/mx, // FIXME: put in class!
+    			 sizeof(T) * 1, // FIXME temp
+    			 //sizeof(T) * 2 * ny * global_work_size, // FIXME: put in class!
     			 NULL // passing NULL allocates local memory
     			 );
     check_cl_ret(ret,"setargs local work");
@@ -396,9 +400,6 @@ public:
   
   inline void forward(cl_event *event=NULL) {
     cl_int ret;
-    const size_t global_work_size = (nx+mx-1)/mx;  // FIXME: put in class!
-    //const size_t global_work_size = nx;//(nx+mx-1)/mx;
-    //const size_t local_work_size = nx;//global_work_size;
     ret = clEnqueueNDRangeKernel(queue,
     				 kernel,
     				 1 ,//cl_uint work_dim,
