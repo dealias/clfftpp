@@ -151,30 +151,30 @@ void mfft1(unsigned int nx,
       for(unsigned int jj=0; jj < log2ny - 1 - iy; ++jj)
     	mask = (mask << 1) +1;
       
-      for(unsigned int ky = 0; ky < kymax; ++ky) {
+      const unsigned int astep=2;
+      const unsigned int klen = kymax / 2;
+      for(unsigned int a=0; a < astep; ++a) {
+    	const unsigned int kstart = a * klen;
+    	const unsigned int kstop = kstart + klen;
+    	for(unsigned int ky = kstart; ky < kstop; ++ky) {
 
-    	unsigned int ke = (((ky & ~mask) << 1) | (ky & mask)) << 1;
-    	unsigned int ko = (ke | (1 << (log2ny - iy)));
+    	  unsigned int ke = (((ky & ~mask) << 1) | (ky & mask)) << 1;
+    	  unsigned int ko = (ke | (1 << (log2ny - iy)));
 	
-    	REAL fe[2] = {lfx[ke], lfx[ke+1]};
-    	REAL fo[2] = {lfx[ko], lfx[ko+1]};
-      
-    	//unsigned int kk = (ke << (iy+1))>>2;
-    	//const REAL arg = -2.0 * PI * kk / (REAL) ny;
-    	//const REAL w[2] = {cos(arg), sin(arg)};
+    	  REAL fe[2] = {lfx[ke], lfx[ke+1]};
+    	  REAL fo[2] = {lfx[ko], lfx[ko+1]};
 
-    	unsigned int kk = (((ke << (iy+1))>>2)%ny) << 1;
-    	REAL w[2] = {lz[kk], lz[kk+1]};
-    	//printf("%d\n",kk);
-    	//printf("w[0]: %f, zl[%d]: %f,\t%f\n",w[0],kk/2,lz[2*kk],w[0]-lz[kk]);
-		
-    	lfx[ke]   = fe[0] + fo[0];
-    	lfx[ke+1] = fe[1] + fo[1];
+    	  unsigned int kk = (((ke << (iy+1))>>2)%ny) << 1;
+    	  REAL w[2] = {lz[kk], lz[kk+1]};
 
-    	REAL t[2] = {fe[0] - fo[0], fe[1] - fo[1]};
+    	  lfx[ke]   = fe[0] + fo[0];
+    	  lfx[ke+1] = fe[1] + fo[1];
+
+    	  REAL t[2] = {fe[0] - fo[0], fe[1] - fo[1]};
       
-    	lfx[ko]   = w[0]*t[0] - w[1]*t[1];
-    	lfx[ko+1] = w[1]*t[0] + w[0]*t[1];
+    	  lfx[ko]   = w[0]*t[0] - w[1]*t[1];
+    	  lfx[ko+1] = w[1]*t[0] + w[0]*t[1];
+    	}
       }
     }
 
