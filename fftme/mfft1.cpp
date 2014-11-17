@@ -218,7 +218,7 @@ int main(int argc, char* argv[])
     init(nx,ny,f);
     show(nx,ny,f,outlimit);
     fft.write_buffer(f);
-    fft.forward();
+    fft.forward_g();
     fft.finish();
     fft.read_buffer(f);
     std::cout << "\nOutput:" << std::endl;
@@ -234,7 +234,7 @@ int main(int argc, char* argv[])
       for(unsigned int i=0; i < N; ++i) {
 	init(nx,ny,f);
 	fft.write_buffer(f);
-	fft.forward(&forward_event);
+	fft.forward_g(&forward_event);
 	clWaitForEvents(1, &forward_event);
 	clGetEventProfilingInfo(forward_event,
 				CL_PROFILING_COMMAND_START,
@@ -265,7 +265,7 @@ int main(int argc, char* argv[])
     init(nx,ny,f);
     show(nx,ny,f,outlimit);
     fft.write_buffer(f);
-    fft.forward();
+    fft.forward_g();
     fft.finish();
     fft.read_buffer(f);
     std::cout << "\nOutput:" << std::endl;
@@ -283,7 +283,7 @@ int main(int argc, char* argv[])
 	init(nx,ny,f);
 	fft.write_buffer(f);
 	seconds();
-	fft.forward(&forward_event);
+	fft.forward_g(&forward_event);
 	clWaitForEvents(1, &forward_event);
 	T[i] = 1e-9 * (time_end - time_start);
 	clGetEventProfilingInfo(forward_event,

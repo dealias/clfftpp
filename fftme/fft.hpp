@@ -203,12 +203,12 @@ public:
     return kernel;
   }
 
-  void build_kernel_from_file(const char* filename, char* kernelname,
+  cl_kernel build_kernel_from_file(const char* filename, char* kernelname,
 			      const char *options = NULL) {
     read_file(source_str,filename);
     program = create_program(source_str);
     build_program(program, options);
-    kernel = create_kernel(program, kernelname);
+    return create_kernel(program, kernelname);
   }
 
   void finish() {
@@ -225,6 +225,9 @@ private:
   size_t global_work_size;
   cl_mem cl_zetas;
   T *zetas;
+
+  cl_kernel k_mfft1d;
+  cl_kernel k_mfft1d_g;
 
   size_t lsize;
 public:
@@ -303,45 +306,62 @@ public:
   
   void build() {
     char filename[] = "mfft1.cl";
-    char kernelname[] = "mfft1";
-    if(std::is_same<T, double>::value)
-      build_kernel_from_file(filename, kernelname,"-I double/");
-    if(std::is_same<T, float>::value)
-      build_kernel_from_file(filename, kernelname,"-I float/");
+    if(std::is_same<T, double>::value) {
+      {
+	char kernelname[] = "mfft1";
+	k_mfft1d = build_kernel_from_file(filename, kernelname,"-I double/");
+      }
+      {
+	char kernelname[] = "mfft1_g";
+	k_mfft1d_g = build_kernel_from_file(filename, kernelname,"-I double/");
+      }
+    }
+    if(std::is_same<T, float>::value) {
+      {
+	char kernelname[] = "mfft1";
+	k_mfft1d = build_kernel_from_file(filename, kernelname,"-I float/");
+
+      }
+      {
+	char kernelname[] = "mfft1_g";
+	k_mfft1d_g = build_kernel_from_file(filename, kernelname,"-I float/");
+      }
+    }
+    
   }
   
-  void set_args(cl_mem buf=0) {
+  void set_args_mfft1d(cl_mem buf) {
     cl_int ret;
-    assert(kernel != 0);
+    assert(k_mfft1d != 0);
     unsigned int narg=0;
 
-    ret = clSetKernelArg(kernel, narg++, sizeof(nx), (void *)&nx);
+    ret = clSetKernelArg(k_mfft1d, narg++, sizeof(nx), (void *)&nx);
     check_cl_ret(ret,"setargs nx");
     assert(ret == CL_SUCCESS);
 
-    ret = clSetKernelArg(kernel, narg++, sizeof(mx), (void *)&mx);
+    ret = clSetKernelArg(k_mfft1d, narg++, sizeof(mx), (void *)&mx);
     check_cl_ret(ret,"setargs mx");
     assert(ret == CL_SUCCESS);
 
-    ret = clSetKernelArg(kernel, narg++, sizeof(ny), (void *)&ny);
+    ret = clSetKernelArg(k_mfft1d, narg++, sizeof(ny), (void *)&ny);
     check_cl_ret(ret,"setargs ny");
     assert(ret == CL_SUCCESS);
 
-    ret = clSetKernelArg(kernel, narg++, sizeof(stride), (void *)&stride);
+    ret = clSetKernelArg(k_mfft1d, narg++, sizeof(stride), (void *)&stride);
     check_cl_ret(ret,"setargs stride");
     assert(ret == CL_SUCCESS);
 
-    ret = clSetKernelArg(kernel, narg++, sizeof(dist), (void *)&dist);
+    ret = clSetKernelArg(k_mfft1d, narg++, sizeof(dist), (void *)&dist);
     check_cl_ret(ret,"setargs dist");
     assert(ret == CL_SUCCESS);
 
-    ret = clSetKernelArg(kernel, narg++,
+    ret = clSetKernelArg(k_mfft1d, narg++,
 			 sizeof(cl_mem), &(buf == 0 ? memobj : buf));
     check_cl_ret(ret,"setargs buf");
     assert(ret == CL_SUCCESS);
 
     { // local memory for FFTs:
-      ret = clSetKernelArg(kernel, 
+      ret = clSetKernelArg(k_mfft1d, 
       			   narg++,
       			   lsize,
       			   NULL // passing NULL allocates local memory
@@ -351,7 +371,7 @@ public:
 
     { // the zetas are here!
       // Contant-memory version:
-      ret = clSetKernelArg(kernel,
+      ret = clSetKernelArg(k_mfft1d,
 			   narg++,
 			   sizeof(cl_mem),   
 			   &cl_zetas);
@@ -359,11 +379,72 @@ public:
       assert(ret == CL_SUCCESS);
 
       // Local-memory version:
-      // ret = clSetKernelArg(kernel, narg++,
+      // ret = clSetKernelArg(k_mfft1d, narg++,
       // 			 sizeof(cl_mem), &zbuf);
       // check_cl_ret(ret,"setargs twiddle buf");
       // assert(ret == CL_SUCCESS);
     }
+  }
+
+  void set_args_mfft1d_g(cl_mem buf) {
+    cl_int ret;
+    assert(k_mfft1d_g != 0);
+    unsigned int narg=0;
+
+    ret = clSetKernelArg(k_mfft1d_g, narg++, sizeof(nx), (void *)&nx);
+    check_cl_ret(ret,"setargs nx");
+    assert(ret == CL_SUCCESS);
+
+    ret = clSetKernelArg(k_mfft1d_g, narg++, sizeof(mx), (void *)&mx);
+    check_cl_ret(ret,"setargs mx");
+    assert(ret == CL_SUCCESS);
+
+    ret = clSetKernelArg(k_mfft1d_g, narg++, sizeof(ny), (void *)&ny);
+    check_cl_ret(ret,"setargs ny");
+    assert(ret == CL_SUCCESS);
+
+    ret = clSetKernelArg(k_mfft1d_g, narg++, sizeof(stride), (void *)&stride);
+    check_cl_ret(ret,"setargs stride");
+    assert(ret == CL_SUCCESS);
+
+    ret = clSetKernelArg(k_mfft1d_g, narg++, sizeof(dist), (void *)&dist);
+    check_cl_ret(ret,"setargs dist");
+    assert(ret == CL_SUCCESS);
+
+    ret = clSetKernelArg(k_mfft1d_g, narg++,
+			 sizeof(cl_mem), &(buf == 0 ? memobj : buf));
+    check_cl_ret(ret,"setargs buf");
+    assert(ret == CL_SUCCESS);
+
+    { // local memory for FFTs:
+      // ret = clSetKernelArg(k_mfft1d_g, 
+      // 			   narg++,
+      // 			   lsize,
+      // 			   NULL // passing NULL allocates local memory
+      // 			   );
+      // check_cl_ret(ret,"setargs local work");
+    }
+
+    { // the zetas are here!
+      // Contant-memory version:
+      ret = clSetKernelArg(k_mfft1d_g,
+			   narg++,
+			   sizeof(cl_mem),   
+			   &cl_zetas);
+      check_cl_ret(ret,"setargs zeta buf");
+      assert(ret == CL_SUCCESS);
+
+      // Local-memory version:
+      // ret = clSetKernelArg(k_mfft1d, narg++,
+      // 			 sizeof(cl_mem), &zbuf);
+      // check_cl_ret(ret,"setargs twiddle buf");
+      // assert(ret == CL_SUCCESS);
+    }
+  }
+
+  void set_args(cl_mem buf=0) {
+    set_args_mfft1d(buf);
+    set_args_mfft1d_g(buf);
   }
 
   void write_buffer(T *f, cl_mem buf=0) {
@@ -401,10 +482,27 @@ public:
   inline void forward(cl_event *event=NULL) {
     cl_int ret;
     ret = clEnqueueNDRangeKernel(queue,
-    				 kernel,
+    				 k_mfft1d,
     				 1 ,//cl_uint work_dim,
     				 NULL, //const size_t *global_work_offset,
     				 &global_work_size, //const size_t *global_work_size,
+    				 NULL, //&local_work_size, //const size_t *local_work_size,
+    				 0, //cl_uint num_events_in_wait_list,
+    				 NULL, //const cl_event *event_wait_list,
+    				 event//NULL //cl_event *event
+    				 );
+    check_cl_ret(ret,"Forward");
+    assert(ret == CL_SUCCESS);
+  }
+  inline void forward_g(cl_event *event=NULL) {
+    cl_int ret;
+
+    size_t gwork = std::min((size_t)nx,global_work_size);
+    ret = clEnqueueNDRangeKernel(queue,
+    				 k_mfft1d_g,
+    				 1 ,//cl_uint work_dim,
+    				 NULL, //const size_t *global_work_offset,
+    				 &gwork, //const size_t *global_work_size,
     				 NULL, //&local_work_size, //const size_t *local_work_size,
     				 0, //cl_uint num_events_in_wait_list,
     				 NULL, //const cl_event *event_wait_list,

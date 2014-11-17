@@ -68,15 +68,6 @@ unsigned int bitreverse(const unsigned int k, const unsigned int log2ny)
   /* return kr; */
 }
 
-void unshuffle(__local REAL *lfx, const unsigned int ny)
-{
-  const unsigned int log2ny = uintlog2(ny);
-  for(unsigned int k = 0; k < ny; ++k) {
-    unsigned int j = bitreverse(k, log2ny);
-    if(j < k) swap(lfx, j, k);
-  }
-}
-
 unsigned int keven(unsigned int j, unsigned int k)
 {
   unsigned int kb=0;
@@ -108,14 +99,6 @@ void mfft1(unsigned int nx,
   const unsigned int ixstop = min(ixstart + mx, nx);
   for(unsigned int ix = ixstart; ix < ixstop; ++ix) {
     
-
-    /* for(unsigned int iy=0; iy < ny; ++iy) { */
-    /*   unsigned int lpos = 2 * iy; */
-    /*   unsigned int gpos = 2 * (ix * dist + iy * stride); */
-    /*   lfx[lpos]     = f[gpos]; */
-    /*   lfx[lpos + 1] = f[gpos + 1]; */
-    /* } */
-
     unsigned int xpos = 2 * ix * dist;
 
     // Perform first stage and copy to local memory
@@ -188,17 +171,70 @@ void mfft1(unsigned int nx,
       f[kpos]     = lfx[2 * j];
       f[kpos + 1] = lfx[2 * j + 1];
     }
+  }
+}
 
-    /* // Bit-reversal stage */
-    /* unshuffle(lfx, ny); */
+void unshuffle(__global REAL *fx, const unsigned int ny,
+	       const unsigned int stride)
+{
+  const unsigned int log2ny = uintlog2(ny);
+  for(unsigned int k = 0; k < ny; ++k) {
+    unsigned int j = bitreverse(k, log2ny);
+    if(j < k) swap(fx, stride * j, stride * k);
+  }
+}
 
-    /* // Copy from local memory to global memory */
-    /* for(unsigned int iy=0; iy < ny; ++iy) { */
-    /*   unsigned int lpos = 2 * iy; */
-    /*   unsigned int rpos = xpos + 2 * iy * stride; */
-    /*   f[rpos]     = lfx[lpos]; */
-    /*   f[rpos + 1] = lfx[lpos + 1]; */
-    /* } */
 
+// Global memory version
+__kernel 
+void mfft1_g(unsigned int nx,
+	   unsigned int mx, 
+	   unsigned int ny, 
+	   unsigned int stride, 
+	   unsigned int dist, 
+	   __global REAL *f,
+	   __constant REAL *lz
+	   )
+{
+  const unsigned int idx = get_global_id(0);
+  const unsigned int log2ny = uintlog2(ny);
+  const unsigned int kymax = ny >> 1;
+
+  const unsigned int ixstart = mx * idx;
+  const unsigned int ixstop = min(ixstart + mx, nx);
+  for(unsigned int ix = ixstart; ix < ixstop; ++ix) {
+
+    __global REAL *fx = f + 2 * ix * dist;
+    
+    for(unsigned int iy = 0; iy < log2ny; ++iy) {
+      
+      unsigned int mask = 0;
+      for(unsigned int jj=0; jj < log2ny - 1 - iy; ++jj)
+    	mask = (mask << 1) +1;
+
+      for(unsigned int ky = 0; ky < kymax; ++ky) {
+
+    	unsigned int ke = (((ky & ~mask) << 1) | (ky & mask)) << 1;
+    	unsigned int ko = (ke | (1 << (log2ny - iy)));
+
+	unsigned int ske = stride * ke;
+	unsigned int sko = stride * ko;
+
+    	REAL fe[2] = {fx[ske], fx[ske+1]};
+    	REAL fo[2] = {fx[sko], fx[sko+1]};
+      
+    	unsigned int kk = (((ke << (iy+1))>>2)%ny) << 1;
+    	REAL w[2] = {lz[kk], lz[kk+1]};
+    	fx[ske]   = fe[0] + fo[0];
+    	fx[ske+1] = fe[1] + fo[1];
+
+    	REAL t[2] = {fe[0] - fo[0], fe[1] - fo[1]};
+      
+    	fx[sko]   = w[0]*t[0] - w[1]*t[1];
+    	fx[sko+1] = w[1]*t[0] + w[0]*t[1];
+      }
+    }
+
+    unshuffle(fx, ny, stride);
   }
 }
