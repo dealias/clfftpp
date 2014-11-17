@@ -23,7 +23,7 @@ protected:
   cl_command_queue queue;
   cl_program program;
   cl_mem memobj;
-  unsigned int n;
+  unsigned int n; // basic problem size.
   size_t maxworkgroupsize;
   size_t local_mem_size;
   size_t max_compute_units;
@@ -225,6 +225,8 @@ private:
   size_t global_work_size;
   cl_mem cl_zetas;
   T *zetas;
+
+  size_t lsize;
 public:
   void set_size() {
     size = sizeof(T);
@@ -240,11 +242,15 @@ public:
   }
 
   void set_mx() {
-    mx = (nx + maxworkgroupsize -1) / maxworkgroupsize;
-    global_work_size = (nx+mx-1)/mx;
     get_local_mem_size();
     get_max_compute_units();
     get_constant_mem_size();
+    size_t nb = local_mem_size / (sizeof(T) * 2 * ny);
+    nb = std::min(nb, maxworkgroupsize);
+    mx = (nx + nb -1) / nb;
+    global_work_size = (nx+mx-1)/mx;
+    std::cout << "nb: " << nb << std::endl;
+    lsize = sizeof(T) * 2 * nb * ny;
   }
 
   void create_cl_zetas() {
@@ -334,27 +340,28 @@ public:
     check_cl_ret(ret,"setargs buf");
     assert(ret == CL_SUCCESS);
 
-    // ret = clSetKernelArg(kernel, 
-    // 			 narg++,
-    // 			 sizeof(T) * 1, // FIXME temp
-    // 			 //sizeof(T) * 2 * ny * global_work_size, // FIXME: put in class!
-    // 			 NULL // passing NULL allocates local memory
-    // 			 );
-    // check_cl_ret(ret,"setargs local work");
+    ret = clSetKernelArg(kernel, 
+    			 narg++,
+    			 lsize,
+    			 NULL // passing NULL allocates local memory
+    			 );
+    check_cl_ret(ret,"setargs local work");
 
-    // Contant-memory version:
-    ret = clSetKernelArg(kernel,
-			 narg++,
-			 sizeof(cl_mem),   
-			 &cl_zetas);
-    check_cl_ret(ret,"setargs zeta buf");
-    assert(ret == CL_SUCCESS);
+    { // the zetas are here!
+      // Contant-memory version:
+      ret = clSetKernelArg(kernel,
+			   narg++,
+			   sizeof(cl_mem),   
+			   &cl_zetas);
+      check_cl_ret(ret,"setargs zeta buf");
+      assert(ret == CL_SUCCESS);
 
-    // Local-memory version:
-    // ret = clSetKernelArg(kernel, narg++,
-    // 			 sizeof(cl_mem), &zbuf);
-    // check_cl_ret(ret,"setargs twiddle buf");
-    // assert(ret == CL_SUCCESS);
+      // Local-memory version:
+      // ret = clSetKernelArg(kernel, narg++,
+      // 			 sizeof(cl_mem), &zbuf);
+      // check_cl_ret(ret,"setargs twiddle buf");
+      // assert(ret == CL_SUCCESS);
+    }
   }
 
   void write_buffer(T *f, cl_mem buf=0) {

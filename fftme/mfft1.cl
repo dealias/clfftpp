@@ -93,7 +93,7 @@ void mfft1(unsigned int nx,
 	   unsigned int stride, 
 	   unsigned int dist, 
 	   __global REAL *f,
-	   //__local REAL *lf,
+	   __local REAL *lf,
 	   __constant REAL *lz
 	   )
 {
