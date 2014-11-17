@@ -97,12 +97,8 @@ void mfft1(unsigned int nx,
 	   __constant REAL *lz
 	   )
 {
-  /* const unsigned int l2n=log2(n); */
-
   const unsigned int idx = get_global_id(0);
-
   const unsigned int log2ny = uintlog2(ny);
-  
   const unsigned int kymax = ny >> 1;
 
   __local REAL *lfx = lf + 2 * idx * ny;
@@ -113,13 +109,6 @@ void mfft1(unsigned int nx,
   for(unsigned int ix = ixstart; ix < ixstop; ++ix) {
     
     /* // Copy to local memory */
-
-    /* Without stride */
-    /* __global REAL *fx = f + 2 * ix * ny; */
-    /* for(unsigned int iy = 0; iy < 2*ny; ++iy) */
-    /*   lfx[iy] = fx[iy]; */
-
-    /* With stride */
     for(unsigned int iy=0; iy < ny; ++iy) {
       unsigned int lpos = 2 * iy;
       unsigned int gpos = 2 * (ix * dist + iy * stride);
@@ -165,13 +154,6 @@ void mfft1(unsigned int nx,
     unshuffle(lfx, ny);
 
     // Copy from local memory to global memory
-
-    /* Without stride: */
-    /* for(unsigned int iy = 0; iy < 2 * ny; ++iy) { */
-    /*   fx[iy] = lfx[iy]; */
-    /* } */
-
-    /* With stride: */
     for(unsigned int iy=0; iy < ny; ++iy) {
       unsigned int lpos = 2 * iy;
       unsigned int rpos = 2 * (ix * dist + iy * stride);
