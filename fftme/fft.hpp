@@ -278,7 +278,7 @@ public:
 
   mfft1d(cl_command_queue queue0, cl_context context0, cl_device_id device0,
 	 unsigned int nx0, unsigned int ny0,
-	 unsigned int stride0=1, unsigned int dist0=0) {
+	 unsigned int stride0, unsigned int dist0) {
     set_size();
     nx = nx0;
     ny = ny0;
@@ -289,10 +289,7 @@ public:
     queue = queue0;
     context = context0;
     stride = stride0;
-    if(dist == 0) 
-      dist = ny;
-    else
-      dist = dist0;
+    dist = dist0;
 
     zetas = new T[2 * ny];
     compute_zetas();
@@ -407,6 +404,8 @@ public:
     check_cl_ret(ret,"setargs stride");
     assert(ret == CL_SUCCESS);
 
+    std::cout << "dist: " << dist << std::endl;
+    std::cout << "stride: " << stride << std::endl;
     ret = clSetKernelArg(k_mfft1d_g, narg++, sizeof(dist), (void *)&dist);
     check_cl_ret(ret,"setargs dist");
     assert(ret == CL_SUCCESS);

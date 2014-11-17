@@ -171,6 +171,8 @@ int main(int argc, char* argv[])
     dist=1;
   }
 
+  
+
   std::vector<std::vector<cl_device_id> > dev_ids;
   create_device_tree(dev_ids);
   cl_device_id device = dev_ids[platnum][devnum];
@@ -204,6 +206,9 @@ int main(int argc, char* argv[])
       std::cout << F[0][0] << std::endl;
     }
   }
+
+  std::cout << "dist: " << dist << std::endl;
+  std::cout << "stride: " << stride << std::endl;
 
   if(fprecision == 0 || fprecision == 1) {
     std::cout << "Float version:" << std::endl;

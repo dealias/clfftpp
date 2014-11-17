@@ -70,7 +70,7 @@ void mfft1(unsigned int nx,
 	   unsigned int mx, 
 	   unsigned int ny, 
 	   unsigned int stride, 
-	   unsigned int dist, 
+	   const unsigned int dist, 
 	   __global REAL *f,
 	   __local REAL *lf,
 	   __constant REAL *lz
@@ -184,28 +184,33 @@ void unshuffle(__global REAL *fx, const unsigned int ny,
   }
 }
 
-
 // Global memory version
 __kernel 
 void mfft1_g(unsigned int nx,
 	   unsigned int mx, 
 	   unsigned int ny, 
 	   unsigned int stride, 
-	   unsigned int dist, 
+	   const unsigned int dist, 
 	   __global REAL *f,
 	   __constant REAL *lz
 	   )
 {
+
+  printf("stride: %d\n",stride);
+  printf("dist: %d\n",dist);
   const unsigned int idx = get_global_id(0);
   const unsigned int log2ny = uintlog2(ny);
+  
   const unsigned int kymax = ny >> 1;
 
   const unsigned int ixstart = mx * idx;
   const unsigned int ixstop = min(ixstart + mx, nx);
   for(unsigned int ix = ixstart; ix < ixstop; ++ix) {
 
-    __global REAL *fx = f + 2 * ix * dist;
-    
+    unsigned int xpos = 2 * ix * dist;
+
+    __global REAL *fx = f + xpos;
+
     for(unsigned int iy = 0; iy < log2ny; ++iy) {
       
       unsigned int mask = 0;
@@ -217,24 +222,28 @@ void mfft1_g(unsigned int nx,
     	unsigned int ke = (((ky & ~mask) << 1) | (ky & mask)) << 1;
     	unsigned int ko = (ke | (1 << (log2ny - iy)));
 
+	/* unsigned int ske = stride * ke; */
+	/* unsigned int sko = stride * ko; */
+
 	unsigned int ske = stride * ke;
 	unsigned int sko = stride * ko;
 
-    	REAL fe[2] = {fx[ske], fx[ske+1]};
-    	REAL fo[2] = {fx[sko], fx[sko+1]};
+    	REAL fe[2] = {fx[ske], fx[ske + 1]};
+    	REAL fo[2] = {fx[sko], fx[sko + 1]};
       
     	unsigned int kk = (((ke << (iy+1))>>2)%ny) << 1;
     	REAL w[2] = {lz[kk], lz[kk+1]};
-    	fx[ske]   = fe[0] + fo[0];
-    	fx[ske+1] = fe[1] + fo[1];
+		
+    	fx[ske]     = fe[0] + fo[0];
+    	fx[ske + 1] = fe[1] + fo[1];
 
     	REAL t[2] = {fe[0] - fo[0], fe[1] - fo[1]};
       
-    	fx[sko]   = w[0]*t[0] - w[1]*t[1];
-    	fx[sko+1] = w[1]*t[0] + w[0]*t[1];
+    	fx[sko]     = w[0]*t[0] - w[1]*t[1];
+    	fx[sko + 1] = w[1]*t[0] + w[0]*t[1];
       }
-    }
 
+    }
     unshuffle(fx, ny, stride);
   }
 }
