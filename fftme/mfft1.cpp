@@ -111,12 +111,13 @@ int main(int argc, char* argv[])
 
     
   unsigned int N=10;
-  bool do_fftw=true;
+  bool do_fftw = true;
+  bool do_transpose = true;
 
   unsigned int stats=MEAN; // Type of statistics used in timing test.
 
   for (;;) {
-    int c = getopt(argc,argv,"p:d:m:x:y:N:S:f:w:h");
+    int c = getopt(argc,argv,"p:d:m:x:y:N:S:f:w:t:h");
     if (c == -1) break;
     
     switch (c) {
@@ -145,6 +146,9 @@ int main(int argc, char* argv[])
     case 'f':
       fprecision=atoi(optarg);
       break;
+    case 't':
+      do_transpose = atoi(optarg) > 0;
+      break;
     case 'w':
       do_fftw = atoi(optarg) > 0;
       break;
@@ -162,8 +166,10 @@ int main(int argc, char* argv[])
   unsigned int stride = 1;// nx; //1;
   unsigned int dist = ny; //1; //ny;
 
-  // stride=nx;
-  // dist=1;
+  if(do_transpose) {
+    stride=nx;
+    dist=1;
+  }
 
   std::vector<std::vector<cl_device_id> > dev_ids;
   create_device_tree(dev_ids);
