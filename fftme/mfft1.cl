@@ -12,18 +12,6 @@ unsigned int uintlog2(unsigned int n)
   return r;
 }
 
-void swap(__local REAL *f, unsigned int a, unsigned int b)
-{
-  // multiply by two because we are swapping complexes.
-  a *= 2;
-  b *= 2;
-  REAL temp[2] = {f[a], f[a + 1]};
-  f[a]       = f[b];
-  f[a + 1]   = f[b + 1];
-  f[b]       = temp[0];
-  f[b + 1]   = temp[1];
-}
-
 unsigned int bitreverse(const unsigned int k, const unsigned int log2ny)
 {
   //http://www.katjaas.nl/bitreversal/bitreversal.html
@@ -172,6 +160,18 @@ void mfft1(unsigned int nx,
       f[kpos + 1] = lfx[2 * j + 1];
     }
   }
+}
+
+void swap(__global REAL *f, unsigned int a, unsigned int b)
+{
+  // multiply by two because we are swapping complexes.
+  a *= 2;
+  b *= 2;
+  REAL temp[2] = {f[a], f[a + 1]};
+  f[a]       = f[b];
+  f[a + 1]   = f[b + 1];
+  f[b]       = temp[0];
+  f[b + 1]   = temp[1];
 }
 
 void unshuffle(__global REAL *fx, const unsigned int ny,
