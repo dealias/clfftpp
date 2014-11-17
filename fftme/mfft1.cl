@@ -195,9 +195,6 @@ void mfft1_g(unsigned int nx,
 	   __constant REAL *lz
 	   )
 {
-
-  printf("stride: %d\n",stride);
-  printf("dist: %d\n",dist);
   const unsigned int idx = get_global_id(0);
   const unsigned int log2ny = uintlog2(ny);
   

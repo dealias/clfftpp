@@ -404,8 +404,6 @@ public:
     check_cl_ret(ret,"setargs stride");
     assert(ret == CL_SUCCESS);
 
-    std::cout << "dist: " << dist << std::endl;
-    std::cout << "stride: " << stride << std::endl;
     ret = clSetKernelArg(k_mfft1d_g, narg++, sizeof(dist), (void *)&dist);
     check_cl_ret(ret,"setargs dist");
     assert(ret == CL_SUCCESS);

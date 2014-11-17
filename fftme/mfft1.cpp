@@ -207,9 +207,6 @@ int main(int argc, char* argv[])
     }
   }
 
-  std::cout << "dist: " << dist << std::endl;
-  std::cout << "stride: " << stride << std::endl;
-
   if(fprecision == 0 || fprecision == 1) {
     std::cout << "Float version:" << std::endl;
     float *f=new float[2*nx*ny];
