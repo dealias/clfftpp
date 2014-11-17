@@ -67,13 +67,13 @@ unsigned int bitreverse(const unsigned int k, const unsigned int log2ny)
   /* return kr; */
 }
 
-// TODO: can we do the unshuffle and the copy-to-global at the same time?
-void unshuffle(__global REAL *fx, const unsigned int ny)
+void unshuffle(__global REAL *fx, const unsigned int ny,
+	       const unsigned int stride)
 {
   const unsigned int log2ny = uintlog2(ny);
   for(unsigned int k = 0; k < ny; ++k) {
     unsigned int j = bitreverse(k, log2ny);
-    if(j < k) swap(fx, j, k);
+    if(j < k) swap(fx, stride * j, stride * k);
   }
 }
 
@@ -86,18 +86,6 @@ unsigned int keven(unsigned int j, unsigned int k)
   return ((k  & ~kb) << 1 ) ^ kb;
 }
 
-__kernel
-void set_zbuf(unsigned int n, 
-	      __global REAL *lz)
-{
-  const REAL PI = 4.0 * atan(1.0);
-  for(unsigned int i = 0; i < n; ++i) {
-    const REAL arg = -2.0 * PI * i / (REAL) n;
-    lz[2 * i] = cos(arg);
-    lz[2 * i + 1] = sin(arg);
-  }
-}
-
 __kernel 
 void mfft1(unsigned int nx,
 	   unsigned int mx, 
@@ -105,8 +93,8 @@ void mfft1(unsigned int nx,
 	   unsigned int stride, 
 	   unsigned int dist, 
 	   __global REAL *f,
-	   __local REAL *lf,
-	   __constant REAL *lz // TODO: make __constant
+	   //__local REAL *lf,
+	   __constant REAL *lz
 	   )
 {
   /* const unsigned int l2n=log2(n); */
@@ -117,14 +105,14 @@ void mfft1(unsigned int nx,
   
   const unsigned int kymax = ny >> 1;
 
-  __local REAL *lfx = lf + 2 * idx * ny;
+  //__local REAL *lfx = lf + 2 * idx * ny;
  
   // Loop from idx to idx+mx
   const unsigned int ixstart = mx * idx;
   const unsigned int ixstop = min(ixstart + mx, nx);
   for(unsigned int ix = ixstart; ix < ixstop; ++ix) {
 
-    __global REAL *fx = f + 2 * ix * ny;
+    __global REAL *fx = f + 2 * ix * dist;
     
     /* // Copy to local memory */
 
@@ -149,35 +137,37 @@ void mfft1(unsigned int nx,
 
       for(unsigned int ky = 0; ky < kymax; ++ky) {
 
-    	const unsigned int ke = (((ky & ~mask) << 1) | (ky & mask)) << 1;
-    	const unsigned int ko = (ke | (1 << (log2ny - iy)));
+    	unsigned int ke = (((ky & ~mask) << 1) | (ky & mask)) << 1;
+    	unsigned int ko = (ke | (1 << (log2ny - iy)));
 
-    	const REAL fe[2] = {fx[ke], fx[ke+1]};
-    	const REAL fo[2] = {fx[ko], fx[ko+1]};
+	unsigned int ske = stride * ke;
+	unsigned int sko = stride * ko;
+
+    	REAL fe[2] = {fx[ske], fx[ske+1]};
+    	REAL fo[2] = {fx[sko], fx[sko+1]};
       
     	//unsigned int kk = (ke << (iy+1))>>2;
     	//const REAL arg = -2.0 * PI * kk / (REAL) ny;
     	//const REAL w[2] = {cos(arg), sin(arg)};
 
-    	const unsigned int kk = (((ke << (iy+1))>>2)%ny) << 1;
-    	const REAL w[2] = {lz[kk], lz[kk+1]};
+    	unsigned int kk = (((ke << (iy+1))>>2)%ny) << 1;
+    	REAL w[2] = {lz[kk], lz[kk+1]};
     	//printf("%d\n",kk);
     	//printf("w[0]: %f, zl[%d]: %f,\t%f\n",w[0],kk/2,lz[2*kk],w[0]-lz[kk]);
 		
-    	fx[ke]   = fe[0] + fo[0];
-    	fx[ke+1] = fe[1] + fo[1];
+    	fx[ske]   = fe[0] + fo[0];
+    	fx[ske+1] = fe[1] + fo[1];
 
     	REAL t[2] = {fe[0] - fo[0], fe[1] - fo[1]};
       
-    	fx[ko]   = w[0]*t[0] - w[1]*t[1];
-    	fx[ko+1] = w[1]*t[0] + w[0]*t[1];
+    	fx[sko]   = w[0]*t[0] - w[1]*t[1];
+    	fx[sko+1] = w[1]*t[0] + w[0]*t[1];
       }
 
     }
 
-
     // Bit-reversal stage
-    unshuffle(fx, ny);
+    unshuffle(fx, ny, stride);
 
     // Copy from local memory to global memory
 

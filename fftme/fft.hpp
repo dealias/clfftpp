@@ -179,14 +179,7 @@ template<class T>
 class mfft1d : public cl_base {
 private:
   unsigned int nx, mx, ny, stride, dist;
-
-  // For loading the zeta table.
-  cl_program zprogram;
-  cl_kernel zkernel;
-  cl_mem zbuf;
-
   size_t global_work_size;
-
   cl_mem cl_zetas;
   T *zetas;
 public:
@@ -246,18 +239,13 @@ public:
     else
       dist = dist0;
 
-    // zbuf=alloc_rw(2 * ny * sizeof(T));
-    // build_zl();
-    // set_zl_args();
-    // set_zlbuf();
-
     zetas = new T[2 * ny];
     compute_zetas();
     create_cl_zetas();
   }
 
   ~mfft1d() {
-    // FIXME
+    // FIXME: free cl_zetas
     delete[] zetas;
   }
   
@@ -270,49 +258,6 @@ public:
       build_kernel_from_file(filename, kernelname,"-I float/");
   }
   
-  void build_zl() {
-    // std::cout << "build_zl" << std::endl;
-    char filename[] = "mfft1.cl";
-    read_file(source_str,filename);
-    // std::cout << source_str << std::endl;
-    cl_program zlprog = create_program(source_str);
-    
-    if(std::is_same<T, double>::value)
-      build_program(zlprog,"-I double/");
-    if(std::is_same<T, float>::value)
-      build_program(zlprog,"-I float/");
-
-    zkernel = create_kernel(zlprog, "set_zbuf");
-    
-  }
-
-  void set_zl_args() {
-    cl_int ret;
-    assert(kernel != 0);
-    unsigned int narg=0;
-
-    ret = clSetKernelArg(zkernel, narg++, sizeof(unsigned int), (void *)&ny);
-    check_cl_ret(ret,"setargs ny");
-    assert(ret == CL_SUCCESS);
-
-    ret = clSetKernelArg(zkernel, narg++,
-			 sizeof(cl_mem), &zbuf);
-    check_cl_ret(ret,"setargs twiddle buf");
-    assert(ret == CL_SUCCESS);
-  }
-
-  void set_zlbuf() {
-    cl_int ret;
-    ret= clEnqueueTask (queue,
-			zkernel,
-			0,
-			NULL,
-			NULL);
-    check_cl_ret(ret,"set_zlbuf");
-    assert(ret == CL_SUCCESS);
-    clFinish(queue);
-  }
-
   void set_args(cl_mem buf=0) {
     cl_int ret;
     assert(kernel != 0);
@@ -343,13 +288,13 @@ public:
     check_cl_ret(ret,"setargs buf");
     assert(ret == CL_SUCCESS);
 
-    ret = clSetKernelArg(kernel, 
-    			 narg++,
-    			 sizeof(T) * 1, // FIXME temp
-    			 //sizeof(T) * 2 * ny * global_work_size, // FIXME: put in class!
-    			 NULL // passing NULL allocates local memory
-    			 );
-    check_cl_ret(ret,"setargs local work");
+    // ret = clSetKernelArg(kernel, 
+    // 			 narg++,
+    // 			 sizeof(T) * 1, // FIXME temp
+    // 			 //sizeof(T) * 2 * ny * global_work_size, // FIXME: put in class!
+    // 			 NULL // passing NULL allocates local memory
+    // 			 );
+    // check_cl_ret(ret,"setargs local work");
 
     // Contant-memory version:
     ret = clSetKernelArg(kernel,
