@@ -25,6 +25,9 @@ protected:
   cl_mem memobj;
   unsigned int n;
   size_t maxworkgroupsize;
+  size_t local_mem_size;
+  size_t max_compute_units;
+  
   std::string source_str;
   size_t size;
 public:
@@ -116,6 +119,34 @@ public:
     assert(ret == CL_SUCCESS);
   }
 
+  void get_max_compute_units() {
+    cl_int ret;
+    ret = clGetDeviceInfo(device,
+			  CL_DEVICE_MAX_COMPUTE_UNITS,
+			  sizeof(max_compute_units),
+			  &max_compute_units,
+			  NULL);
+    std::cout << "CL_DEVICE_MAX_COMPUTE_UNITS: " << local_mem_size 
+	      << std::endl;
+    check_cl_ret(ret, "max_compute_units");
+    assert(ret == CL_SUCCESS);
+
+  }
+
+  void get_local_mem_size() {
+    cl_int ret;
+    ret = clGetDeviceInfo(device,
+			  CL_DEVICE_LOCAL_MEM_SIZE,
+			  sizeof(local_mem_size),
+			  &local_mem_size,
+			  NULL);
+    std::cout << "CL_DEVICE_LOCAL_MEM_SIZE: " << local_mem_size 
+	      << std::endl;
+    check_cl_ret(ret, "local_mem_size");
+    assert(ret == CL_SUCCESS);
+
+  }
+
   void read_file(std::string &contents, const char* filename) {
     std::ifstream t(filename);
     t.seekg(0, std::ios::end);
@@ -199,6 +230,8 @@ public:
   void set_mx() {
     mx = (nx + maxworkgroupsize -1) / maxworkgroupsize;
     global_work_size = (nx+mx-1)/mx;
+    get_local_mem_size();
+    get_max_compute_units();
   }
 
   void create_cl_zetas() {

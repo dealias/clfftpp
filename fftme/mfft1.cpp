@@ -162,8 +162,8 @@ int main(int argc, char* argv[])
   unsigned int stride = 1;// nx; //1;
   unsigned int dist = ny; //1; //ny;
 
-  stride=nx;
-  dist=1;
+  // stride=nx;
+  // dist=1;
 
   std::vector<std::vector<cl_device_id> > dev_ids;
   create_device_tree(dev_ids);
