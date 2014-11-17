@@ -24,17 +24,6 @@ void swap(__local REAL *f, unsigned int a, unsigned int b)
   f[b + 1]   = temp[1];
 }
 
-void swapO(__local REAL *lf, __global REAL *gf, unsigned int a, unsigned int b)
-{
-  // multiply by two because we are swapping complexes.
-  a *= 2;
-  b *= 2;
-  gf[a]     = lf[b];
-  gf[a + 1] = lf[b + 1];
-  gf[b]     = lf[a];
-  gf[b + 1] = lf[a + 1];
-}
-
 unsigned int bitreverse(const unsigned int k, const unsigned int log2ny)
 {
   //http://www.katjaas.nl/bitreversal/bitreversal.html
@@ -88,16 +77,6 @@ void unshuffle(__local REAL *lfx, const unsigned int ny)
   }
 }
 
-void unshuffleO(__local REAL *lfx, const unsigned int ny,
-	       __global REAL *f, unsigned int stride, unsigned int dist)
-{
-  const unsigned int log2ny = uintlog2(ny);
-  for(unsigned int k = 0; k < ny; ++k) {
-    unsigned int j = bitreverse(k, log2ny);
-    if(j < k) swap(lfx, j, k);
-  }
-}
-
 unsigned int keven(unsigned int j, unsigned int k)
 {
   unsigned int kb=0;
@@ -130,12 +109,14 @@ void mfft1(unsigned int nx,
   for(unsigned int ix = ixstart; ix < ixstop; ++ix) {
     
 
-    for(unsigned int iy=0; iy < ny; ++iy) {
-      unsigned int lpos = 2 * iy;
-      unsigned int gpos = 2 * (ix * dist + iy * stride);
-      lfx[lpos]     = f[gpos];
-      lfx[lpos + 1] = f[gpos + 1];
-    }
+    /* for(unsigned int iy=0; iy < ny; ++iy) { */
+    /*   unsigned int lpos = 2 * iy; */
+    /*   unsigned int gpos = 2 * (ix * dist + iy * stride); */
+    /*   lfx[lpos]     = f[gpos]; */
+    /*   lfx[lpos + 1] = f[gpos + 1]; */
+    /* } */
+
+    unsigned int xpos = 2 * ix * dist;
 
     // Perform first stage and copy to local memory
     {
@@ -151,7 +132,6 @@ void mfft1(unsigned int nx,
     	unsigned int kk = (((ke << 1)>>2)%ny) << 1;
     	REAL w[2] = {lz[kk], lz[kk+1]};
 
-	unsigned int xpos = 2 * ix * dist;
     	REAL fe[2] = {f[xpos + stride * ke], f[xpos + stride * ke + 1]};
     	REAL fo[2] = {f[xpos + stride * ko], f[xpos + stride * ko + 1]};
       	
@@ -198,16 +178,27 @@ void mfft1(unsigned int nx,
       }
     }
 
-    // Bit-reversal stage
-    unshuffle(lfx, ny);
-
-    // Copy from local memory to global memory
-    for(unsigned int iy=0; iy < ny; ++iy) {
-      unsigned int lpos = 2 * iy;
-      unsigned int rpos = 2 * (ix * dist + iy * stride);
-      f[rpos]     = lfx[lpos];
-      f[rpos + 1] = lfx[lpos + 1];
+    // Bit-reversal and copy back to global memory
+    for(unsigned int k = 0; k < ny; ++k) {
+      unsigned int j = bitreverse(k, log2ny);
+      unsigned int jpos = xpos + stride * 2 * j;
+      unsigned int kpos = xpos + stride * 2 * k;
+      f[jpos]     = lfx[2 * k];
+      f[jpos + 1] = lfx[2 * k + 1];
+      f[kpos]     = lfx[2 * j];
+      f[kpos + 1] = lfx[2 * j + 1];
     }
+
+    /* // Bit-reversal stage */
+    /* unshuffle(lfx, ny); */
+
+    /* // Copy from local memory to global memory */
+    /* for(unsigned int iy=0; iy < ny; ++iy) { */
+    /*   unsigned int lpos = 2 * iy; */
+    /*   unsigned int rpos = xpos + 2 * iy * stride; */
+    /*   f[rpos]     = lfx[lpos]; */
+    /*   f[rpos + 1] = lfx[lpos + 1]; */
+    /* } */
 
   }
 }
