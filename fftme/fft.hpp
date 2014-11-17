@@ -340,12 +340,14 @@ public:
     check_cl_ret(ret,"setargs buf");
     assert(ret == CL_SUCCESS);
 
-    ret = clSetKernelArg(kernel, 
-    			 narg++,
-    			 lsize,
-    			 NULL // passing NULL allocates local memory
-    			 );
-    check_cl_ret(ret,"setargs local work");
+    { // local memory for FFTs:
+      // ret = clSetKernelArg(kernel, 
+      // 			   narg++,
+      // 			   lsize,
+      // 			   NULL // passing NULL allocates local memory
+      // 			   );
+      // check_cl_ret(ret,"setargs local work");
+    }
 
     { // the zetas are here!
       // Contant-memory version:
