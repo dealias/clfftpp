@@ -1,8 +1,9 @@
-
 /* No need to explicitely include the OpenCL headers */
 #include <clFFT.h>
 #include <iostream>
 #include <clutils.h>
+
+#include <assert.h>
 
 typedef float REAL;
 
@@ -36,12 +37,14 @@ public:
   }
 
   void clfft_setup() {
-    cl_int err;  
+    cl_int ret;  
     clfftSetupData fftSetup;
-    err = clfftInitSetupData(&fftSetup);
-    if(err != CL_SUCCESS) std::cerr << clErrorString(err) << std::endl;
-    err = clfftSetup(&fftSetup);
-    if(err != CL_SUCCESS) std::cerr << clErrorString(err) << std::endl;
+    ret = clfftInitSetupData(&fftSetup);
+    if(ret != CL_SUCCESS) std::cerr << clErrorString(ret) << std::endl;
+    assert(ret == CL_SUCCESS);
+    ret = clfftSetup(&fftSetup);
+    if(ret != CL_SUCCESS) std::cerr << clErrorString(ret) << std::endl;
+    assert(ret == CL_SUCCESS);
   }
 
 
@@ -50,49 +53,57 @@ public:
   }
  
   cl_mem create_clbuf() {
-    cl_int err;
+    cl_int ret;
     bufX = clCreateBuffer(ctx, 
 			  CL_MEM_READ_WRITE, 
 			  buf_size,
 			  NULL,
-			  &err);
-    if(err != CL_SUCCESS) std::cerr << clErrorString(err) << std::endl;
+			  &ret);
+    if(ret != CL_SUCCESS) std::cerr << clErrorString(ret) << std::endl;
+    assert(ret == CL_SUCCESS);
     return bufX;
   }
 
-  void cl_to_ram(REAL *X, cl_mem bufX0=NULL) {
+  void cl_to_ram(REAL *X, cl_mem bufX0=NULL, 
+		 const cl_uint nwait=0,
+		 const cl_event *wait=NULL, cl_event *event=NULL) {
     cl_mem buf = (bufX0 != NULL) ? bufX0 : bufX;
-    cl_int err;
-    err = clEnqueueReadBuffer(queue,
+    cl_int ret;
+    ret = clEnqueueReadBuffer(queue,
 			      buf,
 			      CL_TRUE,
 			      0,
 			      buf_size,
 			      X,
-			      0,
-			      NULL,
-			      NULL );
-    if(err != CL_SUCCESS) std::cerr << clErrorString(err) << std::endl;
+			      nwait,
+			      wait,
+			      event);
+    if(ret != CL_SUCCESS) std::cerr << clErrorString(ret) << std::endl;
+    assert(ret == CL_SUCCESS);
   }
 
-  void ram_to_cl(REAL *X, cl_mem bufX0=NULL) {
+  void ram_to_cl(REAL *X, cl_mem bufX0=NULL, 
+		 const cl_uint nwait=0,
+		 const cl_event *wait=NULL, cl_event *event=NULL) {
     cl_mem buf = (bufX0 != NULL) ? bufX0 : bufX;
-    cl_int err;
-    err = clEnqueueWriteBuffer(queue,
+    cl_int ret;
+    ret = clEnqueueWriteBuffer(queue,
 			       buf,
 			       CL_TRUE,
 			       0,
 			       buf_size,
 			       X,
-			       0,
-			       NULL,
-			       NULL);
-    if(err != CL_SUCCESS) std::cerr << clErrorString(err) << std::endl;
+			       nwait,
+			       wait,
+			       event);
+    if(ret != CL_SUCCESS) std::cerr << clErrorString(ret) << std::endl;
+    assert(ret == CL_SUCCESS);
   }
 
   void wait() {
-    cl_int err = clFinish(queue);
-    if(err != CL_SUCCESS) std::cerr << clErrorString(err) << std::endl;
+    cl_int ret = clFinish(queue);
+    if(ret != CL_SUCCESS) std::cerr << clErrorString(ret) << std::endl;
+    assert(ret == CL_SUCCESS);
   }
 
 };
@@ -112,30 +123,40 @@ private:
     clfftDim dim = CLFFT_1D;
     size_t clLengths[1] = {nx};
 
-    cl_int err;
-    err = clfftCreateDefaultPlan(&plan, 
+    cl_int ret;
+    ret = clfftCreateDefaultPlan(&plan, 
 				 ctx, 
 				 dim, 
 				 clLengths);
-    if(err != CL_SUCCESS) std::cerr << clErrorString(err) << std::endl;
-    err = clfftSetPlanPrecision(plan, 
+    if(ret != CL_SUCCESS) std::cerr << clErrorString(ret) << std::endl;
+    assert(ret == CL_SUCCESS);
+
+    ret = clfftSetPlanPrecision(plan, 
 				precision);
-    if(err != CL_SUCCESS) std::cerr << clErrorString(err) << std::endl;
-    err = clfftSetLayout(plan, 
+    if(ret != CL_SUCCESS) std::cerr << clErrorString(ret) << std::endl;
+    assert(ret == CL_SUCCESS);
+
+    ret = clfftSetLayout(plan,
 			 CLFFT_COMPLEX_INTERLEAVED, 
 			 CLFFT_COMPLEX_INTERLEAVED);
-    if(err != CL_SUCCESS) std::cerr << clErrorString(err) << std::endl;
-    err = clfftSetResultLocation(plan, 
+    if(ret != CL_SUCCESS) std::cerr << clErrorString(ret) << std::endl;
+    assert(ret == CL_SUCCESS);
+
+    ret = clfftSetResultLocation(plan, 
 				 CLFFT_INPLACE);
-    if(err != CL_SUCCESS) std::cerr << clErrorString(err) << std::endl;
-    err = clfftBakePlan(plan,
+    if(ret != CL_SUCCESS) std::cerr << clErrorString(ret) << std::endl;
+    assert(ret == CL_SUCCESS);
+
+    ret = clfftBakePlan(plan,
 			1, // numQueues: number of experiments 
 			&queue, // commQueueFFT
 			NULL, // Always NULL
 			NULL // Always NULL
 			);
-    if(err != CL_SUCCESS) std::cerr << clErrorString(err) << std::endl;
+    if(ret != CL_SUCCESS) std::cerr << clErrorString(ret) << std::endl;
+    assert(ret == CL_SUCCESS);
   }
+
 public:
   clfft1() {
     ctx = NULL;
@@ -155,32 +176,35 @@ public:
   }
 
   ~clfft1() {
-    cl_int err;
-    err = clfftDestroyPlan(&plan);
-    if(err != CL_SUCCESS) std::cerr << clErrorString(err) << std::endl;
-
+    cl_int ret;
+    ret = clfftDestroyPlan(&plan);
+    if(ret != CL_SUCCESS) std::cerr << clErrorString(ret) << std::endl;
+    assert(ret == CL_SUCCESS);
   }
 
   void forward(cl_mem bufX0=NULL) {
     cl_mem buf = (bufX0 != NULL) ? bufX0 : bufX;
-    cl_int err;
-    err = clfftEnqueueTransform(plan,
-				CLFFT_FORWARD,
-				1,
+    cl_int ret;
+    ret = clfftEnqueueTransform(plan, // clfftPlanHandle 	plHandle,
+				CLFFT_FORWARD,// direction
+				1,  //cl_uint 	numQueuesAndEvents,
 				&queue,
-				0,
-				NULL,
-				NULL,
-				&buf,
-				NULL,
-				NULL);
-    if(err != CL_SUCCESS) std::cerr << clErrorString(err) << std::endl;
+				0, // cl_uint 	numWaitEvents,
+				NULL, // const cl_event * 	waitEvents,
+				NULL, // cl_event * 	outEvents,
+				&buf, // cl_mem * 	inputBuffers,
+				NULL, // cl_mem * 	outputBuffers,
+				NULL // cl_mem 	tmpBuffer 
+				);
+    // FIXME: add events.
+    if(ret != CL_SUCCESS) std::cerr << clErrorString(ret) << std::endl;
+    assert(ret == CL_SUCCESS);
   }
 
   void backward(cl_mem bufX0=NULL) {
     cl_mem buf = (bufX0 != NULL) ? bufX0 : bufX;
-    cl_int err;
-    err = clfftEnqueueTransform(plan,
+    cl_int ret;
+    ret = clfftEnqueueTransform(plan,
 				CLFFT_BACKWARD,
 				1,
 				&queue,
@@ -190,7 +214,9 @@ public:
 				&buf,
 				NULL,
 				NULL);
-    if(err != CL_SUCCESS) std::cerr << clErrorString(err) << std::endl;
+    // FIXME: add events.
+    if(ret != CL_SUCCESS) std::cerr << clErrorString(ret) << std::endl;
+    assert(ret == CL_SUCCESS);
   }
 
 };
@@ -210,29 +236,38 @@ private:
     clfftDim dim = CLFFT_2D;
     size_t clLengths[2] = {nx,ny};
 
-    cl_int err;
-    err = clfftCreateDefaultPlan(&plan, 
+    cl_int ret;
+    ret = clfftCreateDefaultPlan(&plan, 
 				 ctx, 
 				 dim, 
 				 clLengths);
-    if(err != CL_SUCCESS) std::cerr << clErrorString(err) << std::endl;
-    err = clfftSetPlanPrecision(plan, 
+    if(ret != CL_SUCCESS) std::cerr << clErrorString(ret) << std::endl;
+    assert(ret == CL_SUCCESS);
+
+    ret = clfftSetPlanPrecision(plan, 
 				precision);
-    if(err != CL_SUCCESS) std::cerr << clErrorString(err) << std::endl;
-    err = clfftSetLayout(plan, 
+    if(ret != CL_SUCCESS) std::cerr << clErrorString(ret) << std::endl;
+    assert(ret == CL_SUCCESS);
+
+    ret = clfftSetLayout(plan, 
 			 CLFFT_COMPLEX_INTERLEAVED, 
 			 CLFFT_COMPLEX_INTERLEAVED);
-    if(err != CL_SUCCESS) std::cerr << clErrorString(err) << std::endl;
-    err = clfftSetResultLocation(plan, 
+    if(ret != CL_SUCCESS) std::cerr << clErrorString(ret) << std::endl;
+    assert(ret == CL_SUCCESS);
+
+    ret = clfftSetResultLocation(plan, 
 				 CLFFT_INPLACE);
-    if(err != CL_SUCCESS) std::cerr << clErrorString(err) << std::endl;
-    err = clfftBakePlan(plan,
+    if(ret != CL_SUCCESS) std::cerr << clErrorString(ret) << std::endl;
+    assert(ret == CL_SUCCESS);
+
+    ret = clfftBakePlan(plan,
 			1, // numQueues: number of experiments 
 			&queue, // commQueueFFT
 			NULL, // Always NULL
 			NULL // Always NULL
 			);
-    if(err != CL_SUCCESS) std::cerr << clErrorString(err) << std::endl;
+    if(ret != CL_SUCCESS) std::cerr << clErrorString(ret) << std::endl;
+    assert(ret == CL_SUCCESS);
   }
 public:
   clfft2() {
@@ -255,15 +290,15 @@ public:
   }
 
   ~clfft2() {
-    cl_int err;
-    err = clfftDestroyPlan(&plan);
-    if(err != CL_SUCCESS) std::cerr << clErrorString(err) << std::endl;
+    cl_int ret;
+    ret = clfftDestroyPlan(&plan);
+    if(ret != CL_SUCCESS) std::cerr << clErrorString(ret) << std::endl;
   }
 
   void forward(cl_mem bufX0=NULL) {
     cl_mem buf = (bufX0 != NULL) ? bufX0 : bufX;
-    cl_int err;
-    err = clfftEnqueueTransform(plan,
+    cl_int ret;
+    ret = clfftEnqueueTransform(plan,
     				CLFFT_FORWARD,
     				1,
     				&queue,
@@ -273,13 +308,14 @@ public:
     				&buf,
     				NULL,
     				NULL);
-    if(err != CL_SUCCESS) std::cerr << clErrorString(err) << std::endl;
+    if(ret != CL_SUCCESS) std::cerr << clErrorString(ret) << std::endl;
+    assert(ret == CL_SUCCESS);
   }
 
   void backward(cl_mem bufX0=NULL) {
     cl_mem buf = (bufX0 != NULL) ? bufX0 : bufX;
-    cl_int err;
-    err = clfftEnqueueTransform(plan,
+    cl_int ret;
+    ret = clfftEnqueueTransform(plan,
     				CLFFT_BACKWARD,
     				1,
     				&queue,
@@ -289,7 +325,8 @@ public:
     				&buf,
     				NULL,
     				NULL);
-    if(err != CL_SUCCESS) std::cerr << clErrorString(err) << std::endl;
+    if(ret != CL_SUCCESS) std::cerr << clErrorString(ret) << std::endl;
+    assert(ret == CL_SUCCESS);
   }
 };
 
@@ -309,29 +346,38 @@ private:
     clfftDim dim = CLFFT_1D;
     size_t clLengths[1] = {nx};
 
-    cl_int err;
-    err = clfftCreateDefaultPlan(&plan, 
+    cl_int ret;
+    ret = clfftCreateDefaultPlan(&plan, 
 				 ctx, 
 				 dim, 
 				 clLengths);
-    if(err != CL_SUCCESS) std::cerr << clErrorString(err) << std::endl;
-    err = clfftSetPlanPrecision(plan, 
+    if(ret != CL_SUCCESS) std::cerr << clErrorString(ret) << std::endl;
+    assert(ret == CL_SUCCESS);
+
+    ret = clfftSetPlanPrecision(plan, 
 				precision);
-    if(err != CL_SUCCESS) std::cerr << clErrorString(err) << std::endl;
-    err = clfftSetLayout(plan, 
+    if(ret != CL_SUCCESS) std::cerr << clErrorString(ret) << std::endl;
+    assert(ret == CL_SUCCESS);
+
+    ret = clfftSetLayout(plan, 
 			 CLFFT_COMPLEX_INTERLEAVED, 
 			 CLFFT_REAL);
-    if(err != CL_SUCCESS) std::cerr << clErrorString(err) << std::endl;
-    err = clfftSetResultLocation(plan, 
+    if(ret != CL_SUCCESS) std::cerr << clErrorString(ret) << std::endl;
+    assert(ret == CL_SUCCESS);
+
+    ret = clfftSetResultLocation(plan, 
 				 CLFFT_INPLACE);
-    if(err != CL_SUCCESS) std::cerr << clErrorString(err) << std::endl;
-    err = clfftBakePlan(plan,
+    if(ret != CL_SUCCESS) std::cerr << clErrorString(ret) << std::endl;
+    assert(ret == CL_SUCCESS);
+
+    ret = clfftBakePlan(plan,
 			1, // numQueues: number of experiments 
 			&queue, // commQueueFFT
 			NULL, // Always NULL
 			NULL // Always NULL
 			);
-    if(err != CL_SUCCESS) std::cerr << clErrorString(err) << std::endl;
+    if(ret != CL_SUCCESS) std::cerr << clErrorString(ret) << std::endl;
+    assert(ret == CL_SUCCESS);
   }
 public:
   clfft1r() {
@@ -352,15 +398,16 @@ public:
   }
 
   ~clfft1r() {
-    cl_int err;
-    err = clfftDestroyPlan(&plan);
-    if(err != CL_SUCCESS) std::cerr << clErrorString(err) << std::endl;
+    cl_int ret;
+    ret = clfftDestroyPlan(&plan);
+    if(ret != CL_SUCCESS) std::cerr << clErrorString(ret) << std::endl;
+    assert(ret == CL_SUCCESS);
   }
 
   void forward(cl_mem bufX0=NULL) {
     cl_mem buf = (bufX0 != NULL) ? bufX0 : bufX;
-    cl_int err;
-    err = clfftEnqueueTransform(plan,
+    cl_int ret;
+    ret = clfftEnqueueTransform(plan,
 				CLFFT_FORWARD,
 				1,
 				&queue,
@@ -370,13 +417,14 @@ public:
 				&buf,
 				NULL,
 				NULL);
-    if(err != CL_SUCCESS) std::cerr << clErrorString(err) << std::endl;
+    if(ret != CL_SUCCESS) std::cerr << clErrorString(ret) << std::endl;
+    assert(ret == CL_SUCCESS);
   }
 
   void backward(cl_mem bufX0=NULL) {
     cl_mem buf = (bufX0 != NULL) ? bufX0 : bufX;
-    cl_int err;
-    err = clfftEnqueueTransform(plan,
+    cl_int ret;
+    ret = clfftEnqueueTransform(plan,
 				CLFFT_BACKWARD,
 				1,
 				&queue,
@@ -386,7 +434,8 @@ public:
 				&buf,
 				NULL,
 				NULL);
-    if(err != CL_SUCCESS) std::cerr << clErrorString(err) << std::endl;
+    if(ret != CL_SUCCESS) std::cerr << clErrorString(ret) << std::endl;
+    assert(ret == CL_SUCCESS);
   }
 
 };
