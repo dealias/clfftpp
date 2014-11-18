@@ -24,17 +24,17 @@ CXXFLAGS+=-Wall
 
 LDFLAGS=
 
-LDFLAGS+=-lOpenCL
 ifneq ($(strip $(OPENCL_LIB_PATH)),)
 LDFLAGS+=-L$(OPENCL_LIB_PATH)
 endif
+LDFLAGS+=-lOpenCL
 
 ifneq ($(strip $(CLFFT_LIB_PATH)),)
 LDFLAGS+=-L$(CLFFT_LIB_PATH)
 endif
 LDFLAGS+=-lclFFT
 
-all: clfft1 clfft2 clfft1r
+all: fft1 fft2 fft1r
 
 clutils.o: clutils.c clutils.h
 	g++ $(CXXFLAGS) clutils.c -c
@@ -45,22 +45,22 @@ platform.o: platform.hpp platform.cpp
 clfft.o: clfft.cpp clfft.hpp
 	g++ $(CXXFLAGS) clfft.cpp  -c 
 
-clfft1.o: clfft1.cpp utils.hpp
+fft1.o: fft1.cpp utils.hpp
 	g++ $(CXXFLAGS) $^ -c 
 
-clfft2.o: clfft2.cpp utils.hpp
+t2.o: fft2.cpp utils.hpp
 	g++ $(CXXFLAGS) $^ -c 
 
-clfft1r.o: clfft1r.cpp utils.hpp
+fft1r.o: fft1r.cpp utils.hpp
 	g++ $(CXXFLAGS) $^ -c 
 
-clfft1: clfft1.o clfft.o platform.o clutils.o 
+fft1: fft1.o clfft.o platform.o clutils.o 
 	g++ $^ $(LDFLAGS) -o $@
 
-clfft2: clfft2.o clfft.o platform.o clutils.o
+fft2: fft2.o clfft.o platform.o clutils.o
 	g++ $^ $(LDFLAGS) -o $@
 
-clfft1r: clfft1r.o clfft.o platform.o clutils.o
+fft1r: fft1r.o clfft.o platform.o clutils.o
 	g++ $^ $(LDFLAGS) -o $@
 
 
