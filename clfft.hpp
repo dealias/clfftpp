@@ -197,6 +197,7 @@ public:
 				NULL // cl_mem 	tmpBuffer 
 				);
     // FIXME: add events.
+    // FIXME: move into base class (all calls are basically the same).
     if(ret != CL_SUCCESS) std::cerr << clErrorString(ret) << std::endl;
     assert(ret == CL_SUCCESS);
   }
