@@ -106,6 +106,63 @@ public:
     assert(ret == CL_SUCCESS);
   }
 
+  void transform(clfftDirection direction, 
+		 cl_mem *inbuf0 = NULL, cl_mem *outbuf0 = NULL,
+		 cl_event *wait = NULL, cl_uint nwait = 0,
+		 cl_event *done = NULL) {
+    cl_mem *inbuf = (inbuf0 != NULL) ? inbuf0 : &bufX;
+    cl_int ret;
+    
+    ret = clfftEnqueueTransform(plan, // clfftPlanHandle 	plHandle,
+				direction,// direction
+				1,  //cl_uint 	numQueuesAndEvents,
+				&queue,
+				nwait, // cl_uint 	numWaitEvents,
+				wait, // const cl_event * 	waitEvents,
+				done, // cl_event * 	outEvents,
+				inbuf, // cl_mem * 	inputBuffers,
+				outbuf0, // cl_mem * 	outputBuffers,
+				NULL // cl_mem 	tmpBuffer 
+				);
+    // FIXME: add events.
+    // FIXME: move into base class (all calls are basically the same).
+    if(ret != CL_SUCCESS) std::cerr << clErrorString(ret) << std::endl;
+    assert(ret == CL_SUCCESS);
+  }
+  
+  virtual void forward(cl_mem *inbuf0 = NULL, cl_mem *outbuf0 = NULL,
+		       cl_event *wait = NULL, cl_uint nwait = 0,
+		       cl_event *done = NULL) {
+    transform(CLFFT_FORWARD, inbuf0, outbuf0, wait, nwait, done);
+  }
+
+  virtual void backward(cl_mem *inbuf0 = NULL, cl_mem *outbuf0 = NULL,
+		       cl_event *wait = NULL, cl_uint nwait = 0,
+		       cl_event *done = NULL) {
+    transform(CLFFT_BACKWARD, inbuf0, outbuf0, wait, nwait, done);
+  }
+
+  // virtual void forward(cl_mem bufX0=NULL) {
+  //   cl_mem buf = (bufX0 != NULL) ? bufX0 : bufX;
+  //   cl_int ret;
+  //   ret = clfftEnqueueTransform(plan, // clfftPlanHandle 	plHandle,
+  // 				CLFFT_FORWARD,// direction
+  // 				1,  //cl_uint 	numQueuesAndEvents,
+  // 				&queue,
+  // 				0, // cl_uint 	numWaitEvents,
+  // 				NULL, // const cl_event * 	waitEvents,
+  // 				NULL, // cl_event * 	outEvents,
+  // 				&buf, // cl_mem * 	inputBuffers,
+  // 				NULL, // cl_mem * 	outputBuffers,
+  // 				NULL // cl_mem 	tmpBuffer 
+  // 				);
+  //   // FIXME: add events.
+  //   // FIXME: move into base class (all calls are basically the same).
+  //   if(ret != CL_SUCCESS) std::cerr << clErrorString(ret) << std::endl;
+  //   assert(ret == CL_SUCCESS);
+  // }
+
+
 };
 
 class clfft1 : public clfft_base
@@ -182,44 +239,6 @@ public:
     assert(ret == CL_SUCCESS);
   }
 
-  void forward(cl_mem bufX0=NULL) {
-    cl_mem buf = (bufX0 != NULL) ? bufX0 : bufX;
-    cl_int ret;
-    ret = clfftEnqueueTransform(plan, // clfftPlanHandle 	plHandle,
-				CLFFT_FORWARD,// direction
-				1,  //cl_uint 	numQueuesAndEvents,
-				&queue,
-				0, // cl_uint 	numWaitEvents,
-				NULL, // const cl_event * 	waitEvents,
-				NULL, // cl_event * 	outEvents,
-				&buf, // cl_mem * 	inputBuffers,
-				NULL, // cl_mem * 	outputBuffers,
-				NULL // cl_mem 	tmpBuffer 
-				);
-    // FIXME: add events.
-    // FIXME: move into base class (all calls are basically the same).
-    if(ret != CL_SUCCESS) std::cerr << clErrorString(ret) << std::endl;
-    assert(ret == CL_SUCCESS);
-  }
-
-  void backward(cl_mem bufX0=NULL) {
-    cl_mem buf = (bufX0 != NULL) ? bufX0 : bufX;
-    cl_int ret;
-    ret = clfftEnqueueTransform(plan,
-				CLFFT_BACKWARD,
-				1,
-				&queue,
-				0,
-				NULL,
-				NULL,
-				&buf,
-				NULL,
-				NULL);
-    // FIXME: add events.
-    if(ret != CL_SUCCESS) std::cerr << clErrorString(ret) << std::endl;
-    assert(ret == CL_SUCCESS);
-  }
-
 };
 
 class clfft2 : public clfft_base
@@ -270,6 +289,7 @@ private:
     if(ret != CL_SUCCESS) std::cerr << clErrorString(ret) << std::endl;
     assert(ret == CL_SUCCESS);
   }
+
 public:
   clfft2() {
     ctx = NULL;
@@ -296,39 +316,6 @@ public:
     if(ret != CL_SUCCESS) std::cerr << clErrorString(ret) << std::endl;
   }
 
-  void forward(cl_mem bufX0=NULL) {
-    cl_mem buf = (bufX0 != NULL) ? bufX0 : bufX;
-    cl_int ret;
-    ret = clfftEnqueueTransform(plan,
-    				CLFFT_FORWARD,
-    				1,
-    				&queue,
-    				0,
-    				NULL,
-    				NULL,
-    				&buf,
-    				NULL,
-    				NULL);
-    if(ret != CL_SUCCESS) std::cerr << clErrorString(ret) << std::endl;
-    assert(ret == CL_SUCCESS);
-  }
-
-  void backward(cl_mem bufX0=NULL) {
-    cl_mem buf = (bufX0 != NULL) ? bufX0 : bufX;
-    cl_int ret;
-    ret = clfftEnqueueTransform(plan,
-    				CLFFT_BACKWARD,
-    				1,
-    				&queue,
-    				0,
-    				NULL,
-    				NULL,
-    				&buf,
-    				NULL,
-    				NULL);
-    if(ret != CL_SUCCESS) std::cerr << clErrorString(ret) << std::endl;
-    assert(ret == CL_SUCCESS);
-  }
 };
 
 
@@ -405,38 +392,5 @@ public:
     assert(ret == CL_SUCCESS);
   }
 
-  void forward(cl_mem bufX0=NULL) {
-    cl_mem buf = (bufX0 != NULL) ? bufX0 : bufX;
-    cl_int ret;
-    ret = clfftEnqueueTransform(plan,
-				CLFFT_FORWARD,
-				1,
-				&queue,
-				0,
-				NULL,
-				NULL,
-				&buf,
-				NULL,
-				NULL);
-    if(ret != CL_SUCCESS) std::cerr << clErrorString(ret) << std::endl;
-    assert(ret == CL_SUCCESS);
-  }
-
-  void backward(cl_mem bufX0=NULL) {
-    cl_mem buf = (bufX0 != NULL) ? bufX0 : bufX;
-    cl_int ret;
-    ret = clfftEnqueueTransform(plan,
-				CLFFT_BACKWARD,
-				1,
-				&queue,
-				0,
-				NULL,
-				NULL,
-				&buf,
-				NULL,
-				NULL);
-    if(ret != CL_SUCCESS) std::cerr << clErrorString(ret) << std::endl;
-    assert(ret == CL_SUCCESS);
-  }
 
 };
