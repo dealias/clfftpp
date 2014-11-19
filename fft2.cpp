@@ -6,7 +6,7 @@
 #include <platform.hpp>
 #include <clfft.hpp>
 
-#include<vector>
+#include <vector>
 
 #include <getopt.h>
 #include <utils.h>
@@ -178,7 +178,7 @@ int main(int argc, char* argv[]) {
 				sizeof(time_end), 
 				&time_end, NULL);
       }
-      T[i] = 1e-6 * (time_end - time_start);
+      T[i] = 1e-6 * (time_end - time_start); // milliseconds
     }
     if(time_copy) 
       timings("fft with copy",nx,T,N,stats);
