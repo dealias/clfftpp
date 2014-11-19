@@ -379,6 +379,8 @@ private:
 			 CLFFT_COMPLEX_INTERLEAVED, 
 			 CLFFT_REAL);
     if(ret != CL_SUCCESS) std::cerr << clErrorString(ret) << std::endl;
+    std::cout << ret << std::endl;
+    // FIXME: these are clfft error codes, not opencl. :(
     assert(ret == CL_SUCCESS);
 
     ret = clfftSetResultLocation(plan, 
