@@ -136,45 +136,46 @@ int main(int argc, char* argv[]) {
   else 
     std::cout << X[0] << std::endl;
 
-  std::cout << "\nTimings:" << std::endl;
-  double *T=new double[N];
+  if(N > 0) {
+    std::cout << "\nTimings:" << std::endl;
+    double *T=new double[N];
 
-  cl_ulong time_start, time_end;
-  for(int i=0; i < N; ++i) {
-    initR(X,nx);
-    seconds();
-    fft.ram_to_cl(X, &r2c_event);
-    fft.forward(1, &r2c_event, &forward_event);
-    fft.cl_to_ram(X, 1, &forward_event, &c2r_event);
-    clWaitForEvents(1, &c2r_event);
+    cl_ulong time_start, time_end;
+    for(int i=0; i < N; ++i) {
+      initR(X,nx);
+      seconds();
+      fft.ram_to_cl(X, &r2c_event);
+      fft.forward(1, &r2c_event, &forward_event);
+      fft.cl_to_ram(X, 1, &forward_event, &c2r_event);
+      clWaitForEvents(1, &c2r_event);
 
-    if(time_copy) {
-      clGetEventProfilingInfo(r2c_event,
-			      CL_PROFILING_COMMAND_START,
-			      sizeof(time_start),
-			      &time_start, NULL);
-      clGetEventProfilingInfo(c2r_event,
-			      CL_PROFILING_COMMAND_END,
-			      sizeof(time_end), 
-			      &time_end, NULL);
-    } else {
-      clGetEventProfilingInfo(forward_event,
-			      CL_PROFILING_COMMAND_START,
-			      sizeof(time_start),
-			      &time_start, NULL);
-      clGetEventProfilingInfo(forward_event,
-			      CL_PROFILING_COMMAND_END,
-			      sizeof(time_end), 
-			      &time_end, NULL);
+      if(time_copy) {
+	clGetEventProfilingInfo(r2c_event,
+				CL_PROFILING_COMMAND_START,
+				sizeof(time_start),
+				&time_start, NULL);
+	clGetEventProfilingInfo(c2r_event,
+				CL_PROFILING_COMMAND_END,
+				sizeof(time_end), 
+				&time_end, NULL);
+      } else {
+	clGetEventProfilingInfo(forward_event,
+				CL_PROFILING_COMMAND_START,
+				sizeof(time_start),
+				&time_start, NULL);
+	clGetEventProfilingInfo(forward_event,
+				CL_PROFILING_COMMAND_END,
+				sizeof(time_end), 
+				&time_end, NULL);
+      }
+      T[i] = 1e-6 * (time_end - time_start);
     }
-    T[i] = 1e-6 * (time_end - time_start);
+    if(time_copy) 
+      timings("fft with copy",nx,T,N,stats);
+    else 
+      timings("fft without copy",nx,T,N,stats);
+    delete[] T;
   }
-  if(time_copy) 
-    timings("fft with copy",nx,T,N,stats);
-  else 
-    timings("fft without copy",nx,T,N,stats);
-  delete[] T;
-
   free(X);
 
   /* Release OpenCL working objects. */
