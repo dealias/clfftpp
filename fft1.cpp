@@ -163,7 +163,7 @@ int main(int argc, char* argv[]) {
 			      sizeof(time_end), 
 			      &time_end, NULL);
     }
-    T[i] = 1e-9 * (time_end - time_start);
+    T[i] = 1e-6 * (time_end - time_start);
   }
   if(time_copy) 
     timings("fft with copy",nx,T,N,stats);

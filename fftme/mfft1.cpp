@@ -246,7 +246,7 @@ int main(int argc, char* argv[])
 				CL_PROFILING_COMMAND_END,
 				sizeof(time_end), 
 				&time_end, NULL);
-	T[i] = 1e-9 * (time_end - time_start);
+	T[i] = 1e-6 * (time_end - time_start);
 	fft.read_buffer(f);
       }
       std::cout << std::endl;
@@ -287,7 +287,6 @@ int main(int argc, char* argv[])
 	seconds();
 	fft.forward_g(&forward_event);
 	clWaitForEvents(1, &forward_event);
-	T[i] = 1e-9 * (time_end - time_start);
 	clGetEventProfilingInfo(forward_event,
 				CL_PROFILING_COMMAND_START,
 				sizeof(time_start),
@@ -296,7 +295,7 @@ int main(int argc, char* argv[])
 				CL_PROFILING_COMMAND_END,
 				sizeof(time_end), 
 				&time_end, NULL);
-	T[i] = 1e-9 * (time_end - time_start);
+	T[i] = 1e-6 * (time_end - time_start);
 	fft.read_buffer(f);
       }
       std::cout << std::endl;
