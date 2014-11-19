@@ -65,11 +65,16 @@ void show_devices()
     std::cout << "platform "<< i <<": " << buffer << std::endl;
     
     for(unsigned int j=0; j < D[i].size(); ++j) {
-      ret = clGetDeviceInfo(D[i][0],
+      /*ret = clGetDeviceInfo(D[i][0],
 			    CL_DEVICE_NAME, //cl_device_info param_name,
 			    sizeof(buffer), 
 			    buffer, 
-			    NULL);
+			    NULL);*/
+      ret = clGetDeviceInfo(D[i][j],
+                            CL_DEVICE_NAME, //cl_device_info param_name,
+                            sizeof(buffer), 
+                            buffer, 
+                            NULL);
       std::cout << "\tdevice " << j << ": " << buffer << std::endl;
      }
   }
