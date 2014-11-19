@@ -75,7 +75,22 @@ void show_devices()
                             sizeof(buffer), 
                             buffer, 
                             NULL);
-      std::cout << "\tdevice " << j << ": " << buffer << std::endl;
+
+      std::cout << "\tdevice " << j << " name : " << buffer << std::endl;
+      ret = clGetDeviceInfo(D[i][j],
+                            CL_DEVICE_PROFILE, //cl_device_info param_name,
+                            sizeof(buffer), 
+                            buffer, 
+                            NULL);
+      std::cout << "\tdevice " << j << " profile: " << buffer << std::endl;
+
+      cl_device_type dtype;
+      ret = clGetDeviceInfo(D[i][j],
+                            CL_DEVICE_TYPE, //cl_device_info param_name,
+                            sizeof(dtype), 
+                            &dtype, 
+                            NULL);
+      std::cout << "\tdevice " << j << " type: " << dtype << std::endl;
      }
   }
   if(ret > 0) 
