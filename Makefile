@@ -65,4 +65,4 @@ fft1r: fft1r.o clfft.o platform.o clutils.o
 
 
 clean:
-	rm -f *.o clfft1 clfft2 clfft1r
+	rm -f *.o *.gch fft1 fft2 fft1r
