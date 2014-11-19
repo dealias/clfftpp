@@ -83,7 +83,7 @@ void show_devices()
                             sizeof(dtype), 
                             &dtype, 
                             NULL);
-      std::cout << "\tdevice " << j << " type: " << dtype << std::endl;
+      std::cout << "\t         type: " << dtype << std::endl;
      }
   }
   if(ret > 0) 
