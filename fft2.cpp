@@ -111,14 +111,14 @@ int main(int argc, char* argv[]) {
   cl_platform_id platform = plat_ids[devnum];
 
   cl_context ctx = create_context(platform, device);
-  cl_command_queue queue = create_queue(ctx, device);
+  cl_command_queue queue = create_queue(ctx, device,CL_QUEUE_PROFILING_ENABLE);
   
   clfft2 fft(nx,ny,queue,ctx);
   fft.create_clbuf();
 
   //  typedef double real;
 
-  REAL *X = fft.create_rambuf();
+  double *X = fft.create_rambuf();
 
   std::cout << "\nInput:" << std::endl;
   init(X,nx,ny);
@@ -127,50 +127,65 @@ int main(int argc, char* argv[]) {
   else 
     std::cout << X[0] << std::endl;
 
-  fft.ram_to_cl(X);
-  fft.forward();
-  fft.cl_to_ram(X);
+  cl_event r2c_event, c2r_event, forward_event, backward_event;
+
+  fft.ram_to_cl(X, &r2c_event);
+  fft.forward(1, &r2c_event, &forward_event);
+  fft.cl_to_ram(X, 1, &forward_event, &c2r_event);
+  clWaitForEvents(1, &c2r_event);
   std::cout << "\nTransformed:" << std::endl;
   if(nx * ny <= 100) 
     show(X,nx,ny);
   else 
     std::cout << X[0] << std::endl;
 
-  fft.ram_to_cl(X);
-  fft.backward();
-  fft.cl_to_ram(X);
+  fft.backward(1, &forward_event, &backward_event);
+  fft.cl_to_ram(X, 1, &backward_event, &c2r_event);
+  clWaitForEvents(1, &c2r_event);
   std::cout << "\nTransformed back:" << std::endl;
   if(nx * ny <= 100) 
     show(X,nx,ny);
   else 
     std::cout << X[0] << std::endl;
 
-
-  std::cout << "\nTimings:" << std::endl;
   double *T=new double[N];
-  if(time_copy) {
-    for(int i=0; i < N; ++i) {
-      init(X,nx,ny);
-      seconds();
-      fft.ram_to_cl(X);
-      fft.forward();
-      fft.wait();
-      fft.cl_to_ram(X);
-      T[i]=seconds();
+  
+  cl_ulong time_start, time_end;
+  for(int i=0; i < N; ++i) {
+    init(X,nx,ny);
+    seconds();
+    fft.ram_to_cl(X, &r2c_event);
+    fft.forward(1, &r2c_event, &forward_event);
+    fft.cl_to_ram(X, 1, &forward_event, &c2r_event);
+    clWaitForEvents(1, &c2r_event);
+
+    if(time_copy) {
+      clGetEventProfilingInfo(r2c_event,
+			      CL_PROFILING_COMMAND_START,
+			      sizeof(time_start),
+			      &time_start, NULL);
+      clGetEventProfilingInfo(c2r_event,
+			      CL_PROFILING_COMMAND_END,
+			      sizeof(time_end), 
+			      &time_end, NULL);
+    } else {
+      clGetEventProfilingInfo(forward_event,
+    			      CL_PROFILING_COMMAND_START,
+    			      sizeof(time_start),
+    			      &time_start, NULL);
+      clGetEventProfilingInfo(forward_event,
+    			      CL_PROFILING_COMMAND_END,
+    			      sizeof(time_end), 
+    			      &time_end, NULL);
     }
-    timings("fft with copy",nx,T,N,stats);
-  } else {
-    for(int i=0; i < N; ++i) {
-      init(X,nx,ny);
-      seconds();
-      fft.ram_to_cl(X);
-      fft.forward();
-      fft.wait();
-      fft.cl_to_ram(X);
-      T[i]=seconds();
-    }
-    timings("fft without copy",nx,T,N,stats);
+    T[i] = 1e-9 * (time_end - time_start);
   }
+  if(time_copy) 
+    timings("fft with copy",nx,T,N,stats);
+  else 
+    timings("fft without copy",nx,T,N,stats);
+  delete[] T;
+
   free(X);
 
   /* Release OpenCL working objects. */

@@ -5,8 +5,6 @@
 
 #include <assert.h>
 
-typedef float REAL;
-
 void clfft_setup();
 
 class clfft_base
@@ -26,8 +24,8 @@ public:
     if(count_zero == 0)
       clfft_setup();
     ++count_zero;
-    //precision=CLFFT_DOUBLE;
-    precision=CLFFT_SINGLE;
+    precision=CLFFT_DOUBLE;
+    //precision=CLFFT_SINGLE;
   }
 
   ~clfft_base(){
@@ -48,8 +46,8 @@ public:
   }
 
 
-  REAL * create_rambuf() {
-    return new REAL[buf_size];
+  double * create_rambuf() {
+    return new double[buf_size];
   }
  
   cl_mem create_clbuf() {
@@ -64,9 +62,9 @@ public:
     return bufX;
   }
 
-  void cl_to_ram(REAL *X, cl_mem bufX0=NULL, 
-		 const cl_uint nwait=0,
-		 const cl_event *wait=NULL, cl_event *event=NULL) {
+  void cl_to_ram(double *X, cl_mem bufX0, 
+		 const cl_uint nwait,
+		 const cl_event *wait, cl_event *event) {
     cl_mem buf = (bufX0 != NULL) ? bufX0 : bufX;
     cl_int ret;
     ret = clEnqueueReadBuffer(queue,
@@ -82,9 +80,29 @@ public:
     assert(ret == CL_SUCCESS);
   }
 
-  void ram_to_cl(REAL *X, cl_mem bufX0=NULL, 
-		 const cl_uint nwait=0,
-		 const cl_event *wait=NULL, cl_event *event=NULL) {
+  void cl_to_ram(double *X) {
+    cl_to_ram(X, NULL, 0, NULL, NULL);
+  }
+  
+  void cl_to_ram(double *X,
+		 const cl_uint nwait,
+		 const cl_event *wait) {
+    cl_to_ram(X, NULL, nwait, wait, NULL);
+  }
+  
+  void cl_to_ram(double *X, cl_event *event) {
+    cl_to_ram(X, NULL, 0, NULL, event);
+  }
+  
+  void cl_to_ram(double *X,
+		 const cl_uint nwait,
+		 const cl_event *wait, cl_event *event) {
+    cl_to_ram(X, NULL, nwait, wait, event);
+  }
+  
+  void ram_to_cl(double *X, cl_mem bufX0, 
+		 const cl_uint nwait,
+		 const cl_event *wait, cl_event *event) {
     cl_mem buf = (bufX0 != NULL) ? bufX0 : bufX;
     cl_int ret;
     ret = clEnqueueWriteBuffer(queue,
@@ -100,7 +118,32 @@ public:
     assert(ret == CL_SUCCESS);
   }
 
-  void wait() {
+  // with no events
+  void ram_to_cl(double *X) {
+    ram_to_cl(X, NULL, 0, NULL, NULL);
+  }
+
+  // with event
+  void ram_to_cl(double *X,  
+		 cl_event *event) {
+    ram_to_cl(X, NULL, 0, NULL, event);
+  }
+
+  // with wait event(s)
+  void ram_to_cl(double *X,  
+		 const cl_uint nwait,
+		 const cl_event *wait) {
+    ram_to_cl(X, NULL, nwait, wait, NULL);
+  }
+
+  // with wait event(s) and new event
+  void ram_to_cl(double *X,  
+		 const cl_uint nwait,  const cl_event *wait, 
+		 cl_event *event) {
+    ram_to_cl(X, NULL, nwait, wait, event);
+  }
+
+  void finish() {
     cl_int ret = clFinish(queue);
     if(ret != CL_SUCCESS) std::cerr << clErrorString(ret) << std::endl;
     assert(ret == CL_SUCCESS);
@@ -108,7 +151,7 @@ public:
 
   void transform(clfftDirection direction, 
 		 cl_mem *inbuf0 = NULL, cl_mem *outbuf0 = NULL,
-		 cl_event *wait = NULL, cl_uint nwait = 0,
+		 cl_uint nwait = 0, cl_event *wait = NULL, 
 		 cl_event *done = NULL) {
     cl_mem *inbuf = (inbuf0 != NULL) ? inbuf0 : &bufX;
     cl_int ret;
@@ -124,45 +167,30 @@ public:
 				outbuf0, // cl_mem * 	outputBuffers,
 				NULL // cl_mem 	tmpBuffer 
 				);
-    // FIXME: add events.
-    // FIXME: move into base class (all calls are basically the same).
     if(ret != CL_SUCCESS) std::cerr << clErrorString(ret) << std::endl;
     assert(ret == CL_SUCCESS);
   }
   
-  virtual void forward(cl_mem *inbuf0 = NULL, cl_mem *outbuf0 = NULL,
-		       cl_event *wait = NULL, cl_uint nwait = 0,
+  void forward(cl_mem *inbuf0 = NULL, cl_mem *outbuf0 = NULL,
+		       cl_uint nwait = 0, cl_event *wait = NULL, 
 		       cl_event *done = NULL) {
-    transform(CLFFT_FORWARD, inbuf0, outbuf0, wait, nwait, done);
+    transform(CLFFT_FORWARD, inbuf0, outbuf0, nwait, wait, done);
   }
 
-  virtual void backward(cl_mem *inbuf0 = NULL, cl_mem *outbuf0 = NULL,
-		       cl_event *wait = NULL, cl_uint nwait = 0,
-		       cl_event *done = NULL) {
-    transform(CLFFT_BACKWARD, inbuf0, outbuf0, wait, nwait, done);
+  void forward(cl_uint nwait, cl_event *wait, cl_event *done) {
+    forward(NULL, NULL, nwait, wait, done);
   }
-
-  // virtual void forward(cl_mem bufX0=NULL) {
-  //   cl_mem buf = (bufX0 != NULL) ? bufX0 : bufX;
-  //   cl_int ret;
-  //   ret = clfftEnqueueTransform(plan, // clfftPlanHandle 	plHandle,
-  // 				CLFFT_FORWARD,// direction
-  // 				1,  //cl_uint 	numQueuesAndEvents,
-  // 				&queue,
-  // 				0, // cl_uint 	numWaitEvents,
-  // 				NULL, // const cl_event * 	waitEvents,
-  // 				NULL, // cl_event * 	outEvents,
-  // 				&buf, // cl_mem * 	inputBuffers,
-  // 				NULL, // cl_mem * 	outputBuffers,
-  // 				NULL // cl_mem 	tmpBuffer 
-  // 				);
-  //   // FIXME: add events.
-  //   // FIXME: move into base class (all calls are basically the same).
-  //   if(ret != CL_SUCCESS) std::cerr << clErrorString(ret) << std::endl;
-  //   assert(ret == CL_SUCCESS);
-  // }
-
-
+  
+  void backward(cl_mem *inbuf0 = NULL, cl_mem *outbuf0 = NULL,
+		       cl_uint nwait = 0, cl_event *wait = NULL, 
+		       cl_event *done = NULL) {
+    transform(CLFFT_BACKWARD, inbuf0, outbuf0, nwait, wait, done);
+  }
+  
+  void backward(cl_uint nwait, cl_event *wait, cl_event *done) {
+    backward(NULL, NULL, nwait, wait, done);
+  }
+  
 };
 
 class clfft1 : public clfft_base
@@ -171,7 +199,7 @@ private:
   unsigned nx; // size of problem
 
   void set_buf_size() {
-    buf_size = nx * 2 * sizeof(REAL); // TODO: variable precision
+    buf_size = nx * 2 * sizeof(double); // TODO: variable precision
   }
 
   void setup() {
@@ -247,7 +275,7 @@ private:
   unsigned nx, ny; // size of problem
 
   void set_buf_size() {
-    buf_size = nx *ny * 2 * sizeof(REAL); // TODO: variable precision
+    buf_size = nx *ny * 2 * sizeof(double); // TODO: variable precision
   }
 
   void setup() {
@@ -325,7 +353,7 @@ private:
   unsigned nx; // size of problem
 
   void set_buf_size() {
-    buf_size = (nx + 1) * 2 * sizeof(REAL); // TODO: variable precision
+    buf_size = (nx + 1) * 2 * sizeof(double); // TODO: variable precision
   }
 
   void setup() {
