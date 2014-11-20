@@ -19,12 +19,49 @@ protected:
   int buf_size;
   clfftPrecision precision;
 
+  const char* clfft_errorstring(const cl_int err) {
+    const char* errstring = NULL;
+    
+    errstring = clErrorString(err);
+
+    switch (err) {
+    case CL_SUCCESS:
+      errstring = "Success";
+      break;
+    case CLFFT_BUGCHECK:
+      errstring = "CLFFT_BUGCHECK";
+      break;
+    case CLFFT_NOTIMPLEMENTED:
+      errstring = "CLFFT_NOTIMPLEMENTED";
+      break;
+    case CLFFT_TRANSPOSED_NOTIMPLEMENTED:
+      errstring = "CLFFT_TRANSPOSED_NOTIMPLEMENTED";
+      break;
+    case CLFFT_FILE_NOT_FOUND:
+      errstring = "CLFFT_FILE_NOT_FOUND:";
+      break;
+    case CLFFT_FILE_CREATE_FAILURE:
+      errstring = "CLFFT_FILE_CREATE_FAILURE";
+      break;
+    case CLFFT_VERSION_MISMATCH:
+      errstring = "CLFFT_VERSION_MISMATCH";
+      break;
+    case CLFFT_INVALID_PLAN:
+      errstring = "CLFFT_INVALID_PLAN";
+      break;
+    case CLFFT_DEVICE_NO_DOUBLE: 
+      errstring = "CLFFT_DEVICE_NO_DOUBLE";
+      break;
+    }
+    return errstring;
+  }
+
 public:
   clfft_base(){
     if(count_zero == 0)
       clfft_setup();
     ++count_zero;
-    precision=CLFFT_DOUBLE;
+    precision = CLFFT_DOUBLE;
     //precision=CLFFT_SINGLE;
   }
 
@@ -38,10 +75,10 @@ public:
     cl_int ret;  
     clfftSetupData fftSetup;
     ret = clfftInitSetupData(&fftSetup);
-    if(ret != CL_SUCCESS) std::cerr << clErrorString(ret) << std::endl;
+    if(ret != CL_SUCCESS) std::cerr << clfft_errorstring(ret) << std::endl;
     assert(ret == CL_SUCCESS);
     ret = clfftSetup(&fftSetup);
-    if(ret != CL_SUCCESS) std::cerr << clErrorString(ret) << std::endl;
+    if(ret != CL_SUCCESS) std::cerr << clfft_errorstring(ret) << std::endl;
     assert(ret == CL_SUCCESS);
   }
 
@@ -167,7 +204,7 @@ public:
 				outbuf0, // cl_mem * 	outputBuffers,
 				NULL // cl_mem 	tmpBuffer 
 				);
-    if(ret != CL_SUCCESS) std::cerr << clErrorString(ret) << std::endl;
+    if(ret != CL_SUCCESS) std::cerr << clfft_errorstring(ret) << std::endl;
     assert(ret == CL_SUCCESS);
   }
   
@@ -213,23 +250,23 @@ private:
 				 ctx, 
 				 dim, 
 				 clLengths);
-    if(ret != CL_SUCCESS) std::cerr << clErrorString(ret) << std::endl;
+    if(ret != CL_SUCCESS) std::cerr << clfft_errorstring(ret) << std::endl;
     assert(ret == CL_SUCCESS);
 
     ret = clfftSetPlanPrecision(plan, 
 				precision);
-    if(ret != CL_SUCCESS) std::cerr << clErrorString(ret) << std::endl;
+    if(ret != CL_SUCCESS) std::cerr << clfft_errorstring(ret) << std::endl;
     assert(ret == CL_SUCCESS);
 
     ret = clfftSetLayout(plan,
 			 CLFFT_COMPLEX_INTERLEAVED, 
 			 CLFFT_COMPLEX_INTERLEAVED);
-    if(ret != CL_SUCCESS) std::cerr << clErrorString(ret) << std::endl;
+    if(ret != CL_SUCCESS) std::cerr << clfft_errorstring(ret) << std::endl;
     assert(ret == CL_SUCCESS);
 
     ret = clfftSetResultLocation(plan, 
 				 CLFFT_INPLACE);
-    if(ret != CL_SUCCESS) std::cerr << clErrorString(ret) << std::endl;
+    if(ret != CL_SUCCESS) std::cerr << clfft_errorstring(ret) << std::endl;
     assert(ret == CL_SUCCESS);
 
     ret = clfftBakePlan(plan,
@@ -238,7 +275,7 @@ private:
 			NULL, // Always NULL
 			NULL // Always NULL
 			);
-    if(ret != CL_SUCCESS) std::cerr << clErrorString(ret) << std::endl;
+    if(ret != CL_SUCCESS) std::cerr << clfft_errorstring(ret) << std::endl;
     assert(ret == CL_SUCCESS);
   }
 
@@ -289,23 +326,23 @@ private:
 				 ctx, 
 				 dim, 
 				 clLengths);
-    if(ret != CL_SUCCESS) std::cerr << clErrorString(ret) << std::endl;
+    if(ret != CL_SUCCESS) std::cerr << clfft_errorstring(ret) << std::endl;
     assert(ret == CL_SUCCESS);
 
     ret = clfftSetPlanPrecision(plan, 
 				precision);
-    if(ret != CL_SUCCESS) std::cerr << clErrorString(ret) << std::endl;
+    if(ret != CL_SUCCESS) std::cerr << clfft_errorstring(ret) << std::endl;
     assert(ret == CL_SUCCESS);
 
     ret = clfftSetLayout(plan, 
 			 CLFFT_COMPLEX_INTERLEAVED, 
 			 CLFFT_COMPLEX_INTERLEAVED);
-    if(ret != CL_SUCCESS) std::cerr << clErrorString(ret) << std::endl;
+    if(ret != CL_SUCCESS) std::cerr << clfft_errorstring(ret) << std::endl;
     assert(ret == CL_SUCCESS);
 
     ret = clfftSetResultLocation(plan, 
 				 CLFFT_INPLACE);
-    if(ret != CL_SUCCESS) std::cerr << clErrorString(ret) << std::endl;
+    if(ret != CL_SUCCESS) std::cerr << clfft_errorstring(ret) << std::endl;
     assert(ret == CL_SUCCESS);
 
     ret = clfftBakePlan(plan,
@@ -314,7 +351,7 @@ private:
 			NULL, // Always NULL
 			NULL // Always NULL
 			);
-    if(ret != CL_SUCCESS) std::cerr << clErrorString(ret) << std::endl;
+    if(ret != CL_SUCCESS) std::cerr << clfft_errorstring(ret) << std::endl;
     assert(ret == CL_SUCCESS);
   }
 
@@ -357,6 +394,7 @@ private:
   }
 
   void setup() {
+    // FIXME: does this have to be out-of-place?
     set_buf_size();
 
     clfftDim dim = CLFFT_1D;
@@ -367,25 +405,23 @@ private:
 				 ctx, 
 				 dim, 
 				 clLengths);
-    if(ret != CL_SUCCESS) std::cerr << clErrorString(ret) << std::endl;
+    if(ret != CL_SUCCESS) std::cerr << clfft_errorstring(ret) << std::endl;
     assert(ret == CL_SUCCESS);
 
     ret = clfftSetPlanPrecision(plan, 
 				precision);
-    if(ret != CL_SUCCESS) std::cerr << clErrorString(ret) << std::endl;
+    if(ret != CL_SUCCESS) std::cerr << clfft_errorstring(ret) << std::endl;
     assert(ret == CL_SUCCESS);
 
     ret = clfftSetLayout(plan, 
 			 CLFFT_COMPLEX_INTERLEAVED, 
 			 CLFFT_REAL);
-    if(ret != CL_SUCCESS) std::cerr << clErrorString(ret) << std::endl;
-    std::cout << ret << std::endl;
-    // FIXME: these are clfft error codes, not opencl. :(
+    if(ret != CL_SUCCESS) std::cerr << clfft_errorstring(ret) << std::endl;
     assert(ret == CL_SUCCESS);
 
     ret = clfftSetResultLocation(plan, 
 				 CLFFT_INPLACE);
-    if(ret != CL_SUCCESS) std::cerr << clErrorString(ret) << std::endl;
+    if(ret != CL_SUCCESS) std::cerr << clfft_errorstring(ret) << std::endl;
     assert(ret == CL_SUCCESS);
 
     ret = clfftBakePlan(plan,
@@ -394,7 +430,7 @@ private:
 			NULL, // Always NULL
 			NULL // Always NULL
 			);
-    if(ret != CL_SUCCESS) std::cerr << clErrorString(ret) << std::endl;
+    if(ret != CL_SUCCESS) std::cerr << clfft_errorstring(ret) << std::endl;
     assert(ret == CL_SUCCESS);
   }
 public:
@@ -418,7 +454,7 @@ public:
   ~clfft1r() {
     cl_int ret;
     ret = clfftDestroyPlan(&plan);
-    if(ret != CL_SUCCESS) std::cerr << clErrorString(ret) << std::endl;
+    if(ret != CL_SUCCESS) std::cerr << clfft_errorstring(ret) << std::endl;
     assert(ret == CL_SUCCESS);
   }
 
