@@ -190,7 +190,7 @@ int main(int argc, char* argv[])
 
   
   Array::array2<Complex> F(nx,ny,sizeof(Complex));
-  if(do_fftw) {
+  if(do_fftw && N == 0) {
     std::cout << "\nOutput of mfft1d using FFTW++:" << std::endl; 
     
     fftwpp::mfft1d Forward(ny,-1,nx,stride,dist);
@@ -216,20 +216,21 @@ int main(int argc, char* argv[])
     fft.alloc_rw();
     fft.set_args();
 
-    std::cout << "\nInput:" << std::endl;
-    init(nx,ny,f);
-    show(nx,ny,f,outlimit);
-    fft.write_buffer(f);
-    fft.forward_g();
-    fft.finish();
-    fft.read_buffer(f);
-    std::cout << "\nOutput:" << std::endl;
-    show(nx,ny,f,outlimit);
+    if (N == 0) {
+      std::cout << "\nInput:" << std::endl;
+      init(nx,ny,f);
+      show(nx,ny,f,outlimit);
+      fft.write_buffer(f);
+      fft.forward_g();
+      fft.finish();
+      fft.read_buffer(f);
+      std::cout << "\nOutput:" << std::endl;
+      show(nx,ny,f,outlimit);
 
-    if(do_fftw)
-      std::cout << "\nL2 difference:  " << l2error(F,f,nx,ny) << std::endl;
+      if(do_fftw)
+	std::cout << "\nL2 difference:  " << l2error(F,f,nx,ny) << std::endl;
 
-    if(N > 0) {
+    } else {
       cl_event forward_event;
       cl_ulong time_start, time_end;
       double *T=new double[N];
@@ -246,7 +247,7 @@ int main(int argc, char* argv[])
 				CL_PROFILING_COMMAND_END,
 				sizeof(time_end), 
 				&time_end, NULL);
-	T[i] = 1e-6 * (time_end - time_start);
+	T[i] = 1e-9 * (time_end - time_start);
 	fft.read_buffer(f);
       }
       std::cout << std::endl;
@@ -263,21 +264,22 @@ int main(int argc, char* argv[])
     fft.alloc_rw();
     fft.set_args();
 
-    std::cout << "\nInput:" << std::endl;
-    init(nx,ny,f);
-    show(nx,ny,f,outlimit);
-    fft.write_buffer(f);
-    fft.forward_g();
-    fft.finish();
-    fft.read_buffer(f);
-    std::cout << "\nOutput:" << std::endl;
-    show(nx,ny,f,outlimit);
+    if(N == 0) {
+      std::cout << "\nInput:" << std::endl;
+      init(nx,ny,f);
+      show(nx,ny,f,outlimit);
+      fft.write_buffer(f);
+      fft.forward_g();
+      fft.finish();
+      fft.read_buffer(f);
+      std::cout << "\nOutput:" << std::endl;
+      show(nx,ny,f,outlimit);
 
 
-    if(do_fftw)
-      std::cout << "\nL2 difference:  " << l2error(F,f,nx,ny) << std::endl;
+      if(do_fftw)
+	std::cout << "\nL2 difference:  " << l2error(F,f,nx,ny) << std::endl;
     
-    if(N > 0) {
+    } else {
       cl_event forward_event;
       cl_ulong time_start, time_end;
       double *T=new double[N];
@@ -285,7 +287,7 @@ int main(int argc, char* argv[])
 	init(nx,ny,f);
 	fft.write_buffer(f);
 	seconds();
-	fft.forward_g(&forward_event);
+	fft.forward(&forward_event);
 	clWaitForEvents(1, &forward_event);
 	clGetEventProfilingInfo(forward_event,
 				CL_PROFILING_COMMAND_START,

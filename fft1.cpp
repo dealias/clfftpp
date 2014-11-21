@@ -95,7 +95,7 @@ int main(int argc, char* argv[]) {
 
   std::vector<cl_platform_id> plat_ids;
   find_platform_ids(plat_ids);
-  cl_platform_id platform = plat_ids[devnum];
+  cl_platform_id platform = plat_ids[platnum];
 
   cl_context ctx = create_context(platform, device);
   cl_command_queue queue = create_queue(ctx, device,CL_QUEUE_PROFILING_ENABLE);
