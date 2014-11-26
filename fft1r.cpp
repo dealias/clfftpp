@@ -37,22 +37,15 @@ void initR(T *X, int n)
 }
 
 int main(int argc, char* argv[]) {
-
   show_devices();
 
   int platnum=0;
   int devnum=0;
-
   bool time_copy=false;
-
-  int nx = 1024;
-  //nx=262144;
-
+  int nx = 4;
   int N=10;
-
   unsigned int stats=0; // Type of statistics used in timing test.
 
-  
 #ifdef __GNUC__	
   optind=0;
 #endif	
@@ -101,7 +94,7 @@ int main(int argc, char* argv[]) {
   cl_context ctx = create_context(platform, device);
   cl_command_queue queue = create_queue(ctx, device,CL_QUEUE_PROFILING_ENABLE);
 
-  clfft1r fft(nx,queue,ctx);
+  clfft1r fft(nx, queue,ctx);
   fft.create_clbuf();
 
   //  typedef float real;

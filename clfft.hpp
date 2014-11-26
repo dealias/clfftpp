@@ -414,7 +414,7 @@ private:
     assert(ret == CL_SUCCESS);
 
     ret = clfftSetLayout(plan, 
-			 CLFFT_COMPLEX_INTERLEAVED, 
+			 CLFFT_HERMITIAN_INTERLEAVED, 
 			 CLFFT_REAL);
     if(ret != CL_SUCCESS) std::cerr << clfft_errorstring(ret) << std::endl;
     assert(ret == CL_SUCCESS);
