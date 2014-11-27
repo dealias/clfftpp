@@ -387,14 +387,13 @@ public:
 class clfft1r : public clfft_base
 {
 private:
-  unsigned nx; // size of problem
+  unsigned nx; // size of problem for clFFT
 
   void set_buf_size() {
     buf_size = (nx + 1) * 2 * sizeof(double); // TODO: variable precision
   }
 
   void setup() {
-    // FIXME: does this have to be out-of-place?
     set_buf_size();
 
     clfftDim dim = CLFFT_1D;
@@ -414,8 +413,8 @@ private:
     assert(ret == CL_SUCCESS);
 
     ret = clfftSetLayout(plan, 
-			 CLFFT_HERMITIAN_INTERLEAVED, 
-			 CLFFT_REAL);
+			 CLFFT_REAL,
+			 CLFFT_HERMITIAN_INTERLEAVED);
     if(ret != CL_SUCCESS) std::cerr << clfft_errorstring(ret) << std::endl;
     assert(ret == CL_SUCCESS);
 
@@ -433,6 +432,7 @@ private:
     if(ret != CL_SUCCESS) std::cerr << clfft_errorstring(ret) << std::endl;
     assert(ret == CL_SUCCESS);
   }
+
 public:
   clfft1r() {
     ctx = NULL;
@@ -443,11 +443,11 @@ public:
   }
 
   clfft1r(unsigned int nx0, cl_command_queue queue0, cl_context ctx0,
-	 cl_mem bufX0=NULL) {
-    nx=nx0;
-    queue=queue0;
-    ctx=ctx0;
-    bufX=bufX0;
+	 cl_mem bufX0 = NULL) {
+    nx = nx0;
+    queue = queue0;
+    ctx = ctx0;
+    bufX = bufX0;
     setup();
   }
 

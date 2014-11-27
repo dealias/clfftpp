@@ -92,16 +92,19 @@ int main(int argc, char* argv[]) {
   cl_platform_id platform = plat_ids[platnum];
 
   cl_context ctx = create_context(platform, device);
-  cl_command_queue queue = create_queue(ctx, device,CL_QUEUE_PROFILING_ENABLE);
+  cl_command_queue queue = create_queue(ctx, device, CL_QUEUE_PROFILING_ENABLE);
 
-  clfft1r fft(nx, queue,ctx);
+  clfft1r fft(nx, queue, ctx);
   fft.create_clbuf();
 
   //  typedef float real;
 
   double *X = fft.create_rambuf();
 
-  cl_event r2c_event, c2r_event, forward_event, backward_event;
+  cl_event r2c_event = clCreateUserEvent(ctx, NULL);
+  cl_event c2r_event = clCreateUserEvent(ctx, NULL);
+  cl_event forward_event = clCreateUserEvent(ctx, NULL);
+  cl_event backward_event = clCreateUserEvent(ctx, NULL);
 
   std::cout << "\nInput:" << std::endl;
   initR(X,nx);
@@ -111,7 +114,12 @@ int main(int argc, char* argv[]) {
     std::cout << X[0] << std::endl;
 
   fft.ram_to_cl(X, &r2c_event);
+  
+  // cl_int ret = clSetUserEventStatus(forward_event,  CL_COMPLETE);
+  // if(ret != CL_SUCCESS) std::cerr << clErrorString(ret) << std::endl;
+  // assert(ret == CL_SUCCESS);
   fft.forward(1, &r2c_event, &forward_event);
+
   fft.cl_to_ram(X, 1, &forward_event, &c2r_event);
   clWaitForEvents(1, &c2r_event);
   std::cout << "\nTransformed:" << std::endl;
