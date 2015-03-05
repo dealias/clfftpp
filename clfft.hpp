@@ -1,11 +1,7 @@
-/* No need to explicitely include the OpenCL headers */
-#include <clFFT.h>
+#include <clFFT.h> /* No need to explicitely include the OpenCL headers */
 #include <iostream>
 #include <clutils.h>
-
 #include <assert.h>
-
-void clfft_setup();
 
 class clfft_base
 {
@@ -16,7 +12,8 @@ protected:
   cl_context ctx;
   cl_command_queue queue;
   cl_mem bufX;
-  int buf_size;
+  unsigned int nfloats;
+  size_t buf_size;
   clfftPrecision precision;
 
   const char* clfft_errorstring(const cl_int err) {
@@ -55,9 +52,17 @@ protected:
     }
     return errstring;
   }
+  
+  virtual void set_nfloats() = 0;
+  
+  void set_buf_size() {
+    set_nfloats();
+    buf_size = nfloats 
+      * (precision == CLFFT_DOUBLE ? sizeof(double) : sizeof(float));
+  }
 
 public:
-  clfft_base(){
+  clfft_base() {
     if(count_zero == 0)
       clfft_setup();
     ++count_zero;
@@ -65,7 +70,7 @@ public:
     //precision=CLFFT_SINGLE;
   }
 
-  ~clfft_base(){
+  ~clfft_base() {
     --count_zero;
     if(count_zero == 0)
       clfftTeardown();
@@ -74,19 +79,20 @@ public:
   void clfft_setup() {
     cl_int ret;  
     clfftSetupData fftSetup;
+
     ret = clfftInitSetupData(&fftSetup);
     if(ret != CL_SUCCESS) std::cerr << clfft_errorstring(ret) << std::endl;
     assert(ret == CL_SUCCESS);
+
     ret = clfftSetup(&fftSetup);
     if(ret != CL_SUCCESS) std::cerr << clfft_errorstring(ret) << std::endl;
     assert(ret == CL_SUCCESS);
   }
 
-
-  double * create_rambuf() {
-    return new double[buf_size];
+  unsigned int get_nfloats() {
+    return nfloats;
   }
- 
+
   cl_mem create_clbuf() {
     cl_int ret;
     bufX = clCreateBuffer(ctx, 
@@ -137,7 +143,7 @@ public:
     cl_to_ram(X, NULL, nwait, wait, event);
   }
   
-  void ram_to_cl(double *X, cl_mem bufX0, 
+  void ram_to_cl(const double *X, cl_mem bufX0, 
 		 const cl_uint nwait,
 		 const cl_event *wait, cl_event *event) {
     cl_mem buf = (bufX0 != NULL) ? bufX0 : bufX;
@@ -156,26 +162,27 @@ public:
   }
 
   // with no events
-  void ram_to_cl(double *X) {
+  void ram_to_cl(const double *X) {
     ram_to_cl(X, NULL, 0, NULL, NULL);
   }
 
   // with event
-  void ram_to_cl(double *X,  
+  void ram_to_cl(const double *X,  
 		 cl_event *event) {
     ram_to_cl(X, NULL, 0, NULL, event);
   }
 
   // with wait event(s)
-  void ram_to_cl(double *X,  
+  void ram_to_cl(const double *X,  
 		 const cl_uint nwait,
 		 const cl_event *wait) {
     ram_to_cl(X, NULL, nwait, wait, NULL);
   }
 
   // with wait event(s) and new event
-  void ram_to_cl(double *X,  
-		 const cl_uint nwait,  const cl_event *wait, 
+  void ram_to_cl(const double *X,  
+		 const cl_uint nwait,  
+		 const cl_event *wait, 
 		 cl_event *event) {
     ram_to_cl(X, NULL, nwait, wait, event);
   }
@@ -194,7 +201,7 @@ public:
     cl_int ret;
     
     ret = clfftEnqueueTransform(plan, // clfftPlanHandle 	plHandle,
-				direction,// direction
+				direction, // direction
 				1,  //cl_uint 	numQueuesAndEvents,
 				&queue,
 				nwait, // cl_uint 	numWaitEvents,
@@ -235,8 +242,8 @@ class clfft1 : public clfft_base
 private:
   unsigned nx; // size of problem
 
-  void set_buf_size() {
-    buf_size = nx * 2 * sizeof(double); // TODO: variable precision
+  void set_nfloats() {
+    nfloats = nx * 2;
   }
 
   void setup() {
@@ -311,8 +318,8 @@ class clfft2 : public clfft_base
 private:
   unsigned nx, ny; // size of problem
 
-  void set_buf_size() {
-    buf_size = nx *ny * 2 * sizeof(double); // TODO: variable precision
+  void set_nfloats() {
+    nfloats = nx * ny * 2;
   }
 
   void setup() {
@@ -389,8 +396,8 @@ class clfft1r : public clfft_base
 private:
   unsigned nx; // size of problem for clFFT
 
-  void set_buf_size() {
-    buf_size = (nx + 1) * 2 * sizeof(double); // TODO: variable precision
+  void set_nfloats() {
+    nfloats =  (nx + 1) * 2;
   }
 
   void setup() {

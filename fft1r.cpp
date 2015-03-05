@@ -99,7 +99,7 @@ int main(int argc, char* argv[]) {
 
   //  typedef float real;
 
-  double *X = fft.create_rambuf();
+  double *X = new double[fft.get_nfloats()];
 
   cl_event r2c_event = clCreateUserEvent(ctx, NULL);
   cl_event c2r_event = clCreateUserEvent(ctx, NULL);

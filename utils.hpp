@@ -10,9 +10,8 @@ void usage(unsigned int dim)
 	    << "\t-m <int>\tproblem size \n"
 	    << "\t-x <int>\tproblem size in first dimension \n";
   if(dim > 1)
-    std::cout <<  "\t-u <int>\tproblem size in second dimension\n";
+    std::cout <<  "\t-y <int>\tproblem size in second dimension\n";
   std::cout << "\t-N <int>\tNumber of tests \n"
 	    << "\t-S <int>\tStatistical measure to use \n"
 	    << std::endl;
 }
-
