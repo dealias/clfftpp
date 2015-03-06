@@ -1,5 +1,6 @@
 *~
 *.o
-clfft1
-clfft2
-clfft1r
+fft1
+fft2
+fft1r
+*.gch

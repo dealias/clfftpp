@@ -14,40 +14,39 @@
 template<class T>
 void showC(T *X, int n)
 {
-  unsigned int nc=n/2+1;
-  for(unsigned int i=0; i < nc; ++i) {
-    std::cout << "(" << X[2*i] << "," <<  X[2*i +1] << ")" << std::endl;
-  }
+  unsigned int nc = n / 2 + 1;
+  for(unsigned int i = 0; i < nc; ++i)
+    std::cout << "(" << X[2 * i] << "," <<  X[2 * i + 1] << ")" << std::endl;
 }
 
 template<class T>
-void showR(T *X, int n)
+void showR(const T *X, int n)
 {
-  for(unsigned int i=0; i < n; ++i) {
-    std::cout <<  X[i] << std::endl;
-  }
+  for(unsigned int i = 0; i < n; ++i)
+    std::cout << X[i] << std::endl;
 }
 
 template<class T>
 void initR(T *X, int n)
 {
-  for(unsigned int i=0; i < n; ++i) {
+  for(unsigned int i = 0; i < n; ++i)
     X[i] = i;
-  }
 }
 
 int main(int argc, char* argv[]) {
   show_devices();
 
-  int platnum=0;
-  int devnum=0;
-  bool time_copy=false;
+  int platnum = 0;
+  int devnum = 0;
+  bool time_copy = false;
   int nx = 4;
-  int N=10;
-  unsigned int stats=0; // Type of statistics used in timing test.
+  int N = 10;
+  unsigned int stats = 0; // Type of statistics used in timing test.
+
+  int maxout = 32; // maximum size of array output in entierety
 
 #ifdef __GNUC__	
-  optind=0;
+  optind = 0;
 #endif	
   for (;;) {
     int c = getopt(argc,argv,"p:d:m:x:N:S:h");
@@ -55,22 +54,22 @@ int main(int argc, char* argv[]) {
     
     switch (c) {
     case 'p':
-      platnum=atoi(optarg);
+      platnum = atoi(optarg);
       break;
     case 'd':
-      devnum=atoi(optarg);
+      devnum = atoi(optarg);
       break;
     case 'x':
-      nx=atoi(optarg);
+      nx = atoi(optarg);
       break;
     case 'm':
-      nx=atoi(optarg);
+      nx = atoi(optarg);
       break;
     case 'N':
-      N=atoi(optarg);
+      N = atoi(optarg);
       break;
     case 'S':
-      nx=atoi(optarg);
+      stats = atoi(optarg);
       break;
     case 'h':
       usage(1);
@@ -107,9 +106,9 @@ int main(int argc, char* argv[]) {
   cl_event backward_event = clCreateUserEvent(ctx, NULL);
 
   std::cout << "\nInput:" << std::endl;
-  initR(X,nx);
-  if(nx <= 32) 
-    showR(X,nx);
+  initR(X, nx);
+  if(nx <= maxout)
+    showR(X, nx);
   else 
     std::cout << X[0] << std::endl;
 
@@ -123,8 +122,8 @@ int main(int argc, char* argv[]) {
   fft.cl_to_ram(X, 1, &forward_event, &c2r_event);
   clWaitForEvents(1, &c2r_event);
   std::cout << "\nTransformed:" << std::endl;
-  if(nx <= 32)
-    showC(X,nx);
+  if(nx <= maxout)
+    showC(X, nx);
   else 
     std::cout << X[0] << std::endl;
   
@@ -132,18 +131,18 @@ int main(int argc, char* argv[]) {
   fft.cl_to_ram(X, 1, &backward_event, &c2r_event);
   clWaitForEvents(1, &c2r_event);
   std::cout << "\nTransformed back:" << std::endl;
-  if(nx <= 32) 
-    showR(X,nx);
+  if(nx <= maxout) 
+    showR(X, nx);
   else 
     std::cout << X[0] << std::endl;
 
   if(N > 0) {
     std::cout << "\nTimings:" << std::endl;
-    double *T=new double[N];
+    double *T = new double[N];
 
     cl_ulong time_start, time_end;
-    for(int i=0; i < N; ++i) {
-      initR(X,nx);
+    for(int i = 0; i < N; ++i) {
+      initR(X, nx);
       seconds();
       fft.ram_to_cl(X, &r2c_event);
       fft.forward(1, &r2c_event, &forward_event);
@@ -172,9 +171,9 @@ int main(int argc, char* argv[]) {
       T[i] = 1e-6 * (time_end - time_start);
     }
     if(time_copy) 
-      timings("fft with copy",nx,T,N,stats);
+      timings("fft with copy", nx, T, N, stats);
     else 
-      timings("fft without copy",nx,T,N,stats);
+      timings("fft without copy", nx, T, N, stats);
     delete[] T;
   }
   free(X);
