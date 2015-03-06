@@ -1,5 +1,7 @@
+CXX=g++
+CC=gcc
 
-
+# Set up CXXFLAGS
 CXXFLAGS=
 
 ifneq ($(strip $(OPENCL_INCLUDE_PATH)),)
@@ -17,13 +19,15 @@ CXXFLAGS+=-I$(FFTWPP_INCLUDE_PATH)
 CXXFLAGS+=-I$(FFTWPP_INCLUDE_PATH)/tests
 endif
 
-
-
 CXXFLAGS+=-I.
 
 CXXFLAGS+=-O3
 CXXFLAGS+=-Wall
 
+# Set up CCFLAGS
+CCFLAGS = $(CXXFLAGS)
+
+# set up LDFLAGS
 LDFLAGS=
 
 LDFLAGS+=-lOpenCL
@@ -36,39 +40,38 @@ ifneq ($(strip $(CLFFT_LIB_PATH)),)
 LDFLAGS+=-L$(CLFFT_LIB_PATH)
 endif
 
-LDFLAGS+=-lpthread 
+LDFLAGS+=-lpthread
 
+# Define the source files and objects
+SRCS_CPP=clfft.cpp platform.cpp utils.cpp
+SRCS_CC= 
+SRCS_C=clutils.c
+CPPOBJS=$(SRCS_CPP:.cpp=.o)
+CCOBJS+= $(SRCS_CC:.cc=.o)
+COBJS=$(SRCS_C:.c=.o)
+OBJS=$(CPPOBJS) $(CCOBJS) $(COBJS) 
 
+# The programs to be produced
+output=fft1 fft2 fft1r
 
-all: fft1 fft2 fft1r
+all: $(output)
 
-clutils.o: clutils.c clutils.h
-	$(CXX) $(CXXFLAGS) clutils.c -c
+# static pattern rule
+$(output) : % : %.o $(OBJS)
+	@echo $^
+	$(CXX) -o $@ $^ $(LDFLAGS)
 
-platform.o: platform.hpp platform.cpp
-	$(CXX) $(CXXFLAGS) platform.cpp -c
+%.o : %.cpp
+	@echo $@
+	$(CXX) -c $(CXXFLAGS) $<
 
-clfft.o: clfft.cpp clfft.hpp
-	$(CXX) $(CXXFLAGS) clfft.cpp  -c 
+%.o : %.cc
+	@echo $@
+	$(CXX) -c $(CXXFLAGS) $<
 
-fft1.o: fft1.cpp utils.hpp
-	$(CXX) $(CXXFLAGS) $^ -c 
-
-t2.o: fft2.cpp utils.hpp
-	$(CXX) $(CXXFLAGS) $^ -c 
-
-fft1r.o: fft1r.cpp utils.hpp
-	$(CXX) $(CXXFLAGS) $^ -c 
-
-fft1: fft1.o clfft.o platform.o clutils.o 
-	$(CXX) $^ $(LDFLAGS) -o $@
-
-fft2: fft2.o clfft.o platform.o clutils.o
-	$(CXX) $^ $(LDFLAGS) -o $@
-
-fft1r: fft1r.o clfft.o platform.o clutils.o
-	$(CXX) $^ $(LDFLAGS) -o $@
-
+%.o : %.c
+	@echo $@
+	$(CC) -c $(CCFLAGS) $<
 
 clean:
-	rm -f *.o *.gch fft1 fft2 fft1r
+	rm -f *.o *.gch $(output)

@@ -1,3 +1,6 @@
+#ifndef __utils_hpp__
+#define __utils_hpp__ 1
+
 #include <iostream>
 
 void usage(unsigned int dim) 
@@ -15,3 +18,5 @@ void usage(unsigned int dim)
 	    << "\t-S <int>\tStatistical measure to use \n"
 	    << std::endl;
 }
+
+#endif

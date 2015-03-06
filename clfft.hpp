@@ -1,7 +1,9 @@
-#include <clFFT.h> /* No need to explicitely include the OpenCL headers */
 #include <iostream>
-#include <clutils.h>
 #include <assert.h>
+#include <clFFT.h> /* No need to explicitely include the OpenCL headers */
+extern "C" {
+#include "clutils.h"
+}
 
 class clfft_base
 {
@@ -16,8 +18,8 @@ protected:
   size_t buf_size;
   clfftPrecision precision;
 
-  const char* clfft_errorstring(const cl_int err) {
-    const char* errstring = NULL;
+  const char *clfft_errorstring(const cl_int err) {
+    const char *errstring = NULL;
     
     errstring = clErrorString(err);
 

@@ -4,9 +4,9 @@
 
 #include "clutils.h"
 
-const char* clErrorString(const cl_int err)
+const char *clErrorString(const cl_int err)
 {
-  const char* errString = NULL;
+  const char *errString = NULL;
 
   switch (err) {
   case CL_SUCCESS:
@@ -16,11 +16,11 @@ const char* clErrorString(const cl_int err)
   case CL_DEVICE_NOT_FOUND:
     errString = "CL_DEVICE_NOT_FOUND";
     break;
-            
+    
   case CL_DEVICE_NOT_AVAILABLE:
     errString = "CL_DEVICE_NOT_AVAILABLE";
     break;
-            
+    
   case CL_COMPILER_NOT_AVAILABLE:
     errString = "CL_COMPILER_NOT_AVAILABLE";
     break;
@@ -28,7 +28,7 @@ const char* clErrorString(const cl_int err)
   case CL_MEM_OBJECT_ALLOCATION_FAILURE:
     errString = "CL_MEM_OBJECT_ALLOCATION_FAILURE";
     break;
-            
+    
   case CL_OUT_OF_RESOURCES:
     errString = "CL_OUT_OF_RESOURCES";
     break;
