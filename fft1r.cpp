@@ -100,11 +100,11 @@ int main(int argc, char *argv[]) {
   std::cout << "Allocating " 
 	    << fft.get_ncomplexfloats() 
 	    << " doubles for complex." << std::endl;
-  double *Xin = new double[fft.get_ncomplexfloats()];
+  double *Xin = new double[fft.get_nrealfloats()];
   std::cout << "Allocating " 
 	    << fft.get_nrealfloats() 
 	    << " doubles for real." << std::endl;
-  double *Xout = new double[fft.get_nrealfloats()];
+  double *Xout = new double[fft.get_ncomplexfloats()];
 
   cl_event r2c_event = clCreateUserEvent(ctx, NULL);
   cl_event c2r_event = clCreateUserEvent(ctx, NULL);
@@ -123,7 +123,7 @@ int main(int argc, char *argv[]) {
     fft.forward(1, &r2c_event, &forward_event);
     fft.outbuf_to_ram(Xout, 1, &forward_event, &c2r_event);
     clWaitForEvents(1, &c2r_event);
-
+    
     std::cout << "\nTransformed:" << std::endl;
     if(nx <= maxout)
       showC(Xout, nx);

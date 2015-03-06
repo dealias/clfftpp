@@ -85,7 +85,7 @@ public:
 
   ~clfft_base() {
     --count_zero;
-    if(count_zero == 0) 
+    if(count_zero == 0)
       clfftTeardown();
   }
 
