@@ -13,9 +13,9 @@ protected:
   clfftPlanHandle plan;
   cl_context ctx;
   cl_command_queue queue;
-  cl_mem bufX;
-  unsigned int nfloats;
-  size_t buf_size;
+  cl_mem inbuf, outbuf;
+  unsigned int ncomplexfloats, nrealfloats;
+  size_t complex_buf_size, real_buf_size;
   clfftPrecision precision;
 
   const char *clfft_errorstring(const cl_int err) {
@@ -59,7 +59,7 @@ protected:
   
   void set_buf_size() {
     set_nfloats();
-    buf_size = nfloats 
+    complex_buf_size = ncomplexfloats 
       * (precision == CLFFT_DOUBLE ? sizeof(double) : sizeof(float));
   }
 
@@ -91,32 +91,35 @@ public:
     assert(ret == CL_SUCCESS);
   }
 
-  unsigned int get_nfloats() {
-    return nfloats;
-  }
+  const unsigned int get_ncomplexfloats() {return ncomplexfloats;}
+  const unsigned int get_nrealfloats() {return nrealfloats;}
 
-  cl_mem create_clbuf() {
+  void create_clbuf(cl_mem *buf = NULL, size_t buf_size = 0) {
     cl_int ret;
-    bufX = clCreateBuffer(ctx, 
+    if(buf == NULL)
+      buf = &inbuf;
+    if(buf_size == 0)
+      buf_size = complex_buf_size;
+    *buf = clCreateBuffer(ctx, 
 			  CL_MEM_READ_WRITE, 
 			  buf_size,
 			  NULL,
 			  &ret);
     if(ret != CL_SUCCESS) std::cerr << clErrorString(ret) << std::endl;
     assert(ret == CL_SUCCESS);
-    return bufX;
   }
 
+  // TODO: make a real-value version too
   void cl_to_ram(double *X, cl_mem bufX0, 
 		 const cl_uint nwait,
 		 const cl_event *wait, cl_event *event) {
-    cl_mem buf = (bufX0 != NULL) ? bufX0 : bufX;
+    cl_mem buf = (bufX0 != NULL) ? bufX0 : inbuf;
     cl_int ret;
     ret = clEnqueueReadBuffer(queue,
 			      buf,
 			      CL_TRUE,
 			      0,
-			      buf_size,
+			      complex_buf_size,
 			      X,
 			      nwait,
 			      wait,
@@ -145,16 +148,17 @@ public:
     cl_to_ram(X, NULL, nwait, wait, event);
   }
   
+  // TODO: make a real-value version too
   void ram_to_cl(const double *X, cl_mem bufX0, 
 		 const cl_uint nwait,
 		 const cl_event *wait, cl_event *event) {
-    cl_mem buf = (bufX0 != NULL) ? bufX0 : bufX;
+    cl_mem buf = (bufX0 != NULL) ? bufX0 : inbuf;
     cl_int ret;
     ret = clEnqueueWriteBuffer(queue,
 			       buf,
 			       CL_TRUE,
 			       0,
-			       buf_size,
+			       complex_buf_size,
 			       X,
 			       nwait,
 			       wait,
@@ -199,7 +203,7 @@ public:
 		 cl_mem *inbuf0 = NULL, cl_mem *outbuf0 = NULL,
 		 cl_uint nwait = 0, cl_event *wait = NULL, 
 		 cl_event *done = NULL) {
-    cl_mem *inbuf = (inbuf0 != NULL) ? inbuf0 : &bufX;
+    cl_mem *buf = (inbuf0 != NULL) ? inbuf0 : &inbuf;
     cl_int ret;
     
     ret = clfftEnqueueTransform(plan, // clfftPlanHandle 	plHandle,
@@ -209,7 +213,7 @@ public:
 				nwait, // cl_uint 	numWaitEvents,
 				wait, // const cl_event * 	waitEvents,
 				done, // cl_event * 	outEvents,
-				inbuf, // cl_mem * 	inputBuffers,
+				buf, // cl_mem * 	inputBuffers,
 				outbuf0, // cl_mem * 	outputBuffers,
 				NULL // cl_mem 	tmpBuffer 
 				);
@@ -245,7 +249,7 @@ private:
   unsigned nx; // size of problem
 
   void set_nfloats() {
-    nfloats = nx * 2;
+    ncomplexfloats = nx * 2;
   }
 
   void setup() {
@@ -292,17 +296,19 @@ public:
   clfft1() {
     ctx = NULL;
     queue = NULL;
-    bufX = NULL;
+    inbuf = NULL;
+    outbuf = NULL;
     nx = 0;
     set_buf_size();
   }
 
   clfft1(unsigned int nx0, cl_command_queue queue0, cl_context ctx0,
-	 cl_mem bufX0=NULL) {
-    nx=nx0;
-    queue=queue0;
-    ctx=ctx0;
-    bufX=bufX0;
+	 cl_mem inbuf0 = NULL, cl_mem outbuf0 = NULL) {
+    nx = nx0;
+    queue = queue0;
+    ctx = ctx0;
+    inbuf = inbuf0;
+    outbuf = outbuf0;
     setup();
   }
 
@@ -312,7 +318,6 @@ public:
     if(ret != CL_SUCCESS) std::cerr << clErrorString(ret) << std::endl;
     assert(ret == CL_SUCCESS);
   }
-
 };
 
 class clfft2 : public clfft_base
@@ -321,14 +326,14 @@ private:
   unsigned nx, ny; // size of problem
 
   void set_nfloats() {
-    nfloats = nx * ny * 2;
+    ncomplexfloats = nx * ny * 2;
   }
 
   void setup() {
     set_buf_size();
 
     clfftDim dim = CLFFT_2D;
-    size_t clLengths[2] = {nx,ny};
+    size_t clLengths[2] = {nx, ny};
 
     cl_int ret;
     ret = clfftCreateDefaultPlan(&plan, 
@@ -368,19 +373,20 @@ public:
   clfft2() {
     ctx = NULL;
     queue = NULL;
-    bufX = NULL;
+    inbuf = NULL;
+    outbuf = NULL;
     nx = 0;
     set_buf_size();
   }
 
   clfft2(unsigned int nx0, unsigned int ny0, 
 	 cl_command_queue queue0, cl_context ctx0,
-	 cl_mem bufX0=NULL) {
-    nx=nx0;
-    ny=ny0;
-    queue=queue0;
-    ctx=ctx0;
-    bufX=bufX0;
+	 cl_mem inbuf0 = NULL) {
+    nx = nx0;
+    ny = ny0;
+    queue = queue0;
+    ctx = ctx0;
+    inbuf = inbuf0;
     setup();
   }
 
@@ -389,9 +395,7 @@ public:
     ret = clfftDestroyPlan(&plan);
     if(ret != CL_SUCCESS) std::cerr << clErrorString(ret) << std::endl;
   }
-
 };
-
 
 class clfft1r : public clfft_base
 {
@@ -399,7 +403,8 @@ private:
   unsigned nx; // size of problem for clFFT
 
   void set_nfloats() {
-    nfloats =  (nx + 1) * 2;
+    ncomplexfloats =  (nx + 1) * 2;
+    nrealfloats =  nx * 2;
   }
 
   void setup() {
@@ -446,17 +451,19 @@ public:
   clfft1r() {
     ctx = NULL;
     queue = NULL;
-    bufX = NULL;
+    inbuf = NULL;
+    outbuf = NULL;
     nx = 0;
     set_buf_size();
   }
 
   clfft1r(unsigned int nx0, cl_command_queue queue0, cl_context ctx0,
-	 cl_mem bufX0 = NULL) {
+	  cl_mem inbuf0 = NULL, cl_mem outbuf0 = NULL) {
     nx = nx0;
     queue = queue0;
     ctx = ctx0;
-    bufX = bufX0;
+    inbuf = inbuf0;
+    outbuf = outbuf0;
     setup();
   }
 
@@ -466,6 +473,4 @@ public:
     if(ret != CL_SUCCESS) std::cerr << clfft_errorstring(ret) << std::endl;
     assert(ret == CL_SUCCESS);
   }
-
-
 };

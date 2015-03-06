@@ -16,7 +16,9 @@ void showC(T *X, int n)
 {
   unsigned int nc = n / 2 + 1;
   for(unsigned int i = 0; i < nc; ++i)
-    std::cout << "(" << X[2 * i] << "," <<  X[2 * i + 1] << ")" << std::endl;
+    std::cout << "(" << X[2 * i] << "," 
+	      <<  X[2 * i + 1] << ")" 
+	      << std::endl;
 }
 
 template<class T>
@@ -33,7 +35,7 @@ void initR(T *X, int n)
     X[i] = i;
 }
 
-int main(int argc, char* argv[]) {
+int main(int argc, char *argv[]) {
   show_devices();
 
   int platnum = 0;
@@ -43,7 +45,7 @@ int main(int argc, char* argv[]) {
   int N = 10;
   unsigned int stats = 0; // Type of statistics used in timing test.
 
-  int maxout = 32; // maximum size of array output in entierety
+  int maxout = 32; // maximum size of array output in entirety
 
 #ifdef __GNUC__	
   optind = 0;
@@ -98,7 +100,10 @@ int main(int argc, char* argv[]) {
 
   //  typedef float real;
 
-  double *X = new double[fft.get_nfloats()];
+  std::cout << "Allocating " 
+	    << fft.get_ncomplexfloats() 
+	    << " doubles." << std::endl;
+  double *X = new double[fft.get_ncomplexfloats()];
 
   cl_event r2c_event = clCreateUserEvent(ctx, NULL);
   cl_event c2r_event = clCreateUserEvent(ctx, NULL);

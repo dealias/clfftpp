@@ -99,11 +99,13 @@ int main(int argc, char* argv[]) {
   cl_context ctx = create_context(platform, device);
   cl_command_queue queue = create_queue(ctx, device,CL_QUEUE_PROFILING_ENABLE);
   
-  clfft1 fft(nx,queue,ctx);
+  clfft1 fft(nx, queue, ctx);
   fft.create_clbuf();
 
-  std::cout << "Allocating " << fft.get_nfloats() << " doubles." << std::endl;
-  double *X = new double[fft.get_nfloats()];
+  std::cout << "Allocating " 
+	    << fft.get_ncomplexfloats() 
+	    << " doubles." << std::endl;
+  double *X = new double[fft.get_ncomplexfloats()];
 
   std::cout << "\nInput:" << std::endl;
   init(X,nx);

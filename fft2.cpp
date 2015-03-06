@@ -117,9 +117,10 @@ int main(int argc, char *argv[]) {
   
   //typedef double real;
 
-  std::cout << "Allocating " << fft.get_nfloats() << " doubles." << std::endl;
-
-  double *X = new double[fft.get_nfloats()];
+  std::cout << "Allocating " 
+	    << fft.get_ncomplexfloats() 
+	    << " doubles." << std::endl;
+  double *X = new double[fft.get_ncomplexfloats()];
 
   cl_event r2c_event, c2r_event, forward_event, backward_event;
   if (N == 0) { // Transform forwards and back, outputting the buffer.
