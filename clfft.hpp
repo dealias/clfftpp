@@ -10,13 +10,13 @@ class clfft_base
 private:
   static int count_zero;
 protected:
-  clfftPlanHandle plan;
+  clfftPlanHandle plan, backwardplan;
   cl_context ctx;
   cl_command_queue queue;
-  cl_mem inbuf, outbuf;
   unsigned int ncomplexfloats, nrealfloats;
-  size_t complex_buf_size, real_buf_size;
+  size_t inbuf_size, outbuf_size;
   clfftPrecision precision;
+  bool realtocomplex, inplace;
 
   const char *clfft_errorstring(const cl_int err) {
     const char *errstring = NULL;
@@ -59,22 +59,33 @@ protected:
   
   void set_buf_size() {
     set_nfloats();
-    complex_buf_size = ncomplexfloats 
-      * (precision == CLFFT_DOUBLE ? sizeof(double) : sizeof(float));
+    if(realtocomplex) {
+      inbuf_size = nrealfloats
+	* (precision == CLFFT_DOUBLE ? sizeof(double) : sizeof(float));
+      outbuf_size = ncomplexfloats
+	* (precision == CLFFT_DOUBLE ? sizeof(double) : sizeof(float));
+    } else {
+      inbuf_size = ncomplexfloats
+	* (precision == CLFFT_DOUBLE ? sizeof(double) : sizeof(float));
+      outbuf_size = inbuf_size;
+    }
   }
 
 public:
+  cl_mem inbuf, outbuf;
   clfft_base() {
     if(count_zero == 0)
       clfft_setup();
     ++count_zero;
     precision = CLFFT_DOUBLE;
     //precision=CLFFT_SINGLE;
+    realtocomplex = false;
+    inplace = true;
   }
 
   ~clfft_base() {
     --count_zero;
-    if(count_zero == 0)
+    if(count_zero == 0) 
       clfftTeardown();
   }
 
@@ -99,7 +110,7 @@ public:
     if(buf == NULL)
       buf = &inbuf;
     if(buf_size == 0)
-      buf_size = complex_buf_size;
+      buf_size = inbuf_size;
     *buf = clCreateBuffer(ctx, 
 			  CL_MEM_READ_WRITE, 
 			  buf_size,
@@ -109,17 +120,16 @@ public:
     assert(ret == CL_SUCCESS);
   }
 
-  // TODO: make a real-value version too
-  void cl_to_ram(double *X, cl_mem bufX0, 
-		 const cl_uint nwait,
-		 const cl_event *wait, cl_event *event) {
-    cl_mem buf = (bufX0 != NULL) ? bufX0 : inbuf;
+  void inbuf_to_ram(double *X, cl_mem buf0,
+		    const cl_uint nwait,
+		    const cl_event *wait, cl_event *event) {
+    cl_mem buf = (buf0 != NULL) ? buf0 : inbuf;
     cl_int ret;
     ret = clEnqueueReadBuffer(queue,
 			      buf,
 			      CL_TRUE,
 			      0,
-			      complex_buf_size,
+			      inbuf_size,
 			      X,
 			      nwait,
 			      wait,
@@ -127,38 +137,63 @@ public:
     if(ret != CL_SUCCESS) std::cerr << clErrorString(ret) << std::endl;
     assert(ret == CL_SUCCESS);
   }
-
-  void cl_to_ram(double *X) {
-    cl_to_ram(X, NULL, 0, NULL, NULL);
+  void inbuf_to_ram(double *X) {
+    inbuf_to_ram(X, NULL, 0, NULL, NULL);
+  }
+  void inbuf_to_ram(double *X, cl_event *event) {
+    inbuf_to_ram(X, NULL, 0, NULL, event);
+  }
+  void inbuf_to_ram(double *X,
+		 const cl_uint nwait, const cl_event *wait) {
+    inbuf_to_ram(X, NULL, nwait, wait, NULL);
+  }
+  void inbuf_to_ram(double *X, const cl_uint nwait,
+		 const cl_event *wait, cl_event *event) {
+    inbuf_to_ram(X, NULL, nwait, wait, event);
   }
   
-  void cl_to_ram(double *X,
-		 const cl_uint nwait,
-		 const cl_event *wait) {
-    cl_to_ram(X, NULL, nwait, wait, NULL);
+  void outbuf_to_ram(double *X, cl_mem buf0,
+		    const cl_uint nwait,
+		    const cl_event *wait, cl_event *event) {
+    cl_mem buf = (buf0 != NULL) ? buf0 : outbuf;
+    cl_int ret;
+    ret = clEnqueueReadBuffer(queue,
+			      buf,
+			      CL_TRUE,
+			      0,
+			      outbuf_size,
+			      X,
+			      nwait,
+			      wait,
+			      event);
+    if(ret != CL_SUCCESS) std::cerr << clErrorString(ret) << std::endl;
+    assert(ret == CL_SUCCESS);
+  }
+  void outbuf_to_ram(double *X) {
+    outbuf_to_ram(X, NULL, 0, NULL, NULL);
+  }
+  void outbuf_to_ram(double *X, cl_event *event) {
+    outbuf_to_ram(X, NULL, 0, NULL, event);
+  }
+  void outbuf_to_ram(double *X,
+		     const cl_uint nwait, const cl_event *wait) {
+    outbuf_to_ram(X, NULL, nwait, wait, NULL);
+  }
+  void outbuf_to_ram(double *X, const cl_uint nwait,
+		     const cl_event *wait, cl_event *event) {
+    outbuf_to_ram(X, NULL, nwait, wait, event);
   }
   
-  void cl_to_ram(double *X, cl_event *event) {
-    cl_to_ram(X, NULL, 0, NULL, event);
-  }
-  
-  void cl_to_ram(double *X,
+  void ram_to_inbuf(const double *X, cl_mem buf0, 
 		 const cl_uint nwait,
 		 const cl_event *wait, cl_event *event) {
-    cl_to_ram(X, NULL, nwait, wait, event);
-  }
-  
-  // TODO: make a real-value version too
-  void ram_to_cl(const double *X, cl_mem bufX0, 
-		 const cl_uint nwait,
-		 const cl_event *wait, cl_event *event) {
-    cl_mem buf = (bufX0 != NULL) ? bufX0 : inbuf;
+    cl_mem buf = (buf0 != NULL) ? buf0 : inbuf;
     cl_int ret;
     ret = clEnqueueWriteBuffer(queue,
 			       buf,
 			       CL_TRUE,
 			       0,
-			       complex_buf_size,
+			       inbuf_size,
 			       X,
 			       nwait,
 			       wait,
@@ -166,31 +201,51 @@ public:
     if(ret != CL_SUCCESS) std::cerr << clErrorString(ret) << std::endl;
     assert(ret == CL_SUCCESS);
   }
-
-  // with no events
-  void ram_to_cl(const double *X) {
-    ram_to_cl(X, NULL, 0, NULL, NULL);
+  void ram_to_inbuf(const double *X) {
+    ram_to_inbuf(X, NULL, 0, NULL, NULL);
+  }
+  void ram_to_inbuf(const double *X, cl_event *event) {
+    ram_to_inbuf(X, NULL, 0, NULL, event);
+  }
+  void ram_to_inbuf(const double *X, 
+		    const cl_uint nwait, const cl_event *wait) {
+    ram_to_inbuf(X, NULL, nwait, wait, NULL);
+  }
+  void ram_to_inbuf(const double *X, const cl_uint nwait,  
+		 const cl_event *wait, cl_event *event) {
+    ram_to_inbuf(X, NULL, nwait, wait, event);
   }
 
-  // with event
-  void ram_to_cl(const double *X,  
-		 cl_event *event) {
-    ram_to_cl(X, NULL, 0, NULL, event);
-  }
-
-  // with wait event(s)
-  void ram_to_cl(const double *X,  
+  void ram_to_outbuf(const double *X, cl_mem buf0, 
 		 const cl_uint nwait,
-		 const cl_event *wait) {
-    ram_to_cl(X, NULL, nwait, wait, NULL);
+		 const cl_event *wait, cl_event *event) {
+    cl_mem buf = (buf0 != NULL) ? buf0 : outbuf;
+    cl_int ret;
+    ret = clEnqueueWriteBuffer(queue,
+			       buf,
+			       CL_TRUE,
+			       0,
+			       outbuf_size,
+			       X,
+			       nwait,
+			       wait,
+			       event);
+    if(ret != CL_SUCCESS) std::cerr << clErrorString(ret) << std::endl;
+    assert(ret == CL_SUCCESS);
   }
-
-  // with wait event(s) and new event
-  void ram_to_cl(const double *X,  
-		 const cl_uint nwait,  
-		 const cl_event *wait, 
-		 cl_event *event) {
-    ram_to_cl(X, NULL, nwait, wait, event);
+  void ram_to_outbuf(const double *X) {
+    ram_to_outbuf(X, NULL, 0, NULL, NULL);
+  }
+  void ram_to_outbuf(const double *X, cl_event *event) {
+    ram_to_outbuf(X, NULL, 0, NULL, event);
+  }
+  void ram_to_outbuf(const double *X, 
+		    const cl_uint nwait, const cl_event *wait) {
+    ram_to_outbuf(X, NULL, nwait, wait, NULL);
+  }
+  void ram_to_outbuf(const double *X, const cl_uint nwait,  
+		 const cl_event *wait, cl_event *event) {
+    ram_to_outbuf(X, NULL, nwait, wait, event);
   }
 
   void finish() {
@@ -203,7 +258,8 @@ public:
 		 cl_mem *inbuf0 = NULL, cl_mem *outbuf0 = NULL,
 		 cl_uint nwait = 0, cl_event *wait = NULL, 
 		 cl_event *done = NULL) {
-    cl_mem *buf = (inbuf0 != NULL) ? inbuf0 : &inbuf;
+    cl_mem *buf0 = (inbuf0 != NULL) ? inbuf0 : &inbuf;
+    cl_mem *buf1 = (outbuf0 != NULL) ? outbuf0 : &outbuf;
     cl_int ret;
     
     ret = clfftEnqueueTransform(plan, // clfftPlanHandle 	plHandle,
@@ -213,8 +269,8 @@ public:
 				nwait, // cl_uint 	numWaitEvents,
 				wait, // const cl_event * 	waitEvents,
 				done, // cl_event * 	outEvents,
-				buf, // cl_mem * 	inputBuffers,
-				outbuf0, // cl_mem * 	outputBuffers,
+				buf0, // cl_mem * 	inputBuffers,
+				buf1, // cl_mem * 	outputBuffers,
 				NULL // cl_mem 	tmpBuffer 
 				);
     if(ret != CL_SUCCESS) std::cerr << clfft_errorstring(ret) << std::endl;
@@ -290,6 +346,9 @@ private:
 			);
     if(ret != CL_SUCCESS) std::cerr << clfft_errorstring(ret) << std::endl;
     assert(ret == CL_SUCCESS);
+
+    // FIXME: deal with out-of-place too.
+    create_clbuf(&inbuf, inbuf_size);
   }
 
 public:
@@ -367,6 +426,9 @@ private:
 			);
     if(ret != CL_SUCCESS) std::cerr << clfft_errorstring(ret) << std::endl;
     assert(ret == CL_SUCCESS);
+
+    // TODO: deal with out-of-place too.
+    create_clbuf(&inbuf, inbuf_size);
   }
 
 public:
@@ -403,17 +465,21 @@ private:
   unsigned nx; // size of problem for clFFT
 
   void set_nfloats() {
-    ncomplexfloats =  (nx + 1) * 2;
-    nrealfloats =  nx * 2;
+    nrealfloats =  nx;
+    ncomplexfloats =  2 * (1 + nx / 2);
   }
 
   void setup() {
-    set_buf_size();
+    realtocomplex = true;
+    inplace = false;
 
+    set_buf_size();
+  
     clfftDim dim = CLFFT_1D;
     size_t clLengths[1] = {nx};
 
     cl_int ret;
+
     ret = clfftCreateDefaultPlan(&plan, 
 				 ctx, 
 				 dim, 
@@ -421,7 +487,7 @@ private:
     if(ret != CL_SUCCESS) std::cerr << clfft_errorstring(ret) << std::endl;
     assert(ret == CL_SUCCESS);
 
-    ret = clfftSetPlanPrecision(plan, 
+    ret = clfftSetPlanPrecision(plan,
 				precision);
     if(ret != CL_SUCCESS) std::cerr << clfft_errorstring(ret) << std::endl;
     assert(ret == CL_SUCCESS);
@@ -433,7 +499,7 @@ private:
     assert(ret == CL_SUCCESS);
 
     ret = clfftSetResultLocation(plan, 
-				 CLFFT_INPLACE);
+				 CLFFT_OUTOFPLACE);
     if(ret != CL_SUCCESS) std::cerr << clfft_errorstring(ret) << std::endl;
     assert(ret == CL_SUCCESS);
 
@@ -445,6 +511,9 @@ private:
 			);
     if(ret != CL_SUCCESS) std::cerr << clfft_errorstring(ret) << std::endl;
     assert(ret == CL_SUCCESS);
+
+    create_clbuf(&inbuf, inbuf_size);
+    create_clbuf(&outbuf, outbuf_size);
   }
 
 public:
@@ -455,6 +524,8 @@ public:
     outbuf = NULL;
     nx = 0;
     set_buf_size();
+    realtocomplex = true;
+    inplace = false;
   }
 
   clfft1r(unsigned int nx0, cl_command_queue queue0, cl_context ctx0,
@@ -465,6 +536,7 @@ public:
     inbuf = inbuf0;
     outbuf = outbuf0;
     setup();
+    realtocomplex = true;
   }
 
   ~clfft1r() {

@@ -117,9 +117,9 @@ int main(int argc, char* argv[]) {
 
   cl_event r2c_event, c2r_event, forward_event, backward_event;
   if(N == 0) {
-    fft.ram_to_cl(X, &r2c_event);
+    fft.ram_to_inbuf(X, &r2c_event);
     fft.forward(1, &r2c_event, &forward_event);
-    fft.cl_to_ram(X, 1, &forward_event, &c2r_event);
+    fft.inbuf_to_ram(X, 1, &forward_event, &c2r_event);
     clWaitForEvents(1, &c2r_event);
     std::cout << "\nTransformed:" << std::endl;
     if(nx <= maxout) {
@@ -129,7 +129,7 @@ int main(int argc, char* argv[]) {
     }
 
     fft.backward(1, &forward_event, &backward_event);
-    fft.cl_to_ram(X, 1, &backward_event, &c2r_event);
+    fft.inbuf_to_ram(X, 1, &backward_event, &c2r_event);
     clWaitForEvents(1, &c2r_event);
     std::cout << "\nTransformed back:" << std::endl;
     if(nx <= maxout) {
@@ -144,9 +144,9 @@ int main(int argc, char* argv[]) {
     for(int i=0; i < N; ++i) {
       init(X,nx);
       seconds();
-      fft.ram_to_cl(X, &r2c_event);
+      fft.ram_to_inbuf(X, &r2c_event);
       fft.forward(1, &r2c_event, &forward_event);
-      fft.cl_to_ram(X, 1, &forward_event, &c2r_event);
+      fft.inbuf_to_ram(X, 1, &forward_event, &c2r_event);
       clWaitForEvents(1, &c2r_event);
 
       if(time_copy) {

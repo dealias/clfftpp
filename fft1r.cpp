@@ -42,7 +42,7 @@ int main(int argc, char *argv[]) {
   int devnum = 0;
   bool time_copy = false;
   int nx = 4;
-  int N = 10;
+  int N = 0;
   unsigned int stats = 0; // Type of statistics used in timing test.
 
   int maxout = 32; // maximum size of array output in entirety
@@ -96,92 +96,54 @@ int main(int argc, char *argv[]) {
   cl_command_queue queue = create_queue(ctx, device, CL_QUEUE_PROFILING_ENABLE);
 
   clfft1r fft(nx, queue, ctx);
-  fft.create_clbuf();
-
-  //  typedef float real;
 
   std::cout << "Allocating " 
 	    << fft.get_ncomplexfloats() 
-	    << " doubles." << std::endl;
-  double *X = new double[fft.get_ncomplexfloats()];
+	    << " doubles for complex." << std::endl;
+  double *Xin = new double[fft.get_ncomplexfloats()];
+  std::cout << "Allocating " 
+	    << fft.get_nrealfloats() 
+	    << " doubles for real." << std::endl;
+  double *Xout = new double[fft.get_nrealfloats()];
 
   cl_event r2c_event = clCreateUserEvent(ctx, NULL);
   cl_event c2r_event = clCreateUserEvent(ctx, NULL);
   cl_event forward_event = clCreateUserEvent(ctx, NULL);
   cl_event backward_event = clCreateUserEvent(ctx, NULL);
 
-  std::cout << "\nInput:" << std::endl;
-  initR(X, nx);
-  if(nx <= maxout)
-    showR(X, nx);
-  else 
-    std::cout << X[0] << std::endl;
+  if(N == 0) {
+    std::cout << "\nInput:" << std::endl;
+    initR(Xin, nx);
+    if(nx <= maxout)
+      showR(Xin, nx);
+    else
+      std::cout << Xin[0] << std::endl;
 
-  fft.ram_to_cl(X, &r2c_event);
-  
-  // cl_int ret = clSetUserEventStatus(forward_event,  CL_COMPLETE);
-  // if(ret != CL_SUCCESS) std::cerr << clErrorString(ret) << std::endl;
-  // assert(ret == CL_SUCCESS);
-  fft.forward(1, &r2c_event, &forward_event);
+    fft.ram_to_inbuf(Xin, &r2c_event);
+    fft.forward(1, &r2c_event, &forward_event);
+    fft.outbuf_to_ram(Xout, 1, &forward_event, &c2r_event);
+    clWaitForEvents(1, &c2r_event);
 
-  fft.cl_to_ram(X, 1, &forward_event, &c2r_event);
-  clWaitForEvents(1, &c2r_event);
-  std::cout << "\nTransformed:" << std::endl;
-  if(nx <= maxout)
-    showC(X, nx);
-  else 
-    std::cout << X[0] << std::endl;
-  
-  fft.backward(1, &forward_event, &backward_event);
-  fft.cl_to_ram(X, 1, &backward_event, &c2r_event);
-  clWaitForEvents(1, &c2r_event);
-  std::cout << "\nTransformed back:" << std::endl;
-  if(nx <= maxout) 
-    showR(X, nx);
-  else 
-    std::cout << X[0] << std::endl;
-
-  if(N > 0) {
-    std::cout << "\nTimings:" << std::endl;
-    double *T = new double[N];
-
-    cl_ulong time_start, time_end;
-    for(int i = 0; i < N; ++i) {
-      initR(X, nx);
-      seconds();
-      fft.ram_to_cl(X, &r2c_event);
-      fft.forward(1, &r2c_event, &forward_event);
-      fft.cl_to_ram(X, 1, &forward_event, &c2r_event);
-      clWaitForEvents(1, &c2r_event);
-
-      if(time_copy) {
-	clGetEventProfilingInfo(r2c_event,
-				CL_PROFILING_COMMAND_START,
-				sizeof(time_start),
-				&time_start, NULL);
-	clGetEventProfilingInfo(c2r_event,
-				CL_PROFILING_COMMAND_END,
-				sizeof(time_end), 
-				&time_end, NULL);
-      } else {
-	clGetEventProfilingInfo(forward_event,
-				CL_PROFILING_COMMAND_START,
-				sizeof(time_start),
-				&time_start, NULL);
-	clGetEventProfilingInfo(forward_event,
-				CL_PROFILING_COMMAND_END,
-				sizeof(time_end), 
-				&time_end, NULL);
-      }
-      T[i] = 1e-6 * (time_end - time_start);
-    }
-    if(time_copy) 
-      timings("fft with copy", nx, T, N, stats);
+    std::cout << "\nTransformed:" << std::endl;
+    if(nx <= maxout)
+      showC(Xout, nx);
     else 
-      timings("fft without copy", nx, T, N, stats);
-    delete[] T;
+      std::cout << Xout[0] << std::endl;
+
+    fft.backward(1, &forward_event, &backward_event);
+    fft.inbuf_to_ram(Xin, 1, &backward_event, &c2r_event);
+    clWaitForEvents(1, &c2r_event);
+
+    std::cout << "\nTransformed back:" << std::endl;
+    if(nx <= maxout) 
+      showR(Xin, nx);
+    else 
+      std::cout << Xin[0] << std::endl;
+  } else {
+    // FIXME: put timing stuff here.
   }
-  free(X);
+  delete[] Xin;
+  delete[] Xout;
 
   /* Release OpenCL working objects. */
   clReleaseCommandQueue(queue);

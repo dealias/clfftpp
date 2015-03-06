@@ -61,15 +61,15 @@ $(output) : % : %.o $(OBJS)
 	@echo $^
 	$(CXX) -o $@ $^ $(LDFLAGS)
 
-%.o : %.cpp
+%.o : %.cpp %.hpp
 	@echo $@
 	$(CXX) -c $(CXXFLAGS) $<
 
-%.o : %.cc
+%.o : %.cc %.h
 	@echo $@
 	$(CXX) -c $(CXXFLAGS) $<
 
-%.o : %.c
+%.o : %.c %.h
 	@echo $@
 	$(CC) -c $(CCFLAGS) $<
 
