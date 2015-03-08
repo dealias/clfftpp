@@ -113,7 +113,7 @@ int main(int argc, char *argv[]) {
   cl_command_queue queue = create_queue(ctx, device, CL_QUEUE_PROFILING_ENABLE);
   
   clfft2 fft(nx, ny, queue, ctx);
-  fft.create_clbuf();
+  fft.create_clinbuf();
   
   //typedef double real;
 

@@ -105,6 +105,9 @@ int main(int argc, char *argv[]) {
 	    << fft.get_nrealfloats() 
 	    << " doubles for real." << std::endl;
   double *Xout = new double[fft.get_ncomplexfloats()];
+  fft.create_clinbuf();
+  fft.create_cloutbuf();
+
 
   cl_event r2c_event = clCreateUserEvent(ctx, NULL);
   cl_event c2r_event = clCreateUserEvent(ctx, NULL);

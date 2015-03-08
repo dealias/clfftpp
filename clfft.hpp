@@ -105,12 +105,25 @@ public:
   const unsigned int get_ncomplexfloats() {return ncomplexfloats;}
   const unsigned int get_nrealfloats() {return nrealfloats;}
 
-  void create_clbuf(cl_mem *buf = NULL, size_t buf_size = 0) {
+  void create_clinbuf(cl_mem *buf = NULL, size_t buf_size = 0) {
+    if(buf == NULL)  buf = &inbuf;
+    if(buf_size == 0) buf_size = inbuf_size;
+
     cl_int ret;
-    if(buf == NULL)
-      buf = &inbuf;
-    if(buf_size == 0)
-      buf_size = inbuf_size;
+    *buf = clCreateBuffer(ctx, 
+			  CL_MEM_READ_WRITE, 
+			  buf_size,
+			  NULL,
+			  &ret);
+    if(ret != CL_SUCCESS) std::cerr << clErrorString(ret) << std::endl;
+    assert(ret == CL_SUCCESS);
+  }
+
+  void create_cloutbuf(cl_mem *buf = NULL, size_t buf_size = 0) {
+    if(buf == NULL)  buf = &outbuf;
+    if(buf_size == 0) buf_size = outbuf_size;
+
+    cl_int ret;
     *buf = clCreateBuffer(ctx, 
 			  CL_MEM_READ_WRITE, 
 			  buf_size,
@@ -124,6 +137,7 @@ public:
 		    const cl_uint nwait,
 		    const cl_event *wait, cl_event *event) {
     cl_mem buf = (buf0 != NULL) ? buf0 : inbuf;
+
     cl_int ret;
     ret = clEnqueueReadBuffer(queue,
 			      buf,
@@ -137,16 +151,20 @@ public:
     if(ret != CL_SUCCESS) std::cerr << clErrorString(ret) << std::endl;
     assert(ret == CL_SUCCESS);
   }
+
   void inbuf_to_ram(double *X) {
     inbuf_to_ram(X, NULL, 0, NULL, NULL);
   }
+
   void inbuf_to_ram(double *X, cl_event *event) {
     inbuf_to_ram(X, NULL, 0, NULL, event);
   }
+
   void inbuf_to_ram(double *X,
 		 const cl_uint nwait, const cl_event *wait) {
     inbuf_to_ram(X, NULL, nwait, wait, NULL);
   }
+
   void inbuf_to_ram(double *X, const cl_uint nwait,
 		 const cl_event *wait, cl_event *event) {
     inbuf_to_ram(X, NULL, nwait, wait, event);
@@ -156,6 +174,7 @@ public:
 		    const cl_uint nwait,
 		    const cl_event *wait, cl_event *event) {
     cl_mem buf = (buf0 != NULL) ? buf0 : outbuf;
+
     cl_int ret;
     ret = clEnqueueReadBuffer(queue,
 			      buf,
@@ -169,16 +188,20 @@ public:
     if(ret != CL_SUCCESS) std::cerr << clErrorString(ret) << std::endl;
     assert(ret == CL_SUCCESS);
   }
+
   void outbuf_to_ram(double *X) {
     outbuf_to_ram(X, NULL, 0, NULL, NULL);
   }
+
   void outbuf_to_ram(double *X, cl_event *event) {
     outbuf_to_ram(X, NULL, 0, NULL, event);
   }
+
   void outbuf_to_ram(double *X,
 		     const cl_uint nwait, const cl_event *wait) {
     outbuf_to_ram(X, NULL, nwait, wait, NULL);
   }
+
   void outbuf_to_ram(double *X, const cl_uint nwait,
 		     const cl_event *wait, cl_event *event) {
     outbuf_to_ram(X, NULL, nwait, wait, event);
@@ -258,10 +281,15 @@ public:
 		 cl_mem *inbuf0 = NULL, cl_mem *outbuf0 = NULL,
 		 cl_uint nwait = 0, cl_event *wait = NULL, 
 		 cl_event *done = NULL) {
-    cl_mem *buf0 = (inbuf0 != NULL) ? inbuf0 : &inbuf;
-    cl_mem *buf1 = (outbuf0 != NULL) ? outbuf0 : &outbuf;
-    cl_int ret;
+    // TODO: check if buffers are allocated
+    cl_mem *buf0 = (inbuf0 != NULL) ? inbuf0 : &inbuf; 
+    cl_mem *buf1;
+    if(inplace) 
+      buf1 = NULL;    
+    else
+      buf1 = (outbuf0 != NULL) ? outbuf0 : &outbuf;
     
+    cl_int ret;
     ret = clfftEnqueueTransform(plan, // clfftPlanHandle 	plHandle,
 				direction, // direction
 				1,  //cl_uint 	numQueuesAndEvents,
@@ -346,9 +374,6 @@ private:
 			);
     if(ret != CL_SUCCESS) std::cerr << clfft_errorstring(ret) << std::endl;
     assert(ret == CL_SUCCESS);
-
-    // FIXME: deal with out-of-place too.
-    create_clbuf(&inbuf, inbuf_size);
   }
 
 public:
@@ -426,9 +451,6 @@ private:
 			);
     if(ret != CL_SUCCESS) std::cerr << clfft_errorstring(ret) << std::endl;
     assert(ret == CL_SUCCESS);
-
-    // TODO: deal with out-of-place too.
-    create_clbuf(&inbuf, inbuf_size);
   }
 
 public:
@@ -511,9 +533,6 @@ private:
 			);
     if(ret != CL_SUCCESS) std::cerr << clfft_errorstring(ret) << std::endl;
     assert(ret == CL_SUCCESS);
-
-    create_clbuf(&inbuf, inbuf_size);
-    create_clbuf(&outbuf, outbuf_size);
   }
 
 public:

@@ -100,7 +100,7 @@ int main(int argc, char* argv[]) {
   cl_command_queue queue = create_queue(ctx, device,CL_QUEUE_PROFILING_ENABLE);
   
   clfft1 fft(nx, queue, ctx);
-  fft.create_clbuf();
+  fft.create_clinbuf();
 
   std::cout << "Allocating " 
 	    << fft.get_ncomplexfloats() 
@@ -108,7 +108,7 @@ int main(int argc, char* argv[]) {
   double *X = new double[fft.get_ncomplexfloats()];
 
   std::cout << "\nInput:" << std::endl;
-  init(X,nx);
+  init(X, nx);
   if(nx <= maxout) {
     show(X, nx);
   } else { 
