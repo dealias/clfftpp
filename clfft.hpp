@@ -565,3 +565,91 @@ public:
     assert(ret == CL_SUCCESS);
   }
 };
+
+//FIXME: work-in-progress
+class clfft2r : public clfft_base
+{
+private:
+  unsigned nx, ny; // size of problem for clFFT
+
+  void set_nfloats() {
+    nrealfloats =  nx * ny;
+    ncomplexfloats =  2 * (1 + nx / 2) * ny;
+  }
+
+  void setup() {
+    realtocomplex = true;
+    inplace = false;
+
+    set_buf_size();
+  
+    clfftDim dim = CLFFT_2D;
+    size_t clLengths[2] = {nx, ny};
+
+    cl_int ret;
+
+    ret = clfftCreateDefaultPlan(&plan, 
+				 ctx, 
+				 dim, 
+				 clLengths);
+    if(ret != CL_SUCCESS) std::cerr << clfft_errorstring(ret) << std::endl;
+    assert(ret == CL_SUCCESS);
+
+    ret = clfftSetPlanPrecision(plan,
+				precision);
+    if(ret != CL_SUCCESS) std::cerr << clfft_errorstring(ret) << std::endl;
+    assert(ret == CL_SUCCESS);
+
+    ret = clfftSetLayout(plan, 
+			 CLFFT_REAL,
+			 CLFFT_HERMITIAN_INTERLEAVED);
+    if(ret != CL_SUCCESS) std::cerr << clfft_errorstring(ret) << std::endl;
+    assert(ret == CL_SUCCESS);
+
+    ret = clfftSetResultLocation(plan, 
+				 CLFFT_OUTOFPLACE);
+    if(ret != CL_SUCCESS) std::cerr << clfft_errorstring(ret) << std::endl;
+    assert(ret == CL_SUCCESS);
+
+    ret = clfftBakePlan(plan,
+			1, // numQueues: number of experiments 
+			&queue, // commQueueFFT
+			NULL, // Always NULL
+			NULL // Always NULL
+			);
+    if(ret != CL_SUCCESS) std::cerr << clfft_errorstring(ret) << std::endl;
+    assert(ret == CL_SUCCESS);
+  }
+
+public:
+  clfft2r() {
+    ctx = NULL;
+    queue = NULL;
+    inbuf = NULL;
+    outbuf = NULL;
+    nx = 0;
+    set_buf_size();
+    realtocomplex = true;
+    inplace = false;
+  }
+
+  clfft2r(unsigned int nx0, unsigned int ny0, 
+	  cl_command_queue queue0, cl_context ctx0,
+	  cl_mem inbuf0 = NULL, cl_mem outbuf0 = NULL) {
+    nx = nx0;
+    ny = ny0;
+    queue = queue0;
+    ctx = ctx0;
+    inbuf = inbuf0;
+    outbuf = outbuf0;
+    setup();
+    realtocomplex = true;
+  }
+
+  ~clfft2r() {
+    cl_int ret;
+    ret = clfftDestroyPlan(&plan);
+    if(ret != CL_SUCCESS) std::cerr << clfft_errorstring(ret) << std::endl;
+    assert(ret == CL_SUCCESS);
+  }
+};

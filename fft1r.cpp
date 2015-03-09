@@ -9,24 +9,7 @@
 #include<vector>
 
 #include <getopt.h>
-#include <utils.h>
-
-template<class T>
-void showC(T *X, int n)
-{
-  unsigned int nc = n / 2 + 1;
-  for(unsigned int i = 0; i < nc; ++i)
-    std::cout << "(" << X[2 * i] << "," 
-	      <<  X[2 * i + 1] << ")" 
-	      << std::endl;
-}
-
-template<class T>
-void showR(const T *X, int n)
-{
-  for(unsigned int i = 0; i < n; ++i)
-    std::cout << X[i] << std::endl;
-}
+#include "utils.hpp"
 
 template<class T>
 void initR(T *X, int n)
@@ -118,7 +101,7 @@ int main(int argc, char *argv[]) {
     std::cout << "\nInput:" << std::endl;
     initR(Xin, nx);
     if(nx <= maxout)
-      showR(Xin, nx);
+      show1R(Xin, nx);
     else
       std::cout << Xin[0] << std::endl;
 
@@ -129,7 +112,7 @@ int main(int argc, char *argv[]) {
     
     std::cout << "\nTransformed:" << std::endl;
     if(nx <= maxout)
-      showC(Xout, nx);
+      show1C(Xout, nx);
     else 
       std::cout << Xout[0] << std::endl;
 
@@ -139,7 +122,7 @@ int main(int argc, char *argv[]) {
 
     std::cout << "\nTransformed back:" << std::endl;
     if(nx <= maxout) 
-      showR(Xin, nx);
+      show1R(Xin, nx);
     else 
       std::cout << Xin[0] << std::endl;
   } else {

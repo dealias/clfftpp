@@ -19,4 +19,40 @@ void usage(unsigned int dim)
 	    << std::endl;
 }
 
+
+template<class T>
+void show1C(const T *X, int n)
+{
+  for(int i = 0; i < n; ++i) {
+    std::cout << "(" 
+	      << X[2 * i] 
+	      << "," 
+	      <<  X[2 * i +1] 
+	      << ")" 
+	      << std::endl;
+  }
+}
+
+template<class T>
+void show1R(const T *X, int n)
+{
+  for(unsigned int i = 0; i < n; ++i)
+    std::cout << X[i] << std::endl;
+}
+
+
+template<class T>
+void show2C(const T *X, int nx, int ny)
+{
+  for(unsigned int i=0; i < nx; ++i) {
+    for(unsigned int j=0; j < ny; ++j) {
+      unsigned pos = i*ny + j; 
+      std::cout << "(" << X[2*pos] 
+		<< "," << X[2*pos +1] 
+		<< ") ";
+    }
+    std::cout << std::endl;
+  }
+}
+
 #endif

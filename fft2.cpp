@@ -9,21 +9,7 @@
 #include <vector>
 
 #include <getopt.h>
-#include <utils.h>
-
-template<class T>
-void show(const T *X, int nx, int ny)
-{
-  for(unsigned int i=0; i < nx; ++i) {
-    for(unsigned int j=0; j < ny; ++j) {
-      unsigned pos = i*ny + j; 
-      std::cout << "(" << X[2*pos] 
-		<< "," << X[2*pos +1] 
-		<< ") ";
-    }
-    std::cout << std::endl;
-  }
-}
+#include "utils.hpp"
 
 template<class T>
 void init(T *X, int nx, int ny)
@@ -127,7 +113,7 @@ int main(int argc, char *argv[]) {
     std::cout << "\nInput:" << std::endl;
     init(X, nx, ny);
     if(nx * ny <= 100) 
-      show(X, nx, ny);
+      show2C(X, nx, ny);
     else 
       std::cout << X[0] << std::endl;
 
@@ -137,7 +123,7 @@ int main(int argc, char *argv[]) {
     clWaitForEvents(1, &c2r_event);
     std::cout << "\nTransformed:" << std::endl;
     if(nx * ny <= 100) 
-      show(X, nx, ny);
+      show2C(X, nx, ny);
     else 
       std::cout << X[0] << std::endl;
 
@@ -146,7 +132,7 @@ int main(int argc, char *argv[]) {
     clWaitForEvents(1, &c2r_event);
     std::cout << "\nTransformed back:" << std::endl;
     if(nx * ny <= 100) 
-      show(X, nx, ny);
+      show2C(X, nx, ny);
     else 
       std::cout << X[0] << std::endl;
 

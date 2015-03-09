@@ -9,15 +9,7 @@
 #include <vector>
 
 #include <getopt.h>
-#include <utils.h>
-
-template<class T>
-void show(const T *X, int n)
-{
-  for(int i = 0; i < n; ++i) {
-    std::cout << "(" << X[2 * i] << "," <<  X[2 * i +1] << ")" << std::endl;
-  }
-}
+#include "utils.hpp"
 
 template<class T>
 void init(T *X, int n)
@@ -110,7 +102,7 @@ int main(int argc, char* argv[]) {
   std::cout << "\nInput:" << std::endl;
   init(X, nx);
   if(nx <= maxout) {
-    show(X, nx);
+    show1C(X, nx);
   } else { 
     std::cout << X[0] << std::endl;
   }
@@ -123,7 +115,7 @@ int main(int argc, char* argv[]) {
     clWaitForEvents(1, &c2r_event);
     std::cout << "\nTransformed:" << std::endl;
     if(nx <= maxout) {
-      show(X, nx);
+      show1C(X, nx);
     } else { 
       std::cout << X[0] << std::endl;
     }
@@ -133,7 +125,7 @@ int main(int argc, char* argv[]) {
     clWaitForEvents(1, &c2r_event);
     std::cout << "\nTransformed back:" << std::endl;
     if(nx <= maxout) {
-      show(X, nx);
+      show1C(X, nx);
     } else { 
       std::cout << X[0] << std::endl;
     }
