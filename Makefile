@@ -1,31 +1,36 @@
 CXX=g++
 CC=gcc
 
-# Set up CXXFLAGS
-CXXFLAGS=
+INCL=
 
 ifneq ($(strip $(OPENCL_INCLUDE_PATH)),)
-CXXFLAGS+=-I$(OPENCL_INCLUDE_PATH)
+INCL+=-I$(OPENCL_INCLUDE_PATH)
 endif
 
 ifneq ($(strip $(CLFFT_INCLUDE_PATH)),)
 # erratic:
 # export CLFFT_INCLUDE_PATH=${HOME}/clFFT/include
-CXXFLAGS+=-I$(CLFFT_INCLUDE_PATH)
+INCL+=-I$(CLFFT_INCLUDE_PATH)
 endif
 
 ifneq ($(strip $(FFTWPP_INCLUDE_PATH)),)
-CXXFLAGS+=-I$(FFTWPP_INCLUDE_PATH)
-CXXFLAGS+=-I$(FFTWPP_INCLUDE_PATH)/tests
+INCL+=-I$(FFTWPP_INCLUDE_PATH)
+INCL+=-I$(FFTWPP_INCLUDE_PATH)/tests
 endif
 
-CXXFLAGS+=-I.
+INCL+=-I.
 
+# Set up CXXFLAGS
+CXXFLAGS=
 CXXFLAGS+=-O3
 CXXFLAGS+=-Wall
 
-# Set up CCFLAGS
-CCFLAGS=$(CXXFLAGS)
+CXXFLAGS+=$(INCL)
+
+# Set up CFLAGS
+CFLAGS=$(CXXFLAGS)
+
+MAKEDEPEND=$(CXXFLAGS) -O0 -M -DDEPEND
 
 # set up LDFLAGS
 LDFLAGS=
@@ -42,41 +47,58 @@ endif
 
 LDFLAGS+=-lpthread
 
-# Define the source files and objects
-SRCS_CPP=clfft.cpp platform.cpp utils.cpp
-SRCS_CC= 
-SRCS_C=clutils.c
-CPPOBJS=$(SRCS_CPP:.cpp=.o)
-CCOBJS+= $(SRCS_CC:.cc=.o)
-COBJS=$(SRCS_C:.c=.o)
-OBJS=$(CPPOBJS) $(CCOBJS) $(COBJS) 
-
 # The programs to be produced
-output=fft1 fft2 fft1r
+OUTPUT=fft1 fft2 fft1r
 
-all: $(output)
+SRCS_CPP=clfft platform
+SRCS_C=clutils
+OBJS=$(SRCS_CPP:=.o) $(SRCS_C:=.o)
+ALL=$(SRCS_CPP) $(SRCS_C) $(OUTPUT)
 
-# static pattern rule
-$(output) : % : %.o $(OBJS)
-	@echo $^
+all: $(OUTPUT)
+
+fft1: $(OBJS) fft1.o
+	@echo compiling $@
 	$(CXX) -o $@ $^ $(LDFLAGS)
 
-%.o : %.cpp %.hpp
-	@echo $@
-	$(CXX) -c $(CXXFLAGS) $<
-	$(CXX) -MM $(CXXFLAGS) $*.cpp > $*.d
+fft1r: $(OBJS) fft1r.o
+	@echo compiling $@
+	$(CXX) -o $@ $^ $(LDFLAGS)
 
-%.o : %.cc %.h
-	@echo $@
-	$(CXX) -c $(CXXFLAGS) $<
-	$(CXX) -MM $(CXXFLAGS) $*.cc > $*.d
+fft2: $(OBJS) fft2.o
+	@echo compiling $@
+	$(CXX) -o $@ $^ $(LDFLAGS)
 
-%.o : %.c %.h
-	@echo $@
-	$(CC) -c $(CCFLAGS) $<
-	$(CC) -MM $(CFLAGS) $*.c > $*.d
+# %.o : %.c %.h %.d
+# 	@echo $@
+# 	$(CC) -c $(CFLAGS) $(INCL) $<
 
-.SUFFIXES+= .d
+# %.o : %.cpp %.hpp %.d
+# 	@echo $@
+# 	$(CXX) -c $(CXXFLAGS) $(INCL) $<
 
-clean:
+.cpp.d:
+	@echo Creating $@; \
+	rm -f $@; \
+	${CXX} $(MAKEDEPEND) $(INCL) $< > $@.$$$$ 2>/dev/null && \
+	sed 's,\($*\)\.o[ :]*,\1.o $@ : ,g' < $@.$$$$ > $@; \
+	rm -f $@.$$$$
+
+.c.d:
+	@echo Creating $@; \
+	rm -f $@; \
+	${CC} $(MAKEDEPEND) $(INCL) $< > $@.$$$$ 2>/dev/null && \
+	sed 's,\($*\)\.o[ :]*,\1.o $@ : ,g' < $@.$$$$ > $@; \
+	rm -f $@.$$$$
+
+.SUFFIXES: .c .cpp .o .d
+
+.PHONY: clean
+clean: FORCE
 	rm -f *.o *.gch $(output) *.d
+
+ifeq (,$(findstring clean,${MAKECMDGOALS}))
+-include $(ALL:=.d)
+endif
+
+FORCE:

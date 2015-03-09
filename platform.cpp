@@ -2,6 +2,7 @@
 #include <iostream>
 //#include <stdio.h>
 #include <CL/cl.h>
+#include "platform.hpp"
 //using namespace opencl;
 
 void find_platform_ids(std::vector<cl_platform_id > &A)
