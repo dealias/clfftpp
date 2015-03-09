@@ -38,6 +38,8 @@ int main(int argc, char *argv[]) {
 
   int N = 0;
 
+  int maxout = 10000;
+
   unsigned int stats = 0; // Type of statistics used in timing test.
 
 #ifdef __GNUC__	
@@ -112,7 +114,7 @@ int main(int argc, char *argv[]) {
   if (N == 0) { // Transform forwards and back, outputting the buffer.
     std::cout << "\nInput:" << std::endl;
     init(X, nx, ny);
-    if(nx * ny <= 100) 
+    if(nx * ny <= maxout) 
       show2C(X, nx, ny);
     else 
       std::cout << X[0] << std::endl;
@@ -128,7 +130,7 @@ int main(int argc, char *argv[]) {
       std::cout << i << ": (" << X[2 * i] << "," << X[2 * i + 1] << ")"
 		<< std::endl;
     }
-    if(nx * ny <= 100) 
+    if(nx * ny <= maxout) 
       show2C(X, nx, ny);
     else 
       std::cout << X[0] << std::endl;
@@ -137,7 +139,7 @@ int main(int argc, char *argv[]) {
     fft.inbuf_to_ram(X, 1, &backward_event, &c2r_event);
     clWaitForEvents(1, &c2r_event);
     std::cout << "\nTransformed back:" << std::endl;
-    if(nx * ny <= 100) 
+    if(nx * ny <= maxout) 
       show2C(X, nx, ny);
     else 
       std::cout << X[0] << std::endl;

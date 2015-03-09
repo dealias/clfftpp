@@ -95,7 +95,7 @@ int main(int argc, char *argv[]) {
 	    << fft.ncomplex() 
 	    << " doubles for real." << std::endl;
   double *Xin = new double[fft.nreal()];
-  std::cout << "Allocating " 
+  std::cout << "Allocating "
 	    << fft.nreal() 
 	    << " doubles for complex." << std::endl;
   double *Xout = new double[2 * fft.ncomplex()];
@@ -107,6 +107,8 @@ int main(int argc, char *argv[]) {
 
   if(N == 0) {
     std::cout << "\nInput:" << std::endl;
+    std::cout << "nx: " << nx << std::endl;
+    std::cout << "ny: " << ny << std::endl;
     init2R(Xin, nx, ny);
     if(nx <= maxout)
       show2R(Xin, nx, ny);
@@ -120,13 +122,16 @@ int main(int argc, char *argv[]) {
     
     std::cout << "\nTransformed:" << std::endl;
     std::cout << fft.ncomplex(0) << std::endl;
+    std::cout << fft.ncomplex(1) << std::endl;
     for(unsigned int i = 0; i < fft.ncomplex(); ++i) {
       std::cout << i << ": (" << Xout[2 * i] << "," << Xout[2 * i + 1] << ")"
 		<< std::endl;
     }
     std::cout << std::endl;
+    std::cout << "fft.ncomplex(0): " << fft.ncomplex(0) << std::endl;
+    std::cout << "fft.ncomplex(1): " << fft.ncomplex(1) << std::endl;
     if(nx <= maxout)
-      show2H(Xout, fft.ncomplex(0), fft.ncomplex(1));
+      showH(Xout, fft.ncomplex(0), fft.ncomplex(1), fft.nreal(1) / 2 - 1);
     else
       std::cout << Xout[0] << std::endl;
 

@@ -425,7 +425,8 @@ private:
     set_buf_size();
 
     clfftDim dim = CLFFT_2D;
-    size_t clLengths[2] = {nx, ny};
+    //size_t clLengths[2] = {nx, ny};
+    size_t clLengths[2] = {ny, nx}; // They lied when they said it was row-major
 
     cl_int ret;
     ret = clfftCreateDefaultPlan(&plan, 
@@ -643,7 +644,8 @@ private:
     set_buf_size();
   
     clfftDim dim = CLFFT_2D;
-    size_t clLengths[2] = {nx, ny};
+    //size_t clLengths[2] = {nx, ny};
+    size_t clLengths[2] = {ny, nx}; // They lied when they said it was row-major
 
     cl_int ret;
 
@@ -716,11 +718,11 @@ public:
   const unsigned int ncomplex(const int dim = -1) {
     switch(dim) {
     case -1:
-      return (1 + nx / 2) * ny;
+      return (1 + ny / 2) * nx + 10;
     case 0:
-      return 1 + nx / 2;
+      return nx;
     case 1:
-      return ny;
+      return 1 + ny / 2;
     default:
       std::cerr << dim 
 		<< "is an invalid dimension for clfft2r::ncomplex"

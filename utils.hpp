@@ -44,29 +44,28 @@ void show1R(const T *X, int n)
 template<class T>
 void show2C(const T *X, int nx, int ny)
 {
-  int pos = 0;
   for(unsigned int i = 0; i < nx; ++i) {
     for(unsigned int j = 0; j < ny; ++j) {
+      int pos = 2 * (i * ny + j);
       std::cout << "(" << X[pos]
 		<< "," << X[pos + 1] 
 		<< ") ";
-      pos += 2;
     }
     std::cout << std::endl;
   }
 }
 template<class T>
-void show2H(const T *X, int nx, int ny)
+void showH(const T *X, int nx, int ny, int skip)
 {
-  int pos = 0;
-  for(unsigned int j = 0; j < ny; ++j) {
-    for(unsigned int i = 0; i < nx; ++i) {
+  // FIXME: what is the deal with skip?  Is this a stride issue?
+  std::cout << "skip = " << skip << std::endl;
+  for(unsigned int i = 0; i < nx; ++i) {
+    for(unsigned int j = 0; j < ny; ++j) {
+      int pos = 2 * (i * (ny + skip) + j);
       std::cout << "(" << X[pos]
-		<< "," << X[pos + 1] 
+		<< "," << X[pos + 1]
 		<< ") ";
-      pos += 2;
     }
-    pos += 2;
     std::cout << std::endl;
   }
 }
