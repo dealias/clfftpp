@@ -25,7 +25,7 @@ CXXFLAGS+=-O3
 CXXFLAGS+=-Wall
 
 # Set up CCFLAGS
-CCFLAGS = $(CXXFLAGS)
+CCFLAGS=$(CXXFLAGS)
 
 # set up LDFLAGS
 LDFLAGS=
@@ -64,14 +64,19 @@ $(output) : % : %.o $(OBJS)
 %.o : %.cpp %.hpp
 	@echo $@
 	$(CXX) -c $(CXXFLAGS) $<
+	$(CXX) -MM $(CXXFLAGS) $*.cpp > $*.d
 
 %.o : %.cc %.h
 	@echo $@
 	$(CXX) -c $(CXXFLAGS) $<
+	$(CXX) -MM $(CXXFLAGS) $*.cc > $*.d
 
 %.o : %.c %.h
 	@echo $@
 	$(CC) -c $(CCFLAGS) $<
+	$(CC) -MM $(CFLAGS) $*.c > $*.d
+
+.SUFFIXES+= .d
 
 clean:
-	rm -f *.o *.gch $(output)
+	rm -f *.o *.gch $(output) *.d
