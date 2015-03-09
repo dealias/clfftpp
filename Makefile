@@ -48,7 +48,7 @@ endif
 LDFLAGS+=-lpthread
 
 # The programs to be produced
-OUTPUT=fft1 fft2 fft1r
+OUTPUT=fft1 fft2 fft1r fft2r
 
 SRCS_CPP=clfft platform
 SRCS_C=clutils
@@ -66,6 +66,10 @@ fft1r: $(OBJS) fft1r.o
 	$(CXX) -o $@ $^ $(LDFLAGS)
 
 fft2: $(OBJS) fft2.o
+	@echo compiling $@
+	$(CXX) -o $@ $^ $(LDFLAGS)
+
+fft2r: $(OBJS) fft2r.o
 	@echo compiling $@
 	$(CXX) -o $@ $^ $(LDFLAGS)
 

@@ -16,9 +16,9 @@ void init(T *X, int nx, int ny)
 {
   for(unsigned int i = 0; i < nx; ++i) {
     for(unsigned int j = 0; j < ny; ++j) {
-      unsigned pos = i * ny + j; 
-      X[2 * pos] = i;
-      X[2 * pos + 1] = j;
+      unsigned pos = 2 * (i * ny + j); 
+      X[pos] = i;
+      X[pos + 1] = j;
     }
   }
 }
@@ -36,7 +36,7 @@ int main(int argc, char *argv[]) {
   int ny = 4;
   //nx=262144;
 
-  int N = 10;
+  int N = 0;
 
   unsigned int stats = 0; // Type of statistics used in timing test.
 
@@ -99,14 +99,14 @@ int main(int argc, char *argv[]) {
   cl_command_queue queue = create_queue(ctx, device, CL_QUEUE_PROFILING_ENABLE);
   
   clfft2 fft(nx, ny, queue, ctx);
-  fft.create_clinbuf();
+  fft.create_inbuf();
   
   //typedef double real;
 
   std::cout << "Allocating " 
-	    << fft.get_ncomplexfloats() 
+	    << fft.ncomplex() 
 	    << " doubles." << std::endl;
-  double *X = new double[fft.get_ncomplexfloats()];
+  double *X = new double[2 * fft.ncomplex()];
 
   cl_event r2c_event, c2r_event, forward_event, backward_event;
   if (N == 0) { // Transform forwards and back, outputting the buffer.
@@ -122,6 +122,12 @@ int main(int argc, char *argv[]) {
     fft.inbuf_to_ram(X, 1, &forward_event, &c2r_event);
     clWaitForEvents(1, &c2r_event);
     std::cout << "\nTransformed:" << std::endl;
+    
+
+    for(unsigned int i = 0; i < fft.ncomplex(); ++i) {
+      std::cout << i << ": (" << X[2 * i] << "," << X[2 * i + 1] << ")"
+		<< std::endl;
+    }
     if(nx * ny <= 100) 
       show2C(X, nx, ny);
     else 
@@ -136,7 +142,7 @@ int main(int argc, char *argv[]) {
     else 
       std::cout << X[0] << std::endl;
 
-  } else { // Perform N timing tests.
+  } else { // Perform timing tests.
     double *T = new double[N];
     cl_ulong time_start, time_end;
     for(int i = 0; i < N; ++i) {

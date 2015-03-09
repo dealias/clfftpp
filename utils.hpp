@@ -44,12 +44,40 @@ void show1R(const T *X, int n)
 template<class T>
 void show2C(const T *X, int nx, int ny)
 {
-  for(unsigned int i=0; i < nx; ++i) {
-    for(unsigned int j=0; j < ny; ++j) {
-      unsigned pos = i*ny + j; 
-      std::cout << "(" << X[2*pos] 
-		<< "," << X[2*pos +1] 
+  int pos = 0;
+  for(unsigned int i = 0; i < nx; ++i) {
+    for(unsigned int j = 0; j < ny; ++j) {
+      std::cout << "(" << X[pos]
+		<< "," << X[pos + 1] 
 		<< ") ";
+      pos += 2;
+    }
+    std::cout << std::endl;
+  }
+}
+template<class T>
+void show2H(const T *X, int nx, int ny)
+{
+  int pos = 0;
+  for(unsigned int j = 0; j < ny; ++j) {
+    for(unsigned int i = 0; i < nx; ++i) {
+      std::cout << "(" << X[pos]
+		<< "," << X[pos + 1] 
+		<< ") ";
+      pos += 2;
+    }
+    pos += 2;
+    std::cout << std::endl;
+  }
+}
+
+template<class T>
+void show2R(const T *X, int nx, int ny)
+{
+  for(unsigned int i = 0; i < nx; ++i) {
+    for(unsigned int j = 0; j < ny; ++j) {
+      unsigned pos = i * ny + j;
+      std::cout << X[pos] << " ";
     }
     std::cout << std::endl;
   }

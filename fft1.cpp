@@ -28,10 +28,10 @@ int main(int argc, char* argv[]) {
 
   bool time_copy = false;
   
-  int nx = 1024;
+  int nx = 4;
   //nx=262144;
 
-  int N = 10;
+  int N = 0;
 
   unsigned int stats = 0; // Type of statistics used in timing test.
 
@@ -39,7 +39,7 @@ int main(int argc, char* argv[]) {
 
 #ifdef __GNUC__	
   optind=0;
-#endif	
+#endif
   for (;;) {
     int c = getopt(argc,argv,"p:d:c:m:x:N:S:h");
     if (c == -1) break;
@@ -92,12 +92,12 @@ int main(int argc, char* argv[]) {
   cl_command_queue queue = create_queue(ctx, device,CL_QUEUE_PROFILING_ENABLE);
   
   clfft1 fft(nx, queue, ctx);
-  fft.create_clinbuf();
+  fft.create_inbuf();
 
   std::cout << "Allocating " 
-	    << fft.get_ncomplexfloats() 
+	    << fft.ncomplex() 
 	    << " doubles." << std::endl;
-  double *X = new double[fft.get_ncomplexfloats()];
+  double *X = new double[2 * fft.ncomplex()];
 
   std::cout << "\nInput:" << std::endl;
   init(X, nx);

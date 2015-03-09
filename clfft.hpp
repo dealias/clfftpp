@@ -13,10 +13,10 @@ protected:
   clfftPlanHandle plan, backwardplan;
   cl_context ctx;
   cl_command_queue queue;
-  unsigned int ncomplexfloats, nrealfloats;
   size_t inbuf_size, outbuf_size;
   clfftPrecision precision;
   bool realtocomplex, inplace;
+  cl_mem workmem;
 
   const char *clfft_errorstring(const cl_int err) {
     const char *errstring = NULL;
@@ -55,17 +55,14 @@ protected:
     return errstring;
   }
   
-  virtual void set_nfloats() = 0;
-  
   void set_buf_size() {
-    set_nfloats();
     if(realtocomplex) {
-      inbuf_size = nrealfloats
+      inbuf_size = nreal(-1)
 	* (precision == CLFFT_DOUBLE ? sizeof(double) : sizeof(float));
-      outbuf_size = ncomplexfloats
+      outbuf_size = 2 * ncomplex(-1)
 	* (precision == CLFFT_DOUBLE ? sizeof(double) : sizeof(float));
     } else {
-      inbuf_size = ncomplexfloats
+      inbuf_size = 2 * ncomplex(-1)
 	* (precision == CLFFT_DOUBLE ? sizeof(double) : sizeof(float));
       outbuf_size = inbuf_size;
     }
@@ -78,7 +75,7 @@ public:
       clfft_setup();
     ++count_zero;
     precision = CLFFT_DOUBLE;
-    //precision=CLFFT_SINGLE;
+    //precision = CLFFT_SINGLE;
     realtocomplex = false;
     inplace = true;
   }
@@ -90,7 +87,7 @@ public:
   }
 
   void clfft_setup() {
-    cl_int ret;  
+    cl_int ret;
     clfftSetupData fftSetup;
 
     ret = clfftInitSetupData(&fftSetup);
@@ -102,15 +99,15 @@ public:
     assert(ret == CL_SUCCESS);
   }
 
-  const unsigned int get_ncomplexfloats() {return ncomplexfloats;}
-  const unsigned int get_nrealfloats() {return nrealfloats;}
+  virtual const unsigned int nreal(const int dim) = 0;
+  virtual const unsigned int ncomplex(const int dim) = 0;
 
-  void create_clinbuf(cl_mem *buf = NULL, size_t buf_size = 0) {
+  void create_inbuf(cl_mem *buf = NULL, size_t buf_size = 0) {
     if(buf == NULL)  buf = &inbuf;
     if(buf_size == 0) buf_size = inbuf_size;
 
     cl_int ret;
-    *buf = clCreateBuffer(ctx, 
+    *buf = clCreateBuffer(ctx,
 			  CL_MEM_READ_WRITE, 
 			  buf_size,
 			  NULL,
@@ -119,13 +116,13 @@ public:
     assert(ret == CL_SUCCESS);
   }
 
-  void create_cloutbuf(cl_mem *buf = NULL, size_t buf_size = 0) {
+  void create_outbuf(cl_mem *buf = NULL, size_t buf_size = 0) {
     if(buf == NULL)  buf = &outbuf;
     if(buf_size == 0) buf_size = outbuf_size;
 
     cl_int ret;
-    *buf = clCreateBuffer(ctx, 
-			  CL_MEM_READ_WRITE, 
+    *buf = clCreateBuffer(ctx,
+			  CL_MEM_READ_WRITE,
 			  buf_size,
 			  NULL,
 			  &ret);
@@ -284,8 +281,8 @@ public:
     // TODO: check if buffers are allocated
     cl_mem *buf0 = (inbuf0 != NULL) ? inbuf0 : &inbuf; 
     cl_mem *buf1;
-    if(inplace) 
-      buf1 = NULL;    
+    if(inplace)
+      buf1 = NULL;
     else
       buf1 = (outbuf0 != NULL) ? outbuf0 : &outbuf;
     
@@ -299,7 +296,7 @@ public:
 				done, // cl_event * 	outEvents,
 				buf0, // cl_mem * 	inputBuffers,
 				buf1, // cl_mem * 	outputBuffers,
-				NULL // cl_mem 	tmpBuffer 
+				workmem // cl_mem 	tmpBuffer 
 				);
     if(ret != CL_SUCCESS) std::cerr << clfft_errorstring(ret) << std::endl;
     assert(ret == CL_SUCCESS);
@@ -331,10 +328,6 @@ class clfft1 : public clfft_base
 {
 private:
   unsigned nx; // size of problem
-
-  void set_nfloats() {
-    ncomplexfloats = nx * 2;
-  }
 
   void setup() {
     set_buf_size();
@@ -402,16 +395,31 @@ public:
     if(ret != CL_SUCCESS) std::cerr << clErrorString(ret) << std::endl;
     assert(ret == CL_SUCCESS);
   }
+
+  const unsigned int nreal(const int dim = -1) { return 0;}
+  const unsigned int ncomplex(const int dim = -1) {
+    switch(dim) {
+    case -1:
+      return nx;
+	break;
+    case 0:
+      return nx;
+      break;
+    default:
+      std::cerr << dim 
+		<< "is an invalid dimension for clfft1::ncomplex"
+		<< std::endl;
+      exit(1);
+      return 0;
+    }
+  }
+  
 };
 
 class clfft2 : public clfft_base
 {
 private:
   unsigned nx, ny; // size of problem
-
-  void set_nfloats() {
-    ncomplexfloats = nx * ny * 2;
-  }
 
   void setup() {
     set_buf_size();
@@ -451,6 +459,19 @@ private:
 			);
     if(ret != CL_SUCCESS) std::cerr << clfft_errorstring(ret) << std::endl;
     assert(ret == CL_SUCCESS);
+
+    size_t nwork = 0;
+    ret = clfftGetTmpBufSize(plan, &nwork);
+    if(ret != CL_SUCCESS) std::cerr << clfft_errorstring(ret) << std::endl;
+    assert(ret == CL_SUCCESS);
+
+    if(nwork > 0) {
+      workmem = clCreateBuffer(ctx, CL_MEM_READ_WRITE, nwork, 0, &ret);
+      if(ret != CL_SUCCESS) std::cerr << clfft_errorstring(ret) << std::endl;
+      assert(ret == CL_SUCCESS);
+    } else {
+      workmem = NULL;
+    }
   }
 
 public:
@@ -479,17 +500,30 @@ public:
     ret = clfftDestroyPlan(&plan);
     if(ret != CL_SUCCESS) std::cerr << clErrorString(ret) << std::endl;
   }
+
+  const unsigned int nreal(const int dim = -1) { return 0;}
+  const unsigned int ncomplex(const int dim = -1) {
+    switch(dim) {
+    case -1:
+      return nx * ny;
+    case 0:
+      return nx;
+    case 1:
+      return ny;
+    default:
+      std::cerr << dim 
+		<< "is an invalid dimension for clfft2::ncomplex"
+		<< std::endl;
+      exit(1);
+    }
+    return 0;
+  }
 };
 
 class clfft1r : public clfft_base
 {
 private:
   unsigned nx; // size of problem for clFFT
-
-  void set_nfloats() {
-    nrealfloats =  nx;
-    ncomplexfloats =  2 * (1 + nx / 2);
-  }
 
   void setup() {
     realtocomplex = true;
@@ -564,18 +598,43 @@ public:
     if(ret != CL_SUCCESS) std::cerr << clfft_errorstring(ret) << std::endl;
     assert(ret == CL_SUCCESS);
   }
+
+  const unsigned int ncomplex(const int dim = -1) {
+    switch(dim) {
+    case -1:
+      return 1 + nx / 2;
+    case 0:
+      return 1 + nx / 2;
+    default:
+      std::cerr << dim 
+		<< "is an invalid dimension for clfft1r::ncomplex"
+		<< std::endl;
+      exit(1);
+    }
+    return 0;
+  }
+
+  virtual const unsigned int nreal(const int dim = -1) {
+    switch(dim) {
+    case -1:
+      return nx;
+    case 0:
+      return nx;
+    default:
+      std::cerr << dim 
+		<< "is an invalid dimension for clfft1r::ncomplex"
+		<< std::endl;
+      exit(1);
+    }
+    return 0;
+  }
+
 };
 
-//FIXME: work-in-progress
 class clfft2r : public clfft_base
 {
 private:
   unsigned nx, ny; // size of problem for clFFT
-
-  void set_nfloats() {
-    nrealfloats =  nx * ny;
-    ncomplexfloats =  2 * (1 + nx / 2) * ny;
-  }
 
   void setup() {
     realtocomplex = true;
@@ -644,6 +703,7 @@ public:
     outbuf = outbuf0;
     setup();
     realtocomplex = true;
+    inplace = false;
   }
 
   ~clfft2r() {
@@ -651,5 +711,39 @@ public:
     ret = clfftDestroyPlan(&plan);
     if(ret != CL_SUCCESS) std::cerr << clfft_errorstring(ret) << std::endl;
     assert(ret == CL_SUCCESS);
+  }
+
+  const unsigned int ncomplex(const int dim = -1) {
+    switch(dim) {
+    case -1:
+      return (1 + nx / 2) * ny;
+    case 0:
+      return 1 + nx / 2;
+    case 1:
+      return ny;
+    default:
+      std::cerr << dim 
+		<< "is an invalid dimension for clfft2r::ncomplex"
+		<< std::endl;
+      exit(1);
+    }
+    return 0;
+  }
+
+  const unsigned int nreal(const int dim = -1) {
+    switch(dim) {
+    case -1:
+      return nx * ny;
+    case 0:
+      return nx;
+    case 1:
+      return ny;
+    default:
+      std::cerr << dim 
+		<< "is an invalid dimension for clfft2r::ncomplex"
+		<< std::endl;
+      exit(1);
+    }
+    return 0;
   }
 };
