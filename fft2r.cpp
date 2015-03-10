@@ -31,6 +31,7 @@ int main(int argc, char *argv[]) {
   int ny = 4;
   int N = 0;
   unsigned int stats = 0; // Type of statistics used in timing test.
+  bool inplace = false;
 
   int maxout = 32; // maximum size of array output in entirety
 
@@ -38,7 +39,7 @@ int main(int argc, char *argv[]) {
   optind = 0;
 #endif	
   for (;;) {
-    int c = getopt(argc,argv,"p:d:m:x:y:N:S:h");
+    int c = getopt(argc,argv,"p:d:m:x:y:N:S:hi:");
     if (c == -1) break;
     
     switch (c) {
@@ -63,6 +64,9 @@ int main(int argc, char *argv[]) {
       break;
     case 'S':
       stats = atoi(optarg);
+      break;
+    case 'i':
+      inplace = atoi(optarg);
       break;
     case 'h':
       usage(2);
@@ -91,18 +95,28 @@ int main(int argc, char *argv[]) {
   cl_context ctx = create_context(platform, device);
   cl_command_queue queue = create_queue(ctx, device, CL_QUEUE_PROFILING_ENABLE);
 
-  clfft2r fft(nx, ny, queue, ctx);
-  fft.create_inbuf();
-  fft.create_outbuf();
+  clfft2r fft(nx, ny, inplace, queue, ctx);
+  cl_mem inbuf, outbuf;
+  if(inplace) {
+    fft.create_cbuf(&inbuf);
+    std::cout << "in-place transform" << std::endl;
+  } else {
+    std::cout << "out-of-place transform" << std::endl;
+    fft.create_rbuf(&inbuf);
+    fft.create_cbuf(&outbuf);
+  }
 
+  int nfloat = 1000000; //FIXME: temp
+  
   std::cout << "Allocating " 
 	    << fft.nreal() 
 	    << " doubles for real." << std::endl;
-  double *Xin = new double[fft.nreal()];
+  double *Xin = new double[nfloat] ; //fft.nreal()];
   std::cout << "Allocating "
 	    << 2 * fft.ncomplex() 
 	    << " doubles for complex." << std::endl;
-  double *Xout = new double[2 * fft.ncomplex()];
+  //double *Xout = new double[2 * fft.ncomplex()];
+  double *Xout = new double[nfloat];
 
   cl_event r2c_event = clCreateUserEvent(ctx, NULL);
   cl_event c2r_event = clCreateUserEvent(ctx, NULL);
@@ -111,35 +125,37 @@ int main(int argc, char *argv[]) {
 
   if(N == 0) {
     std::cout << "\nInput:" << std::endl;
-    std::cout << "nx: " << nx << std::endl;
-    std::cout << "ny: " << ny << std::endl;
     init2R(Xin, nx, ny);
     if(nx <= maxout)
       show2R(Xin, nx, ny);
     else
       std::cout << Xin[0] << std::endl;
-
-    fft.ram_to_input(Xin, &r2c_event);
-    fft.forward(1, &r2c_event, &forward_event);
-    fft.output_to_ram(Xout, 1, &forward_event, &c2r_event);
+    
+    fft.ram_to_rbuf(Xin, &inbuf, 0, NULL, &r2c_event);
+    if(inplace) {
+      fft.forward(&inbuf, NULL, 1, &r2c_event, &forward_event);
+      clWaitForEvents(1, &forward_event);
+      fft.cbuf_to_ram(Xout, &inbuf, 1, &forward_event, &c2r_event);
+    } else {
+      fft.forward(&inbuf, &outbuf, 1, &r2c_event, &forward_event);
+      fft.cbuf_to_ram(Xout, &outbuf, 1, &forward_event, &c2r_event);
+    }
     clWaitForEvents(1, &c2r_event);
     
     std::cout << "\nTransformed:" << std::endl;
-    // std::cout << fft.ncomplex(0) << std::endl;
-    // std::cout << fft.ncomplex(1) << std::endl;
-    // for(unsigned int i = 0; i < fft.ncomplex(); ++i) {
-    //   std::cout << i << ": (" << Xout[2 * i] << "," << Xout[2 * i + 1] << ")"
-    // 		<< std::endl;
-    // }
-    // std::cout << std::endl;
     if(nx <= maxout)
       showH(Xout, fft.ncomplex(0), fft.ncomplex(1), fft.nreal(1) / 2 - 1);
     else
       std::cout << Xout[0] << std::endl;
 
-    fft.backward(1, &forward_event, &backward_event);
-    fft.input_to_ram(Xin, 1, &backward_event, &c2r_event);
-    clWaitForEvents(1, &c2r_event);
+    // if(inplace) {
+    //   fft.backward(&inbuf, NULL, 1, &forward_event, &backward_event);
+    // } else {
+    //   fft.backward(&inbuf, &outbuf, 1, &forward_event, &backward_event);
+    // }
+    // fft.rbuf_to_ram(Xin, &inbuf, 1, &backward_event, NULL);
+    // //clWaitForEvents(1, &c2r_event);
+    // fft.finish();
 
     std::cout << "\nTransformed back:" << std::endl;
     if(nx <= maxout) 

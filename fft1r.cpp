@@ -87,11 +87,17 @@ int main(int argc, char *argv[]) {
   cl_command_queue queue = create_queue(ctx, device, CL_QUEUE_PROFILING_ENABLE);
 
   clfft1r fft(nx, inplace, queue, ctx);
-  if(inplace)
+  cl_mem inbuf, outbuf;
+  if(inplace) {
+    fft.create_cbuf(&inbuf);
     std::cout << "in-place transform" << std::endl;
-  else
+  } else {
     std::cout << "out-of-place transform" << std::endl;
-  std::cout << "Allocating " 
+    fft.create_rbuf(&inbuf);
+    fft.create_cbuf(&outbuf);
+  }
+
+  std::cout << "Allocating "
 	    << fft.nreal() 
 	    << " doubles for real." << std::endl;
   double *Xin = new double[fft.nreal()];
@@ -99,9 +105,6 @@ int main(int argc, char *argv[]) {
 	    << 2 * fft.ncomplex()
 	    << " doubles for complex." << std::endl;
   double *Xout = new double[2 * fft.ncomplex()];
-  fft.create_inbuf();
-  if(!inplace)
-    fft.create_outbuf();
 
   cl_event r2c_event = clCreateUserEvent(ctx, NULL);
   cl_event c2r_event = clCreateUserEvent(ctx, NULL);
@@ -116,9 +119,14 @@ int main(int argc, char *argv[]) {
     else
       std::cout << Xin[0] << std::endl;
 
-    fft.ram_to_input(Xin, &r2c_event);
-    fft.forward(1, &r2c_event, &forward_event);
-    fft.output_to_ram(Xout, 1, &forward_event, &c2r_event);
+    fft.ram_to_rbuf(Xin, &inbuf, 0, NULL, &r2c_event);
+    if(inplace) {
+      fft.forward(&inbuf, NULL, 1, &r2c_event, &forward_event);
+      fft.cbuf_to_ram(Xout, &inbuf, 1, &forward_event, &c2r_event);
+    } else {
+      fft.forward(&inbuf, &outbuf, 1, &r2c_event, &forward_event);
+      fft.cbuf_to_ram(Xout, &outbuf, 1, &forward_event, &c2r_event);
+    }
     clWaitForEvents(1, &c2r_event);
 
     std::cout << "\nTransformed:" << std::endl;
@@ -127,22 +135,20 @@ int main(int argc, char *argv[]) {
     else 
       std::cout << Xout[0] << std::endl;
     
+    if(inplace) {
+      fft.backward(&inbuf, NULL, 1, &forward_event, &backward_event);
+    } else {
+      fft.backward(&inbuf, &outbuf, 1, &forward_event, &backward_event);
+    }
+    fft.rbuf_to_ram(Xin, &inbuf, 1, &backward_event, NULL);
+    //clWaitForEvents(1, &c2r_event);
     fft.finish();
-    fft.backward(&backward_event);
-    fft.input_to_ram(Xin, 1, &backward_event, &c2r_event);
-    clWaitForEvents(1, &c2r_event);
     
     std::cout << "\nTransformed back:" << std::endl;
     if(nx <= maxout) 
       show1R(Xin, nx);
     else 
       std::cout << Xin[0] << std::endl;
-
-    fft.output_to_ram(Xout);
-    fft.finish();
-    show1C(Xout, fft.ncomplex(0));
-
-    std::cout << "done" << std::endl;
 
   } else {
     // FIXME: put timing stuff here.

@@ -27,7 +27,9 @@ int main(int argc, char *argv[]) {
   int platnum = 0;
   int devnum = 0;
 
-  bool time_copy=false;
+  bool time_copy = false;
+  
+  bool inplace = true;
 
   int nx = 4;
   int ny = 4;
@@ -43,7 +45,7 @@ int main(int argc, char *argv[]) {
   optind=0;
 #endif	
   for (;;) {
-    int c = getopt(argc,argv,"p:d:c:m:x:y:N:S:h");
+    int c = getopt(argc,argv,"p:d:c:m:x:y:N:S:hi:");
     if (c == -1) break;
     
     switch (c) {
@@ -75,6 +77,9 @@ int main(int argc, char *argv[]) {
     case 'S':
       stats = atoi(optarg);
       break;
+    case 'i':
+      inplace = atoi(optarg);
+      break;
     case 'h':
       usage(1);
       exit(0);
@@ -102,43 +107,59 @@ int main(int argc, char *argv[]) {
   cl_context ctx = create_context(platform, device);
   cl_command_queue queue = create_queue(ctx, device, CL_QUEUE_PROFILING_ENABLE);
   
-  clfft2 fft(nx, ny, queue, ctx);
-  fft.create_inbuf();
-  
-  //typedef double real;
+  clfft2 fft(nx, ny, inplace, queue, ctx);
+  cl_mem inbuf, outbuf;
+  fft.create_cbuf(&inbuf);
+  if(inplace) {
+    std::cout << "in-place transform" << std::endl;
+  } else {
+    std::cout << "out-of-place transform" << std::endl;
+    fft.create_cbuf(&outbuf);
+  }
 
   std::cout << "Allocating " 
 	    << fft.ncomplex() 
 	    << " doubles." << std::endl;
   double *X = new double[2 * fft.ncomplex()];
+  double *Xout = new double[2 * fft.ncomplex()];
 
-  cl_event r2c_event, c2r_event, forward_event, backward_event;
+  cl_event r2c_event = clCreateUserEvent(ctx, NULL);
+  cl_event c2r_event = clCreateUserEvent(ctx, NULL);
+  cl_event forward_event = clCreateUserEvent(ctx, NULL);
+  cl_event backward_event = clCreateUserEvent(ctx, NULL);
   if (N == 0) { // Transform forwards and back, outputting the buffer.
-    std::cout << "\nInput:" << std::endl;
     init(X, nx, ny);
-    if(nx * ny <= maxout) 
-      show2C(X, nx, ny);
-    else 
-      std::cout << X[0] << std::endl;
-
-    fft.ram_to_input(X, &r2c_event);
-    fft.forward(1, &r2c_event, &forward_event);
-    fft.input_to_ram(X, 1, &forward_event, &c2r_event);
-    clWaitForEvents(1, &c2r_event);
-    std::cout << "\nTransformed:" << std::endl;
     
-    // for(unsigned int i = 0; i < fft.ncomplex(); ++i) {
-    //   std::cout << i << ": (" << X[2 * i] << "," << X[2 * i + 1] << ")"
-    // 		<< std::endl;
-    // }
+    std::cout << "\nInput:" << std::endl;
     if(nx * ny <= maxout) 
       show2C(X, nx, ny);
     else 
       std::cout << X[0] << std::endl;
 
-    fft.backward(1, &c2r_event, &backward_event);
-    fft.input_to_ram(X, 1, &backward_event, &c2r_event);
+    fft.ram_to_cbuf(X, &inbuf, 0, NULL, &r2c_event);
+    if(inplace) {
+      fft.forward(&inbuf, NULL, 1, &r2c_event, &forward_event);
+      fft.cbuf_to_ram(Xout, &inbuf, 1, &forward_event, &r2c_event);
+    } else {
+      fft.forward(&inbuf, &outbuf, 1, &r2c_event, &forward_event);
+      fft.cbuf_to_ram(Xout, &outbuf, 1, &forward_event, &r2c_event);
+    }
+    clWaitForEvents(1, &r2c_event);
+    
+    std::cout << "\nTransformed:" << std::endl;
+    if(nx * ny <= maxout) 
+      show2C(Xout, nx, ny);
+    else 
+      std::cout << X[0] << std::endl;
+
+    if(inplace) {
+      fft.backward(&inbuf, NULL, 1, &forward_event, &backward_event);
+    } else {
+      fft.backward(&inbuf, &outbuf, 1, &forward_event, &backward_event);
+    }
+    fft.cbuf_to_ram(X, &inbuf, 1, &backward_event, &c2r_event);
     clWaitForEvents(1, &c2r_event);
+
     std::cout << "\nTransformed back:" << std::endl;
     if(nx * ny <= maxout) 
       show2C(X, nx, ny);
@@ -146,41 +167,41 @@ int main(int argc, char *argv[]) {
       std::cout << X[0] << std::endl;
 
   } else { // Perform timing tests.
-    double *T = new double[N];
-    cl_ulong time_start, time_end;
-    for(int i = 0; i < N; ++i) {
-      init(X, nx, ny);
-      fft.ram_to_input(X, &r2c_event);
-      fft.forward(1, &r2c_event, &forward_event);
-      fft.input_to_ram(X, 1, &forward_event, &c2r_event);
-      clWaitForEvents(1, &c2r_event);
+    // double *T = new double[N];
+    // cl_ulong time_start, time_end;
+    // for(int i = 0; i < N; ++i) {
+    //   init(X, nx, ny);
+    //   fft.ram_to_input(X, &r2c_event);
+    //   fft.forward(1, &r2c_event, &forward_event);
+    //   fft.input_to_ram(X, 1, &forward_event, &c2r_event);
+    //   clWaitForEvents(1, &c2r_event);
 
-      if(time_copy) {
-  	clGetEventProfilingInfo(r2c_event,
-  				CL_PROFILING_COMMAND_START,
-  				sizeof(time_start),
-  				&time_start, NULL);
-  	clGetEventProfilingInfo(c2r_event,
-  				CL_PROFILING_COMMAND_END,
-  				sizeof(time_end), 
-  				&time_end, NULL);
-      } else {
-  	clGetEventProfilingInfo(forward_event,
-  				CL_PROFILING_COMMAND_START,
-  				sizeof(time_start),
-  				&time_start, NULL);
-  	clGetEventProfilingInfo(forward_event,
-  				CL_PROFILING_COMMAND_END,
-  				sizeof(time_end), 
-  				&time_end, NULL);
-      }
-      T[i] = 1e-9 * (time_end - time_start); // milliseconds
-    }
-    if(time_copy) 
-      timings("fft with copy", nx, T, N, stats);
-    else 
-      timings("fft without copy", nx, T, N, stats);
-    delete[] T;
+    //   if(time_copy) {
+    // 	clGetEventProfilingInfo(r2c_event,
+    // 				CL_PROFILING_COMMAND_START,
+    // 				sizeof(time_start),
+    // 				&time_start, NULL);
+    // 	clGetEventProfilingInfo(c2r_event,
+    // 				CL_PROFILING_COMMAND_END,
+    // 				sizeof(time_end), 
+    // 				&time_end, NULL);
+    //   } else {
+    // 	clGetEventProfilingInfo(forward_event,
+    // 				CL_PROFILING_COMMAND_START,
+    // 				sizeof(time_start),
+    // 				&time_start, NULL);
+    // 	clGetEventProfilingInfo(forward_event,
+    // 				CL_PROFILING_COMMAND_END,
+    // 				sizeof(time_end), 
+    // 				&time_end, NULL);
+    //   }
+    //   T[i] = 1e-9 * (time_end - time_start); // milliseconds
+    // }
+    // if(time_copy) 
+    //   timings("fft with copy", nx, T, N, stats);
+    // else 
+    //   timings("fft without copy", nx, T, N, stats);
+    // delete[] T;
   }
 
   delete X;

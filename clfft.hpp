@@ -13,7 +13,7 @@ protected:
   clfftPlanHandle plan, backwardplan;
   cl_context ctx;
   cl_command_queue queue;
-  size_t inbuf_size, outbuf_size, var_size;
+  size_t rbuf_size, cbuf_size, var_size;
   clfftPrecision precision;
   bool realtocomplex, inplace;
   cl_mem workmem;
@@ -57,21 +57,17 @@ protected:
   
   void set_buf_size() {
     var_size = precision == CLFFT_DOUBLE ? sizeof(double) : sizeof(float);
+    cbuf_size = ncomplex(-1) * 2 * var_size;
     if(realtocomplex) {
-      if(inplace) {
-	inbuf_size = ncomplex(-1) * 2 * var_size;
-      } else {
-	inbuf_size = nreal(-1) * var_size;
-      }
-      outbuf_size = ncomplex(-1) * 2 * var_size;
+      if(inplace) 
+	rbuf_size = ncomplex(-1) * 2 * var_size;
+      else
+	rbuf_size = nreal(-1) * var_size;
     } else {
-      inbuf_size = ncomplex(-1) * 2 * var_size;
-      outbuf_size = inbuf_size;
+      rbuf_size = 0;
     }
   }
-
 public:
-  cl_mem inbuf, outbuf;
   clfft_base() {
     if(count_zero == 0)
       clfft_setup();
@@ -86,6 +82,23 @@ public:
     --count_zero;
     if(count_zero == 0)
       clfftTeardown();
+  }
+
+  void set_workmem() {
+    cl_int ret;
+
+    size_t nwork = 0;
+    ret = clfftGetTmpBufSize(plan, &nwork);
+    if(ret != CL_SUCCESS) std::cerr << clfft_errorstring(ret) << std::endl;
+    assert(ret == CL_SUCCESS);
+
+    if(nwork > 0) {
+      workmem = clCreateBuffer(ctx, CL_MEM_READ_WRITE, nwork, 0, &ret);
+      if(ret != CL_SUCCESS) std::cerr << clfft_errorstring(ret) << std::endl;
+      assert(ret == CL_SUCCESS);
+    } else {
+      workmem = NULL;
+    }
   }
 
   void clfft_setup() {
@@ -104,48 +117,64 @@ public:
   virtual const unsigned int nreal(const int dim) = 0;
   virtual const unsigned int ncomplex(const int dim) = 0;
 
-  void create_inbuf(cl_mem *buf = NULL, size_t buf_size = 0) {
-    if(buf == NULL)  buf = &inbuf;
-    if(buf_size == 0) buf_size = inbuf_size;
-    
+  void create_rbuf(cl_mem *buf) {
     cl_int ret;
     *buf = clCreateBuffer(ctx,
 			  CL_MEM_READ_WRITE,
-			  buf_size,
+			  rbuf_size,
 			  NULL,
 			  &ret);
     if(ret != CL_SUCCESS) std::cerr << clErrorString(ret) << std::endl;
     assert(ret == CL_SUCCESS);
   }
 
-  void create_outbuf(cl_mem *buf = NULL, size_t buf_size = 0) {
-    if(inplace)
-      return;
-
-    if(buf == NULL)  buf = &outbuf;
-    if(buf_size == 0) buf_size = outbuf_size;
-
+  void create_cbuf(cl_mem *buf) {
     cl_int ret;
     *buf = clCreateBuffer(ctx,
 			  CL_MEM_READ_WRITE,
-			  ncomplex(-1) * 2 * var_size,
+			  cbuf_size,
 			  NULL,
 			  &ret);
     if(ret != CL_SUCCESS) std::cerr << clErrorString(ret) << std::endl;
     assert(ret == CL_SUCCESS);
   }
 
-  void input_to_ram(double *X, cl_mem buf0,
-		    const cl_uint nwait,
-		    const cl_event *wait, cl_event *event) {
-    cl_mem buf = (buf0 != NULL) ? buf0 : inbuf;
+  void ram_to_buf(const double *X, cl_mem *buf, const size_t buf_size,
+		   const cl_uint nwait,
+		   const cl_event *wait, cl_event *event) {
 
-    size_t buf_size 
-      = (realtocomplex ? nreal(-1) : ncomplex(-1) * 2) * var_size;
+    cl_int ret;
+    ret = clEnqueueWriteBuffer(queue,
+			       *buf, // cl_mem buffer, 
+			       CL_TRUE,// cl_bool blocking_read, 
+			       0, // size_t offset
+			       buf_size, // size_t cb
+			       X, //  	void *ptr, 
+			       nwait, // cl_uint num_events_in_wait_list, 
+			       wait, // const cl_event *event_wait_list, 
+			       event); // cl_event *event
+    if(ret != CL_SUCCESS) std::cerr << clErrorString(ret) << std::endl;
+    assert(ret == CL_SUCCESS);
+  }
 
+  void ram_to_cbuf(const double *X, cl_mem *buf, 
+		   const cl_uint nwait,
+		   const cl_event *wait, cl_event *event) {
+    ram_to_buf(X, buf, cbuf_size, nwait, wait, event);
+  }
+
+  void ram_to_rbuf(const double *X, cl_mem *buf, 
+		   const cl_uint nwait,
+		   const cl_event *wait, cl_event *event) {
+    ram_to_buf(X, buf, rbuf_size, nwait, wait, event);
+  }
+
+  void buf_to_ram(double *X, cl_mem *buf, const size_t buf_size,
+		  const cl_uint nwait,
+		  const cl_event *wait, cl_event *event) {
     cl_int ret;
     ret = clEnqueueReadBuffer(queue,
-			      buf,
+			      *buf,
 			      CL_TRUE,
 			      0,
 			      buf_size,
@@ -157,128 +186,18 @@ public:
     assert(ret == CL_SUCCESS);
   }
 
-  void input_to_ram(double *X) {
-    input_to_ram(X, NULL, 0, NULL, NULL);
+  void cbuf_to_ram(double *X, cl_mem *buf,
+		  const cl_uint nwait,
+		  const cl_event *wait, cl_event *event) {
+    buf_to_ram(X, buf, cbuf_size, nwait, wait, event);
   }
 
-  void input_to_ram(double *X, cl_event *event) {
-    input_to_ram(X, NULL, 0, NULL, event);
-  }
+  // FIXME: add overloaded operators to deal with events or no.
 
-  void input_to_ram(double *X,
-		 const cl_uint nwait, const cl_event *wait) {
-    input_to_ram(X, NULL, nwait, wait, NULL);
-  }
-
-  void input_to_ram(double *X, const cl_uint nwait,
-		 const cl_event *wait, cl_event *event) {
-    input_to_ram(X, NULL, nwait, wait, event);
-  }
-  
-  void output_to_ram(double *X, cl_mem buf0, 
-		     const cl_uint nwait,
-		     const cl_event *wait, cl_event *event) {
-    cl_mem buf = (buf0 != NULL) ? buf0 : (inplace ? inbuf : outbuf);
-   
-
-    cl_int ret;
-    ret = clEnqueueReadBuffer(queue,
-			      buf,
-			      CL_TRUE,
-			      0,
-			      ncomplex(-1) * 2 * var_size,
-			      X,
-			      nwait,
-			      wait,
-			      event);
-    if(ret != CL_SUCCESS) std::cerr << clErrorString(ret) << std::endl;
-    assert(ret == CL_SUCCESS);
-  }
-
-  void output_to_ram(double *X) {
-    output_to_ram(X, NULL, 0, NULL, NULL);
-  }
-
-  void output_to_ram(double *X, cl_event *event) {
-    output_to_ram(X, NULL, 0, NULL, event);
-  }
-
-  void output_to_ram(double *X,
-		     const cl_uint nwait, const cl_event *wait) {
-    output_to_ram(X, NULL, nwait, wait, NULL);
-  }
-
-  void output_to_ram(double *X, const cl_uint nwait,
-		     const cl_event *wait, cl_event *event) {
-    output_to_ram(X, NULL, nwait, wait, event);
-  }
-  
-  void ram_to_input(const double *X, cl_mem buf0, 
-		 const cl_uint nwait,
-		 const cl_event *wait, cl_event *event) {
-    cl_mem buf = (buf0 != NULL) ? buf0 : inbuf;
-
-    size_t buf_size 
-      = (realtocomplex ? nreal(-1) : ncomplex(-1) * 2) * var_size;
-
-    cl_int ret;
-    ret = clEnqueueWriteBuffer(queue,
-			       buf,
-			       CL_TRUE,
-			       0,
-			       buf_size,
-			       X,
-			       nwait,
-			       wait,
-			       event);
-    if(ret != CL_SUCCESS) std::cerr << clErrorString(ret) << std::endl;
-    assert(ret == CL_SUCCESS);
-  }
-  void ram_to_input(const double *X) {
-    ram_to_input(X, NULL, 0, NULL, NULL);
-  }
-  void ram_to_input(const double *X, cl_event *event) {
-    ram_to_input(X, NULL, 0, NULL, event);
-  }
-  void ram_to_input(const double *X, 
-		    const cl_uint nwait, const cl_event *wait) {
-    ram_to_input(X, NULL, nwait, wait, NULL);
-  }
-  void ram_to_input(const double *X, const cl_uint nwait,  
-		 const cl_event *wait, cl_event *event) {
-    ram_to_input(X, NULL, nwait, wait, event);
-  }
-
-  void ram_to_output(const double *X, cl_mem buf0, 
-		 const cl_uint nwait,
-		 const cl_event *wait, cl_event *event) {
-    cl_mem buf = (buf0 != NULL) ? buf0 : outbuf;
-    cl_int ret;
-    ret = clEnqueueWriteBuffer(queue,
-			       buf,
-			       CL_TRUE,
-			       0,
-			       outbuf_size,
-			       X,
-			       nwait,
-			       wait,
-			       event);
-    if(ret != CL_SUCCESS) std::cerr << clErrorString(ret) << std::endl;
-    assert(ret == CL_SUCCESS);
-  }
-  void ram_to_output(const double *X) {
-    ram_to_output(X, NULL, 0, NULL, NULL);
-  }
-  void ram_to_output(const double *X, cl_event *event) {
-    ram_to_output(X, NULL, 0, NULL, event);
-  }
-  void ram_to_output(const double *X, 
-		    const cl_uint nwait, const cl_event *wait) {
-    ram_to_output(X, NULL, nwait, wait, NULL);
-  }
-  void ram_to_output(const double *X, const cl_uint nwait,  
-		 const cl_event *wait, cl_event *event) {
-    ram_to_output(X, NULL, nwait, wait, event);
+  void rbuf_to_ram(double *X, cl_mem *buf,
+		  const cl_uint nwait,
+		  const cl_event *wait, cl_event *event) {
+    buf_to_ram(X, buf, rbuf_size, nwait, wait, event);
   }
 
   void finish() {
@@ -288,12 +207,9 @@ public:
   }
 
   void transform(clfftDirection direction, 
-		 cl_mem *inbuf0 = NULL, cl_mem *outbuf0 = NULL,
+		 cl_mem *inbuf, cl_mem *outbuf,
 		 cl_uint nwait = 0, cl_event *wait = NULL, 
 		 cl_event *done = NULL) {
-    cl_mem *buf0 = (inbuf0 != NULL) ? inbuf0 : &inbuf; 
-    cl_mem *buf1 = inplace ? NULL : ((outbuf0 != NULL) ? outbuf0 : &outbuf);
-
     cl_int ret;
     ret = clfftEnqueueTransform(plan, // clfftPlanHandle 	plHandle,
 				direction, // direction
@@ -302,37 +218,37 @@ public:
 				nwait, // cl_uint 	numWaitEvents,
 				wait, // const cl_event * 	waitEvents,
 				done, // cl_event * 	outEvents,
-				buf0, // cl_mem * 	inputBuffers,
-				buf1, // cl_mem * 	outputBuffers,
+				inbuf, // cl_mem * 	inputBuffers,
+				outbuf, // cl_mem * 	outputBuffers,
 				workmem // cl_mem 	tmpBuffer 
 				);
     if(ret != CL_SUCCESS) std::cerr << clfft_errorstring(ret) << std::endl;
     assert(ret == CL_SUCCESS);
   }
   
-  void forward(cl_mem *inbuf0 = NULL, cl_mem *outbuf0 = NULL,
-		       cl_uint nwait = 0, cl_event *wait = NULL, 
-		       cl_event *done = NULL) {
-    transform(CLFFT_FORWARD, inbuf0, outbuf0, nwait, wait, done);
+  void forward(cl_mem *inbuf, cl_mem *outbuf,
+	       cl_uint nwait = 0, cl_event *wait = NULL, 
+	       cl_event *done = NULL) {
+    transform(CLFFT_FORWARD, inbuf, outbuf, nwait, wait, done);
   }
 
-  void forward(cl_uint nwait, cl_event *wait, cl_event *done) {
-    forward(NULL, NULL, nwait, wait, done);
-  }
+  // void forward(cl_mem *inbuf, cl_uint nwait, cl_event *wait, cl_event *done) {
+  //   forward(NULL, NULL, nwait, wait, done);
+  // }
   
-  void backward(cl_mem *inbuf0 = NULL, cl_mem *outbuf0 = NULL,
-		       cl_uint nwait = 0, cl_event *wait = NULL, 
-		       cl_event *done = NULL) {
+  void backward(cl_mem *inbuf0, cl_mem *outbuf0,
+  		cl_uint nwait = 0, cl_event *wait = NULL, 
+  		cl_event *done = NULL) {
     transform(CLFFT_BACKWARD, inbuf0, outbuf0, nwait, wait, done);
   }
   
-  void backward(cl_uint nwait, cl_event *wait, cl_event *done) {
-    backward(NULL, NULL, nwait, wait, done);
-  }
+  // void backward(cl_uint nwait, cl_event *wait, cl_event *done) {
+  //   backward(NULL, NULL, nwait, wait, done);
+  // }
 
-  void backward(cl_event *done) {
-    backward(NULL, NULL, 0, NULL, done);
-  }
+  // void backward(cl_event *done) {
+  //   backward(NULL, NULL, 0, NULL, done);
+  // }
   
 };
 
@@ -368,7 +284,7 @@ private:
     assert(ret == CL_SUCCESS);
 
     ret = clfftSetResultLocation(plan, 
-				 CLFFT_INPLACE);
+				 inplace ? CLFFT_INPLACE : CLFFT_OUTOFPLACE);
     if(ret != CL_SUCCESS) std::cerr << clfft_errorstring(ret) << std::endl;
     assert(ret == CL_SUCCESS);
 
@@ -380,27 +296,24 @@ private:
 			);
     if(ret != CL_SUCCESS) std::cerr << clfft_errorstring(ret) << std::endl;
     assert(ret == CL_SUCCESS);
+
+    set_workmem();
   }
 
 public:
   clfft1() {
     ctx = NULL;
     queue = NULL;
-    inbuf = NULL;
-    outbuf = NULL;
     nx = 0;
     set_buf_size();
     inplace = true;
   }
 
   clfft1(unsigned int nx0, bool inplace0, 
-	 cl_command_queue queue0, cl_context ctx0,
-	 cl_mem inbuf0 = NULL, cl_mem outbuf0 = NULL) {
+	 cl_command_queue queue0, cl_context ctx0) {
     nx = nx0;
     queue = queue0;
     ctx = ctx0;
-    inbuf = inbuf0;
-    outbuf = outbuf0;
     inplace = inplace0;
     setup();
   }
@@ -417,7 +330,7 @@ public:
     switch(dim) {
     case -1:
       return nx;
-	break;
+      break;
     case 0:
       return nx;
       break;
@@ -429,7 +342,11 @@ public:
       return 0;
     }
   }
-  
+
+  virtual const size_t complex_buf_size() {
+    return nx * 2 * var_size;
+  }
+
 };
 
 class clfft2 : public clfft_base
@@ -465,7 +382,7 @@ private:
     assert(ret == CL_SUCCESS);
 
     ret = clfftSetResultLocation(plan, 
-				 CLFFT_INPLACE);
+				 inplace ? CLFFT_INPLACE : CLFFT_OUTOFPLACE);
     if(ret != CL_SUCCESS) std::cerr << clfft_errorstring(ret) << std::endl;
     assert(ret == CL_SUCCESS);
 
@@ -478,38 +395,25 @@ private:
     if(ret != CL_SUCCESS) std::cerr << clfft_errorstring(ret) << std::endl;
     assert(ret == CL_SUCCESS);
 
-    size_t nwork = 0;
-    ret = clfftGetTmpBufSize(plan, &nwork);
-    if(ret != CL_SUCCESS) std::cerr << clfft_errorstring(ret) << std::endl;
-    assert(ret == CL_SUCCESS);
-
-    if(nwork > 0) {
-      workmem = clCreateBuffer(ctx, CL_MEM_READ_WRITE, nwork, 0, &ret);
-      if(ret != CL_SUCCESS) std::cerr << clfft_errorstring(ret) << std::endl;
-      assert(ret == CL_SUCCESS);
-    } else {
-      workmem = NULL;
-    }
+    set_workmem();
   }
 
 public:
   clfft2() {
     ctx = NULL;
     queue = NULL;
-    inbuf = NULL;
-    outbuf = NULL;
+    inplace = true;
     nx = 0;
     set_buf_size();
   }
 
-  clfft2(unsigned int nx0, unsigned int ny0, 
-	 cl_command_queue queue0, cl_context ctx0,
-	 cl_mem inbuf0 = NULL) {
+  clfft2(unsigned int nx0, unsigned int ny0, bool inplace0,
+	 cl_command_queue queue0, cl_context ctx0) {
     nx = nx0;
     ny = ny0;
+    inplace = inplace0;
     queue = queue0;
     ctx = ctx0;
-    inbuf = inbuf0;
     setup();
   }
 
@@ -535,6 +439,11 @@ public:
       exit(1);
     }
     return 0;
+  }
+
+
+  virtual const unsigned int complex_buf_size(const int dim) {
+    return nx * ny * 2 * var_size;
   }
 };
 
@@ -584,26 +493,23 @@ private:
 			);
     if(ret != CL_SUCCESS) std::cerr << clfft_errorstring(ret) << std::endl;
     assert(ret == CL_SUCCESS);
+
+    set_workmem();
   }
 
 public:
   clfft1r() {
     ctx = NULL;
     queue = NULL;
-    inbuf = NULL;
-    outbuf = NULL;
     nx = 0;
     set_buf_size();
   }
 
   clfft1r(unsigned int nx0, bool inplace0, 
-	  cl_command_queue queue0, cl_context ctx0,
-	  cl_mem inbuf0 = NULL, cl_mem outbuf0 = NULL) {
+	  cl_command_queue queue0, cl_context ctx0) {
     nx = nx0;
     queue = queue0;
     ctx = ctx0;
-    inbuf = inbuf0;
-    outbuf = outbuf0;
     inplace = inplace0;
 
     setup();
@@ -646,6 +552,14 @@ public:
     return 0;
   }
 
+  size_t complex_buf_size() {
+    return  (1 + nx / 2) * 2 * var_size;
+  }
+
+  size_t real_buf_size() {
+    return nx * var_size;
+  }
+
 };
 
 class clfft2r : public clfft_base
@@ -684,7 +598,7 @@ private:
     assert(ret == CL_SUCCESS);
 
     ret = clfftSetResultLocation(plan, 
-				 CLFFT_OUTOFPLACE);
+				 inplace ? CLFFT_INPLACE : CLFFT_OUTOFPLACE);
     if(ret != CL_SUCCESS) std::cerr << clfft_errorstring(ret) << std::endl;
     assert(ret == CL_SUCCESS);
 
@@ -696,27 +610,25 @@ private:
 			);
     if(ret != CL_SUCCESS) std::cerr << clfft_errorstring(ret) << std::endl;
     assert(ret == CL_SUCCESS);
+
+    set_workmem();
   }
 
 public:
   clfft2r() {
     ctx = NULL;
     queue = NULL;
-    inbuf = NULL;
-    outbuf = NULL;
     nx = 0;
     set_buf_size();
   }
 
-  clfft2r(unsigned int nx0, unsigned int ny0, 
-	  cl_command_queue queue0, cl_context ctx0,
-	  cl_mem inbuf0 = NULL, cl_mem outbuf0 = NULL) {
+  clfft2r(unsigned int nx0, unsigned int ny0, bool inplace0, 
+	  cl_command_queue queue0, cl_context ctx0) {
     nx = nx0;
     ny = ny0;
     queue = queue0;
     ctx = ctx0;
-    inbuf = inbuf0;
-    outbuf = outbuf0;
+    inplace = inplace0;
     setup();
   }
 
@@ -731,10 +643,10 @@ public:
     switch(dim) {
     case -1:
       //return (1 + ny / 2) * nx;
-      return nx * ny; // FIXME: WTF?
+      return nx * ny + 100; // FIXME: WTF?
     case 0:
       return nx;
-    case 1:
+    case 1:      
       return 1 + ny / 2;
     default:
       std::cerr << dim 
@@ -748,7 +660,10 @@ public:
   const unsigned int nreal(const int dim = -1) {
     switch(dim) {
     case -1:
-      return nx * ny;
+      if(inplace)
+	return ncomplex(-1);
+      else
+	return nx * ny;
     case 0:
       return nx;
     case 1:
