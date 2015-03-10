@@ -19,7 +19,6 @@ void initR(T *X, int n)
 }
 
 int main(int argc, char *argv[]) {
-  show_devices();
 
   int platnum = 0;
   int devnum = 0;
@@ -67,6 +66,11 @@ int main(int argc, char *argv[]) {
     }
   }
 
+  show_devices();
+  std::cout << "Using platform " << platnum
+	    << " device " << devnum 
+	    << "." << std::endl;
+
   std::vector<std::vector<cl_device_id> > dev_ids;
   create_device_tree(dev_ids);
   cl_device_id device = dev_ids[platnum][devnum];
@@ -81,11 +85,11 @@ int main(int argc, char *argv[]) {
   clfft1r fft(nx, queue, ctx);
 
   std::cout << "Allocating " 
-	    << fft.ncomplex()
+	    << fft.nreal() 
 	    << " doubles for real." << std::endl;
   double *Xin = new double[fft.nreal()];
   std::cout << "Allocating " 
-	    << fft.nreal() 
+	    << 2 * fft.ncomplex()
 	    << " doubles for complex." << std::endl;
   double *Xout = new double[2 * fft.ncomplex()];
   fft.create_inbuf();

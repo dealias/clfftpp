@@ -23,7 +23,6 @@ void init2R(T *X, int nx, int ny)
 }
 
 int main(int argc, char *argv[]) {
-  show_devices();
 
   int platnum = 0;
   int devnum = 0;
@@ -76,6 +75,11 @@ int main(int argc, char *argv[]) {
     }
   }
 
+  show_devices();
+  std::cout << "Using platform " << platnum
+	    << " device " << devnum 
+	    << "." << std::endl;
+
   std::vector<std::vector<cl_device_id> > dev_ids;
   create_device_tree(dev_ids);
   cl_device_id device = dev_ids[platnum][devnum];
@@ -92,11 +96,11 @@ int main(int argc, char *argv[]) {
   fft.create_outbuf();
 
   std::cout << "Allocating " 
-	    << fft.ncomplex() 
+	    << fft.nreal() 
 	    << " doubles for real." << std::endl;
   double *Xin = new double[fft.nreal()];
   std::cout << "Allocating "
-	    << fft.nreal() 
+	    << 2 * fft.ncomplex() 
 	    << " doubles for complex." << std::endl;
   double *Xout = new double[2 * fft.ncomplex()];
 
@@ -121,15 +125,13 @@ int main(int argc, char *argv[]) {
     clWaitForEvents(1, &c2r_event);
     
     std::cout << "\nTransformed:" << std::endl;
-    std::cout << fft.ncomplex(0) << std::endl;
-    std::cout << fft.ncomplex(1) << std::endl;
-    for(unsigned int i = 0; i < fft.ncomplex(); ++i) {
-      std::cout << i << ": (" << Xout[2 * i] << "," << Xout[2 * i + 1] << ")"
-		<< std::endl;
-    }
-    std::cout << std::endl;
-    std::cout << "fft.ncomplex(0): " << fft.ncomplex(0) << std::endl;
-    std::cout << "fft.ncomplex(1): " << fft.ncomplex(1) << std::endl;
+    // std::cout << fft.ncomplex(0) << std::endl;
+    // std::cout << fft.ncomplex(1) << std::endl;
+    // for(unsigned int i = 0; i < fft.ncomplex(); ++i) {
+    //   std::cout << i << ": (" << Xout[2 * i] << "," << Xout[2 * i + 1] << ")"
+    // 		<< std::endl;
+    // }
+    // std::cout << std::endl;
     if(nx <= maxout)
       showH(Xout, fft.ncomplex(0), fft.ncomplex(1), fft.nreal(1) / 2 - 1);
     else

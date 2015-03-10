@@ -718,7 +718,8 @@ public:
   const unsigned int ncomplex(const int dim = -1) {
     switch(dim) {
     case -1:
-      return (1 + ny / 2) * nx + 10;
+      //return (1 + ny / 2) * nx;
+      return nx * ny; // FIXME: WTF?
     case 0:
       return nx;
     case 1:

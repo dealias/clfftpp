@@ -24,9 +24,6 @@ void init(T *X, int nx, int ny)
 }
 
 int main(int argc, char *argv[]) {
-
-  show_devices();
-
   int platnum = 0;
   int devnum = 0;
 
@@ -89,6 +86,11 @@ int main(int argc, char *argv[]) {
     }
   }
 
+  show_devices();
+  std::cout << "Using platform " << platnum
+	    << " device " << devnum 
+	    << "." << std::endl;
+  
   std::vector<std::vector<cl_device_id> > dev_ids;
   create_device_tree(dev_ids);
   cl_device_id device = dev_ids[platnum][devnum];
@@ -125,11 +127,10 @@ int main(int argc, char *argv[]) {
     clWaitForEvents(1, &c2r_event);
     std::cout << "\nTransformed:" << std::endl;
     
-
-    for(unsigned int i = 0; i < fft.ncomplex(); ++i) {
-      std::cout << i << ": (" << X[2 * i] << "," << X[2 * i + 1] << ")"
-		<< std::endl;
-    }
+    // for(unsigned int i = 0; i < fft.ncomplex(); ++i) {
+    //   std::cout << i << ": (" << X[2 * i] << "," << X[2 * i + 1] << ")"
+    // 		<< std::endl;
+    // }
     if(nx * ny <= maxout) 
       show2C(X, nx, ny);
     else 

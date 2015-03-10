@@ -80,6 +80,11 @@ int main(int argc, char* argv[]) {
     }
   }
 
+  show_devices();
+  std::cout << "Using platform " << platnum
+	    << " device " << devnum 
+	    << "." << std::endl;
+
   std::vector<std::vector<cl_device_id> > dev_ids;
   create_device_tree(dev_ids);
   cl_device_id device = dev_ids[platnum][devnum];
