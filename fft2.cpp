@@ -121,9 +121,9 @@ int main(int argc, char *argv[]) {
     else 
       std::cout << X[0] << std::endl;
 
-    fft.ram_to_inbuf(X, &r2c_event);
+    fft.ram_to_input(X, &r2c_event);
     fft.forward(1, &r2c_event, &forward_event);
-    fft.inbuf_to_ram(X, 1, &forward_event, &c2r_event);
+    fft.input_to_ram(X, 1, &forward_event, &c2r_event);
     clWaitForEvents(1, &c2r_event);
     std::cout << "\nTransformed:" << std::endl;
     
@@ -137,7 +137,7 @@ int main(int argc, char *argv[]) {
       std::cout << X[0] << std::endl;
 
     fft.backward(1, &c2r_event, &backward_event);
-    fft.inbuf_to_ram(X, 1, &backward_event, &c2r_event);
+    fft.input_to_ram(X, 1, &backward_event, &c2r_event);
     clWaitForEvents(1, &c2r_event);
     std::cout << "\nTransformed back:" << std::endl;
     if(nx * ny <= maxout) 
@@ -150,9 +150,9 @@ int main(int argc, char *argv[]) {
     cl_ulong time_start, time_end;
     for(int i = 0; i < N; ++i) {
       init(X, nx, ny);
-      fft.ram_to_inbuf(X, &r2c_event);
+      fft.ram_to_input(X, &r2c_event);
       fft.forward(1, &r2c_event, &forward_event);
-      fft.inbuf_to_ram(X, 1, &forward_event, &c2r_event);
+      fft.input_to_ram(X, 1, &forward_event, &c2r_event);
       clWaitForEvents(1, &c2r_event);
 
       if(time_copy) {

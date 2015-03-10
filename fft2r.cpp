@@ -119,9 +119,9 @@ int main(int argc, char *argv[]) {
     else
       std::cout << Xin[0] << std::endl;
 
-    fft.ram_to_inbuf(Xin, &r2c_event);
+    fft.ram_to_input(Xin, &r2c_event);
     fft.forward(1, &r2c_event, &forward_event);
-    fft.outbuf_to_ram(Xout, 1, &forward_event, &c2r_event);
+    fft.output_to_ram(Xout, 1, &forward_event, &c2r_event);
     clWaitForEvents(1, &c2r_event);
     
     std::cout << "\nTransformed:" << std::endl;
@@ -138,7 +138,7 @@ int main(int argc, char *argv[]) {
       std::cout << Xout[0] << std::endl;
 
     fft.backward(1, &forward_event, &backward_event);
-    fft.inbuf_to_ram(Xin, 1, &backward_event, &c2r_event);
+    fft.input_to_ram(Xin, 1, &backward_event, &c2r_event);
     clWaitForEvents(1, &c2r_event);
 
     std::cout << "\nTransformed back:" << std::endl;

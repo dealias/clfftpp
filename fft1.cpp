@@ -28,6 +28,8 @@ int main(int argc, char* argv[]) {
 
   bool time_copy = false;
   
+  bool inplace = true;
+
   int nx = 4;
   //nx=262144;
 
@@ -41,7 +43,7 @@ int main(int argc, char* argv[]) {
   optind=0;
 #endif
   for (;;) {
-    int c = getopt(argc,argv,"p:d:c:m:x:N:S:h");
+    int c = getopt(argc,argv,"p:d:c:m:x:N:S:hi:");
     if (c == -1) break;
     
     switch (c) {
@@ -68,6 +70,9 @@ int main(int argc, char* argv[]) {
       break;
     case 'S':
       stats = atoi(optarg);
+      break;
+    case 'i':
+      inplace = atoi(optarg);
       break;
     case 'h':
       usage(1);
@@ -96,8 +101,10 @@ int main(int argc, char* argv[]) {
   cl_context ctx = create_context(platform, device);
   cl_command_queue queue = create_queue(ctx, device,CL_QUEUE_PROFILING_ENABLE);
   
-  clfft1 fft(nx, queue, ctx);
+  clfft1 fft(nx, inplace, queue, ctx);
   fft.create_inbuf();
+  if(!inplace)
+    fft.create_outbuf();
 
   std::cout << "Allocating " 
 	    << fft.ncomplex() 
@@ -114,26 +121,30 @@ int main(int argc, char* argv[]) {
 
   cl_event r2c_event, c2r_event, forward_event, backward_event;
   if(N == 0) {
-    fft.ram_to_inbuf(X, &r2c_event);
+    fft.ram_to_input(X, &r2c_event);
     fft.forward(1, &r2c_event, &forward_event);
-    fft.inbuf_to_ram(X, 1, &forward_event, &c2r_event);
+    if(inplace)
+      fft.input_to_ram(X, 1, &forward_event, &c2r_event);
+    else 
+      fft.output_to_ram(X, 1, &forward_event, &c2r_event);
     clWaitForEvents(1, &c2r_event);
+
     std::cout << "\nTransformed:" << std::endl;
-    if(nx <= maxout) {
+    if(nx <= maxout)
       show1C(X, nx);
-    } else { 
+    else
       std::cout << X[0] << std::endl;
-    }
 
     fft.backward(1, &forward_event, &backward_event);
-    fft.inbuf_to_ram(X, 1, &backward_event, &c2r_event);
+    fft.input_to_ram(X, 1, &backward_event, &c2r_event);
     clWaitForEvents(1, &c2r_event);
+
     std::cout << "\nTransformed back:" << std::endl;
-    if(nx <= maxout) {
+    if(nx <= maxout)
       show1C(X, nx);
-    } else { 
+    else
       std::cout << X[0] << std::endl;
-    }
+
   } else {
     double *T = new double[N];
   
@@ -141,9 +152,9 @@ int main(int argc, char* argv[]) {
     for(int i=0; i < N; ++i) {
       init(X,nx);
       seconds();
-      fft.ram_to_inbuf(X, &r2c_event);
+      fft.ram_to_input(X, &r2c_event);
       fft.forward(1, &r2c_event, &forward_event);
-      fft.inbuf_to_ram(X, 1, &forward_event, &c2r_event);
+      fft.input_to_ram(X, 1, &forward_event, &c2r_event);
       clWaitForEvents(1, &c2r_event);
 
       if(time_copy) {
