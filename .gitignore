@@ -1,5 +1,6 @@
 *~
 *.o
+*.d
 fft1
 fft2
 fft1r

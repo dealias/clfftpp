@@ -27,8 +27,8 @@ int main(int argc, char *argv[]) {
 
   show_devices();
 
-  int platnum=0;
-  int devnum=0;
+  int platnum = 0;
+  int devnum = 0;
 
   bool time_copy=false;
 
