@@ -485,6 +485,31 @@ private:
     if(ret != CL_SUCCESS) std::cerr << clfft_errorstring(ret) << std::endl;
     assert(ret == CL_SUCCESS);
 
+    { // FIXME: is this stuff necessary or helpful?
+      size_t clStride = {1};
+      ret = clfftSetPlanInStride(plan,
+				 dim, //const clfftDim  	dim,
+				 &clStride //size_t * clStrides 
+				 );
+      if(ret != CL_SUCCESS) std::cerr << clfft_errorstring(ret) << std::endl;
+      assert(ret == CL_SUCCESS);
+
+      ret = clfftSetPlanOutStride(plan,
+				  dim, //const clfftDim  	dim,
+				  &clStride //size_t * clStrides 
+				  );
+      if(ret != CL_SUCCESS) std::cerr << clfft_errorstring(ret) << std::endl;
+      assert(ret == CL_SUCCESS);
+    
+      size_t iDist = nreal(0);
+      size_t oDist = ncomplex(0);
+      ret = clfftSetPlanDistance(plan,
+				 iDist,
+				 oDist);
+      if(ret != CL_SUCCESS) std::cerr << clfft_errorstring(ret) << std::endl;
+      assert(ret == CL_SUCCESS);
+    }
+
     ret = clfftBakePlan(plan,
 			1, // numQueues: number of experiments 
 			&queue, // commQueueFFT

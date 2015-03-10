@@ -148,14 +148,12 @@ int main(int argc, char *argv[]) {
     else
       std::cout << Xout[0] << std::endl;
 
-    // if(inplace) {
-    //   fft.backward(&inbuf, NULL, 1, &forward_event, &backward_event);
-    // } else {
-    //   fft.backward(&inbuf, &outbuf, 1, &forward_event, &backward_event);
-    // }
-    // fft.rbuf_to_ram(Xin, &inbuf, 1, &backward_event, NULL);
-    // //clWaitForEvents(1, &c2r_event);
-    // fft.finish();
+    if(inplace) {
+      fft.backward(&inbuf, NULL, 1, &forward_event, &backward_event);
+    } else {
+      fft.backward(&inbuf, &outbuf, 1, &forward_event, &backward_event);
+    }
+    fft.rbuf_to_ram(Xin, &inbuf, 1, &backward_event, &c2r_event);
 
     std::cout << "\nTransformed back:" << std::endl;
     if(nx <= maxout) 
