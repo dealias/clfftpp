@@ -377,6 +377,7 @@ public:
     outbuf = NULL;
     nx = 0;
     set_buf_size();
+    inplace = true;
   }
 
   clfft1(unsigned int nx0, cl_command_queue queue0, cl_context ctx0,
@@ -386,6 +387,7 @@ public:
     ctx = ctx0;
     inbuf = inbuf0;
     outbuf = outbuf0;
+    inplace = true;
     setup();
   }
 
@@ -396,7 +398,7 @@ public:
     assert(ret == CL_SUCCESS);
   }
 
-  const unsigned int nreal(const int dim = -1) { return 0;}
+  const unsigned int nreal(const int dim = -1) {return 0;}
   const unsigned int ncomplex(const int dim = -1) {
     switch(dim) {
     case -1:
@@ -406,7 +408,7 @@ public:
       return nx;
       break;
     default:
-      std::cerr << dim 
+      std::cerr << dim
 		<< "is an invalid dimension for clfft1::ncomplex"
 		<< std::endl;
       exit(1);
@@ -483,6 +485,7 @@ public:
     outbuf = NULL;
     nx = 0;
     set_buf_size();
+    inplace = true;
   }
 
   clfft2(unsigned int nx0, unsigned int ny0, 
@@ -493,6 +496,7 @@ public:
     queue = queue0;
     ctx = ctx0;
     inbuf = inbuf0;
+    inplace = true;
     setup();
   }
 
@@ -502,7 +506,7 @@ public:
     if(ret != CL_SUCCESS) std::cerr << clErrorString(ret) << std::endl;
   }
 
-  const unsigned int nreal(const int dim = -1) { return 0;}
+  const unsigned int nreal(const int dim = -1) {return 0;}
   const unsigned int ncomplex(const int dim = -1) {
     switch(dim) {
     case -1:
