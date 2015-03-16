@@ -241,7 +241,7 @@ public:
 
   mfft1d(unsigned int n0) {
     set_size();
-    n=n0;
+    n = n0;
   }
 
   void set_mx() {
@@ -250,8 +250,8 @@ public:
     get_constant_mem_size();
     size_t nb = local_mem_size / (sizeof(T) * 2 * ny);
     nb = std::min(nb, maxworkgroupsize);
-    mx = (nx + nb -1) / nb;
-    global_work_size = (nx+mx-1)/mx;
+    mx = (nx + nb - 1) / nb;
+    global_work_size = (nx + mx - 1) / mx;
     std::cout << "nb: " << nb << std::endl;
     lsize = sizeof(T) * 2 * nb * ny;
   }

@@ -21,24 +21,24 @@
 
 inline void init(Array::array2<Complex>& f, unsigned int mx, unsigned int my) 
 {
-  for(unsigned int i=0; i < mx; ++i)
-    for(unsigned int j=0; j < my; j++)
-      f[i][j]=Complex(i,j);
+  for(unsigned int i = 0; i < mx; ++i)
+    for(unsigned int j = 0; j < my; j++)
+      f[i][j] = Complex(i, j);
 }
 
 template<class T>
 double l2error(Array::array2<Complex>& F, T *f, 
 	       unsigned int nx, unsigned int ny) 
 {
-  double err=0.0;
-  for(unsigned int i=0; i < nx; i++) {
-    for(unsigned int j=0; j < ny; j++) {
-      double fr = F[i][j].re - f[2*(i*ny +j)];
-      double fi = F[i][j].im - f[2*(i*ny +j)+1];
-      err += fr*fr + fi*fi;
+  double err = 0.0;
+  for(unsigned int i = 0; i < nx; i++) {
+    for(unsigned int j = 0; j < ny; j++) {
+      double fr = F[i][j].re - f[2*(i * ny + j)];
+      double fi = F[i][j].im - f[2*(i * ny + j) + 1];
+      err += fr * fr + fi * fi;
     }
   }
-  return sqrt(err/(double)(nx*ny));
+  return sqrt(err / (double)(nx * ny));
 }
 
 void read_file(std::string &str, const char* filename)
@@ -68,12 +68,11 @@ void check_cl_ret(cl_int ret, const char* msg)
 template< class T>
 void init(const unsigned int nx, const unsigned int ny, T *f)
 {
-  for(unsigned int ix=0; ix < nx; ++ix) {
-    unsigned int iy;
-    for(iy=0; iy < ny; ++iy) {
-      unsigned int pos=2*(ix*ny + iy);
-      f[pos]=ix;
-      f[pos+1]=iy; /* iy+1; */
+  for(unsigned int ix = 0; ix < nx; ++ix) {
+    for(unsigned int iy = 0; iy < ny; ++iy) {
+      unsigned int pos= 2 * (ix * ny + iy);
+      f[pos] = ix;
+      f[pos + 1] = iy; /* iy+1; */
     }
   }
 }
@@ -83,10 +82,10 @@ void show(const unsigned int nx, const unsigned int ny, T *f,
 	  unsigned int outlimit)
 {
 
-  if(nx*ny < outlimit) {
-    for(unsigned int ix=0; ix < nx; ++ix) {
-      for(unsigned int iy=0; iy < ny; ++iy) {
-	int pos=2*(ix*ny + iy); 
+  if(nx * ny < outlimit) {
+    for(unsigned int ix = 0; ix < nx; ++ix) {
+      for(unsigned int iy = 0; iy < ny; ++iy) {
+	int pos = 2 * (ix * ny + iy); 
 	std::cout << "(" << f[pos] << "," << f[pos+1] << ") ";
       }
       std::cout << std::endl;
@@ -97,24 +96,20 @@ void show(const unsigned int nx, const unsigned int ny, T *f,
 }
 
 
-int main(int argc, char* argv[])
+int main(int argc, char *argv[])
 {
-  // Set up the OpenCL device, platform, queue, and context.
-  show_devices();
-
-  int platnum=0;
-  int devnum=0;
+  int platnum = 0;
+  int devnum = 0;
   unsigned int nx = 4;
   unsigned int ny = 4;
   //nx=262144;
   unsigned int fprecision = 0;
 
-    
   unsigned int N=10;
   bool do_fftw = true;
   bool do_transpose = true;
 
-  unsigned int stats=MEAN; // Type of statistics used in timing test.
+  unsigned int stats = MEAN; // Type of statistics used in timing test.
 
   for (;;) {
     int c = getopt(argc,argv,"p:d:m:x:y:N:S:f:w:t:h");
@@ -125,26 +120,26 @@ int main(int argc, char* argv[])
       platnum=atoi(optarg);
       break;
     case 'd':
-      devnum=atoi(optarg);
+      devnum = atoi(optarg);
       break;
     case 'x':
-      nx=atoi(optarg);
+      nx = atoi(optarg);
       break;
     case 'y':
-      ny=atoi(optarg);
+      ny = atoi(optarg);
       break;
     case 'm':
-      nx=atoi(optarg);
-      ny=atoi(optarg);
+      nx = atoi(optarg);
+      ny = atoi(optarg);
       break;
     case 'N':
-      N=atoi(optarg);
+      N = atoi(optarg);
       break;
     case 'S':
-      stats=atoi(optarg);
+      stats = atoi(optarg);
       break;
     case 'f':
-      fprecision=atoi(optarg);
+      fprecision = atoi(optarg);
       break;
     case 't':
       do_transpose = atoi(optarg) > 0;
@@ -163,15 +158,20 @@ int main(int argc, char* argv[])
     }
   }
 
+  // Set up the OpenCL device, platform, queue, and context.
+  show_devices();
+
+  std::cout << "Using platform " << platnum
+	    << " device " << devnum
+	    << std::endl;
+
   unsigned int stride = 1;// nx; //1;
   unsigned int dist = ny; //1; //ny;
 
   if(do_transpose) {
-    stride=nx;
-    dist=1;
+    stride = nx;
+    dist = 1;
   }
-
-  
 
   std::vector<std::vector<cl_device_id> > dev_ids;
   create_device_tree(dev_ids);
@@ -186,10 +186,9 @@ int main(int argc, char* argv[])
   const cl_command_queue queue = create_queue(ctx, devicelist,
 					      CL_QUEUE_PROFILING_ENABLE);
 
-  unsigned int outlimit=100; // don't cout when there is too much data.
-
+  unsigned int outlimit = 100; // don't cout when there is too much data.
   
-  Array::array2<Complex> F(nx,ny,sizeof(Complex));
+  Array::array2<Complex> F(nx, ny, sizeof(Complex));
   if(do_fftw && N == 0) {
     std::cout << "\nOutput of mfft1d using FFTW++:" << std::endl; 
     
@@ -209,17 +208,17 @@ int main(int argc, char* argv[])
 
   if(fprecision == 0 || fprecision == 1) {
     std::cout << "Float version:" << std::endl;
-    float *f=new float[2*nx*ny];
+    float *f = new float[2 * nx * ny];
 
-    mfft1d <float>fft(queue,ctx,device,nx,ny,stride,dist);
+    mfft1d <float>fft(queue, ctx, device, nx, ny, stride, dist);
     fft.build();
     fft.alloc_rw();
     fft.set_args();
 
     if (N == 0) {
       std::cout << "\nInput:" << std::endl;
-      init(nx,ny,f);
-      show(nx,ny,f,outlimit);
+      init(nx, ny, f);
+      show(nx, ny, f, outlimit);
       fft.write_buffer(f);
       fft.forward_g();
       fft.finish();
@@ -228,13 +227,13 @@ int main(int argc, char* argv[])
       show(nx,ny,f,outlimit);
 
       if(do_fftw)
-	std::cout << "\nL2 difference:  " << l2error(F,f,nx,ny) << std::endl;
+	std::cout << "\nL2 difference:  " << l2error(F, f, nx, ny) << std::endl;
 
     } else {
       cl_event forward_event;
       cl_ulong time_start, time_end;
-      double *T=new double[N];
-      for(unsigned int i=0; i < N; ++i) {
+      double *T = new double[N];
+      for(unsigned int i = 0; i < N; ++i) {
 	init(nx,ny,f);
 	fft.write_buffer(f);
 	fft.forward_g(&forward_event);
@@ -251,7 +250,7 @@ int main(int argc, char* argv[])
 	fft.read_buffer(f);
       }
       std::cout << std::endl;
-      timings("mfft1d float timing",nx,T,N,stats);
+      timings("mfft1d float timing", nx, T, N, stats);
     }
   }  
 
@@ -259,7 +258,7 @@ int main(int argc, char* argv[])
     std::cout << "\nDouble version:" << std::endl;
     double *f=new double[2*nx*ny];
 
-    mfft1d <double>fft(queue,ctx,device,nx,ny,stride,dist);
+    mfft1d <double>fft(queue, ctx, device, nx, ny, stride, dist);
     fft.build();
     fft.alloc_rw();
     fft.set_args();
@@ -273,18 +272,17 @@ int main(int argc, char* argv[])
       fft.finish();
       fft.read_buffer(f);
       std::cout << "\nOutput:" << std::endl;
-      show(nx,ny,f,outlimit);
-
+      show(nx, ny, f, outlimit);
 
       if(do_fftw)
-	std::cout << "\nL2 difference:  " << l2error(F,f,nx,ny) << std::endl;
+	std::cout << "\nL2 difference:  " << l2error(F, f, nx, ny) << std::endl;
     
     } else {
       cl_event forward_event;
       cl_ulong time_start, time_end;
-      double *T=new double[N];
-      for(unsigned int i=0; i < N; ++i) {
-	init(nx,ny,f);
+      double *T = new double[N];
+      for(unsigned int i = 0; i < N; ++i) {
+	init(nx, ny, f);
 	fft.write_buffer(f);
 	seconds();
 	fft.forward(&forward_event);
@@ -295,17 +293,16 @@ int main(int argc, char* argv[])
 				&time_start, NULL);
 	clGetEventProfilingInfo(forward_event,
 				CL_PROFILING_COMMAND_END,
-				sizeof(time_end), 
+				sizeof(time_end),
 				&time_end, NULL);
 	T[i] = 1e-6 * (time_end - time_start);
 	fft.read_buffer(f);
       }
       std::cout << std::endl;
-      timings("mfft1d double timing",nx,T,N,stats);
+      timings("mfft1d double timing", nx, T, N, stats);
     }
   }
   
-
   /* Release OpenCL working objects. */
   clReleaseCommandQueue(queue);
   clReleaseContext(ctx);
