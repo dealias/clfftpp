@@ -12,7 +12,7 @@
 #include "utils.hpp"
 
 template<class T>
-void init(T *X, int n)
+void init(T *X, unsigned int n)
 {
   for(unsigned int i=0; i < n; ++i) {
     X[2*i] = i;
@@ -21,8 +21,6 @@ void init(T *X, int n)
 }
 
 int main(int argc, char* argv[]) {
-  show_devices();
-
   int platnum = 0;
   int devnum = 0;
 
@@ -30,14 +28,14 @@ int main(int argc, char* argv[]) {
   
   bool inplace = true;
 
-  int nx = 4;
+  unsigned int nx = 4;
   //nx=262144;
 
   int N = 0;
 
   unsigned int stats = 0; // Type of statistics used in timing test.
 
-  int maxout = 32; // maximum size of array output in entierety
+  unsigned int maxout = 32; // maximum size of array output in entierety
 
 #ifdef __GNUC__	
   optind=0;
