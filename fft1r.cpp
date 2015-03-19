@@ -12,7 +12,7 @@
 #include "utils.hpp"
 
 template<class T>
-void initR(T *X, int n)
+void initR(T *X, unsigned int n)
 {
   for(unsigned int i = 0; i < n; ++i)
     X[i] = i;
@@ -100,7 +100,8 @@ int main(int argc, char *argv[]) {
   std::cout << "Allocating "
 	    << fft.nreal() 
 	    << " doubles for real." << std::endl;
-  double *Xin = new double[fft.nreal()];
+  //double *Xin = new double[fft.nreal()];
+  double *Xin = new double[2 * fft.ncomplex()]; // FIXME: needed to prevent memory error, but this should not be the case.
   std::cout << "Allocating " 
 	    << 2 * fft.ncomplex()
 	    << " doubles for complex." << std::endl;
@@ -119,6 +120,7 @@ int main(int argc, char *argv[]) {
     else
       std::cout << Xin[0] << std::endl;
 
+    std::cout << "\nTransformed:" << std::endl;
     fft.ram_to_rbuf(Xin, &inbuf, 0, NULL, &r2c_event);
     if(inplace) {
       fft.forward(&inbuf, NULL, 1, &r2c_event, &forward_event);
@@ -129,22 +131,22 @@ int main(int argc, char *argv[]) {
     }
     clWaitForEvents(1, &c2r_event);
 
-    std::cout << "\nTransformed:" << std::endl;
     if(nx <= maxout)
       show1C(Xout, fft.ncomplex(0));
     else 
       std::cout << Xout[0] << std::endl;
-    
+
+    std::cout << "\nTransformed back:" << std::endl;
     if(inplace) {
       fft.backward(&inbuf, NULL, 1, &forward_event, &backward_event);
+      fft.rbuf_to_ram(Xin, &inbuf, 1, &backward_event, NULL);
     } else {
       fft.backward(&inbuf, &outbuf, 1, &forward_event, &backward_event);
+      fft.rbuf_to_ram(Xin, &inbuf, 1, &backward_event, NULL);
     }
-    fft.rbuf_to_ram(Xin, &inbuf, 1, &backward_event, NULL);
-    //clWaitForEvents(1, &c2r_event);
+    clWaitForEvents(1, &c2r_event);
     fft.finish();
     
-    std::cout << "\nTransformed back:" << std::endl;
     if(nx <= maxout) 
       show1R(Xin, nx);
     else 
