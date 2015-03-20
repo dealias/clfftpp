@@ -267,10 +267,14 @@ private:
     realtocomplex = false;
     set_buf_size();
 
+    setup_plan(forward_plan);
+    setup_plan(backward_plan);
+  }
+
+  void setup_plan(clfftPlanHandle &plan) {
+
     clfftDim dim = CLFFT_1D;
     size_t clLengths[1] = {nx};
-
-    clfftPlanHandle plan = forward_plan;
 
     cl_int ret;
     ret = clfftCreateDefaultPlan(&plan, 
@@ -306,6 +310,8 @@ private:
     assert(ret == CL_SUCCESS);
 
     set_workmem(plan);
+
+    backward_plan = forward_plan;
   }
 
 public:

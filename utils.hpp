@@ -21,9 +21,9 @@ void usage(unsigned int dim)
 
 
 template<class T>
-void show1C(const T *X, int n)
+void show1C(const T *X, unsigned int n)
 {
-  for(int i = 0; i < n; ++i) {
+  for(unsigned int i = 0; i < n; ++i) {
     std::cout << "(" 
 	      << X[2 * i] 
 	      << "," 
@@ -34,7 +34,7 @@ void show1C(const T *X, int n)
 }
 
 template<class T>
-void show1R(const T *X, int n)
+void show1R(const T *X, unsigned int n)
 {
   for(unsigned int i = 0; i < n; ++i)
     std::cout << X[i] << std::endl;
