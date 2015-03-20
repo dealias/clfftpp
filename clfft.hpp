@@ -372,7 +372,11 @@ private:
     realtocomplex = false;
     set_buf_size();
 
-    clfftPlanHandle plan = forward_plan; 
+    setup_plan(forward_plan);
+    setup_plan(backward_plan);
+  }
+
+  void setup_plan(clfftPlanHandle &plan) {
 
     clfftDim dim = CLFFT_2D;
     //size_t clLengths[2] = {nx, ny};
@@ -656,9 +660,13 @@ private:
     inplace = false;
 
     set_buf_size();
+    setup_plan(forward_plan, CLFFT_FORWARD);
+    setup_plan(backward_plan, CLFFT_BACKWARD);
+    // FIXME: delete backplan
+  }
 
-    clfftPlanHandle plan = forward_plan; 
-  
+  void setup_plan(clfftPlanHandle &plan, clfftDirection direction) {
+
     clfftDim dim = CLFFT_2D;
     //size_t clLengths[2] = {nx, ny};
     size_t clLengths[2] = {ny, nx}; // They lied when they said it was row-major

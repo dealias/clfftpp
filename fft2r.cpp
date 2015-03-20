@@ -12,7 +12,7 @@
 #include "utils.hpp"
 
 template<class T>
-void init2R(T *X, int nx, int ny)
+void init2R(T *X, unsigned int nx, unsigned int ny)
 {
   for(unsigned int i = 0; i < nx; ++i) {
     for(unsigned int j = 0; j < ny; ++j) {
@@ -27,13 +27,13 @@ int main(int argc, char *argv[]) {
   int platnum = 0;
   int devnum = 0;
   bool time_copy = false;
-  int nx = 4;
-  int ny = 4;
-  int N = 0;
+  unsigned int nx = 4;
+  unsigned int ny = 4;
+  unsigned int N = 0;
   unsigned int stats = 0; // Type of statistics used in timing test.
   bool inplace = false;
 
-  int maxout = 32; // maximum size of array output in entirety
+  unsigned int maxout = 32; // maximum size of array output in entirety
 
 #ifdef __GNUC__	
   optind = 0;

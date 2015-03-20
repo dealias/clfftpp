@@ -42,7 +42,7 @@ void show1R(const T *X, unsigned int n)
 
 
 template<class T>
-void show2C(const T *X, int nx, int ny)
+void show2C(const T *X, unsigned int nx, unsigned int ny)
 {
   for(unsigned int i = 0; i < nx; ++i) {
     for(unsigned int j = 0; j < ny; ++j) {
@@ -55,13 +55,13 @@ void show2C(const T *X, int nx, int ny)
   }
 }
 template<class T>
-void showH(const T *X, int nx, int ny, int skip)
+void showH(const T *X, unsigned int nx, unsigned int ny, int skip)
 {
   // FIXME: what is the deal with skip?  Is this a stride issue?
   std::cout << "skip = " << skip << std::endl;
   for(unsigned int i = 0; i < nx; ++i) {
     for(unsigned int j = 0; j < ny; ++j) {
-      int pos = 2 * (i * (ny + skip) + j);
+      unsigned int pos = 2 * (i * (ny + skip) + j);
       std::cout << "(" << X[pos]
 		<< "," << X[pos + 1]
 		<< ") ";
@@ -71,7 +71,7 @@ void showH(const T *X, int nx, int ny, int skip)
 }
 
 template<class T>
-void show2R(const T *X, int nx, int ny)
+void show2R(const T *X, unsigned int nx, unsigned int ny)
 {
   for(unsigned int i = 0; i < nx; ++i) {
     for(unsigned int j = 0; j < ny; ++j) {

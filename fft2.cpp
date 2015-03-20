@@ -12,7 +12,7 @@
 #include "utils.hpp"
 
 template<class T>
-void init(T *X, int nx, int ny)
+void init(T *X, unsigned int nx, unsigned int ny)
 {
   for(unsigned int i = 0; i < nx; ++i) {
     for(unsigned int j = 0; j < ny; ++j) {
@@ -31,13 +31,13 @@ int main(int argc, char *argv[]) {
   
   bool inplace = true;
 
-  int nx = 4;
-  int ny = 4;
+  unsigned int nx = 4;
+  unsigned int ny = 4;
   //nx=262144;
 
-  int N = 0;
+  unsigned int N = 0;
 
-  int maxout = 10000;
+  unsigned int maxout = 10000;
 
   unsigned int stats = 0; // Type of statistics used in timing test.
 
