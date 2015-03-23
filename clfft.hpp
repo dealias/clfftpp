@@ -528,7 +528,7 @@ private:
 
     size_t idist = forward ? nreal(0) : ncomplex(0);
     size_t odist = forward ? ncomplex(0) : nreal(0);
-    set_dists(plan, dim, idist, odist);      
+    set_dists(plan, dim, idist, odist);
 
     bake_plan(plan);
 
@@ -607,9 +607,9 @@ private:
 
   void setup() {
     realtocomplex = true;
-    //    inplace = false;
 
     set_buf_size();
+
     setup_plan(forward_plan, CLFFT_FORWARD);
     setup_plan(backward_plan, CLFFT_BACKWARD);
     // FIXME: delete backplan
@@ -634,23 +634,16 @@ private:
     set_inout_place(plan);
     set_precision(plan, precision);
 
-    cl_int ret;
+    size_t istride[2] = {1, inplace ? 2 * ncomplex(1) : nreal(1)};
+    size_t ostride[2] = {1, ncomplex(1)};
+    set_strides(plan, dim, istride, ostride);
+
+    size_t idist = forward ? nreal(-1) : ncomplex(-1);
+    size_t odist = forward ? ncomplex(-1) : nreal(-1);
+    set_dists(plan, dim, idist, odist);
+
     {
-      {
-	size_t istride[2] = {1, inplace ? 2 * ncomplex(1) : nreal(1)};
-	size_t ostride[2] = {1, ncomplex(1)};
-	set_strides(plan, dim, istride, ostride);
-      }
-
-      {
-	size_t idist = forward ? nreal(-1) : ncomplex(-1);
-	size_t odist = forward ? ncomplex(-1) : nreal(-1);
-	
-	// size_t idist = 18;
-	// size_t odist = 9;
-	set_dists(plan, dim, idist, odist);
-      }
-
+      cl_int ret;
       // Output the parameters:
       {
 	size_t istride[2];
