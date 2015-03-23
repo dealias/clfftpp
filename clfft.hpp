@@ -55,6 +55,26 @@ protected:
     return errstring;
   }
   
+  void create_default_plan(clfftPlanHandle &plan,  
+			   clfftDim dim, size_t *clLengths) {
+    cl_int ret;
+    ret = clfftCreateDefaultPlan(&plan,
+				 ctx,
+				 dim,
+				 clLengths);
+    if(ret != CL_SUCCESS) std::cerr << clfft_errorstring(ret) << std::endl;
+    assert(ret == CL_SUCCESS);
+
+  }
+
+  void set_inout_place(clfftPlanHandle &plan, bool inplace) {
+    cl_int ret;
+    ret = clfftSetResultLocation(plan, 
+				 inplace ? CLFFT_INPLACE : CLFFT_OUTOFPLACE);
+    if(ret != CL_SUCCESS) std::cerr << clfft_errorstring(ret) << std::endl;
+    assert(ret == CL_SUCCESS);
+  }
+
   void set_buf_size() {
     var_size = precision == CLFFT_DOUBLE ? sizeof(double) : sizeof(float);
     cbuf_size = ncomplex(-1) * 2 * var_size;
@@ -70,6 +90,19 @@ protected:
 	      << ", rbuf_size: " << rbuf_size 
 	      << std::endl;
   }
+
+  void bake_plan(clfftPlanHandle &plan) {
+    cl_int ret;   
+    ret = clfftBakePlan(plan,
+			1, // numQueues: number of experiments 
+			&queue, // commQueueFFT
+			NULL, // Always NULL
+			NULL // Always NULL
+			);
+    if(ret != CL_SUCCESS) std::cerr << clfft_errorstring(ret) << std::endl;
+    assert(ret == CL_SUCCESS);
+  }
+
 public:
   clfft_base() {
     if(count_zero == 0)
@@ -276,13 +309,9 @@ private:
     clfftDim dim = CLFFT_1D;
     size_t clLengths[1] = {nx};
 
+    create_default_plan(plan, dim, clLengths);
+
     cl_int ret;
-    ret = clfftCreateDefaultPlan(&plan, 
-				 ctx, 
-				 dim, 
-				 clLengths);
-    if(ret != CL_SUCCESS) std::cerr << clfft_errorstring(ret) << std::endl;
-    assert(ret == CL_SUCCESS);
 
     ret = clfftSetPlanPrecision(plan, 
 				precision);
@@ -295,19 +324,9 @@ private:
     if(ret != CL_SUCCESS) std::cerr << clfft_errorstring(ret) << std::endl;
     assert(ret == CL_SUCCESS);
 
-    ret = clfftSetResultLocation(plan, 
-				 inplace ? CLFFT_INPLACE : CLFFT_OUTOFPLACE);
-    if(ret != CL_SUCCESS) std::cerr << clfft_errorstring(ret) << std::endl;
-    assert(ret == CL_SUCCESS);
+    set_inout_place(plan, inplace);
 
-    ret = clfftBakePlan(plan,
-			1, // numQueues: number of experiments 
-			&queue, // commQueueFFT
-			NULL, // Always NULL
-			NULL // Always NULL
-			);
-    if(ret != CL_SUCCESS) std::cerr << clfft_errorstring(ret) << std::endl;
-    assert(ret == CL_SUCCESS);
+    bake_plan(plan);
 
     set_workmem(plan);
 
@@ -382,13 +401,9 @@ private:
     //size_t clLengths[2] = {nx, ny};
     size_t clLengths[2] = {ny, nx}; // They lied when they said it was row-major
 
+    create_default_plan(plan, dim, clLengths);
+
     cl_int ret;
-    ret = clfftCreateDefaultPlan(&plan, 
-				 ctx, 
-				 dim, 
-				 clLengths);
-    if(ret != CL_SUCCESS) std::cerr << clfft_errorstring(ret) << std::endl;
-    assert(ret == CL_SUCCESS);
 
     ret = clfftSetPlanPrecision(plan, 
 				precision);
@@ -401,19 +416,9 @@ private:
     if(ret != CL_SUCCESS) std::cerr << clfft_errorstring(ret) << std::endl;
     assert(ret == CL_SUCCESS);
 
-    ret = clfftSetResultLocation(plan, 
-				 inplace ? CLFFT_INPLACE : CLFFT_OUTOFPLACE);
-    if(ret != CL_SUCCESS) std::cerr << clfft_errorstring(ret) << std::endl;
-    assert(ret == CL_SUCCESS);
+    set_inout_place(plan, inplace);
 
-    ret = clfftBakePlan(plan,
-			1, // numQueues: number of experiments 
-			&queue, // commQueueFFT
-			NULL, // Always NULL
-			NULL // Always NULL
-			);
-    if(ret != CL_SUCCESS) std::cerr << clfft_errorstring(ret) << std::endl;
-    assert(ret == CL_SUCCESS);
+    bake_plan(plan);
 
     set_workmem(plan);
   }
@@ -494,12 +499,7 @@ private:
   
     cl_int ret;
 
-    ret = clfftCreateDefaultPlan(&plan,
-				 ctx,
-				 dim,
-				 clLengths);
-    if(ret != CL_SUCCESS) std::cerr << clfft_errorstring(ret) << std::endl;
-    assert(ret == CL_SUCCESS);
+    create_default_plan(plan, dim, clLengths);
 
     ret = clfftSetPlanPrecision(plan, 
 				precision);
@@ -518,10 +518,7 @@ private:
     if(ret != CL_SUCCESS) std::cerr << clfft_errorstring(ret) << std::endl;
     assert(ret == CL_SUCCESS);
     
-    ret = clfftSetResultLocation(plan, 
-				 inplace ? CLFFT_INPLACE : CLFFT_OUTOFPLACE);
-    if(ret != CL_SUCCESS) std::cerr << clfft_errorstring(ret) << std::endl;
-    assert(ret == CL_SUCCESS);
+    set_inout_place(plan, inplace);
 
     { // FIXME: is this stuff necessary or helpful?
     // FIXME: deal with direction choices here. w00t.
@@ -573,14 +570,7 @@ private:
       std::cout << "ostride: " << ostride << std::endl;
     }
 
-    ret = clfftBakePlan(plan,
-			1, // numQueues: number of experiments 
-			&queue, // commQueueFFT
-			NULL, // Always NULL
-			NULL // Always NULL
-			);
-    if(ret != CL_SUCCESS) std::cerr << clfft_errorstring(ret) << std::endl;
-    assert(ret == CL_SUCCESS);
+    bake_plan(plan);
 
     set_workmem(plan);
   }
@@ -667,43 +657,100 @@ private:
 
   void setup_plan(clfftPlanHandle &plan, clfftDirection direction) {
 
+    bool forward = direction == CLFFT_FORWARD; 
+
     clfftDim dim = CLFFT_2D;
     //size_t clLengths[2] = {nx, ny};
     size_t clLengths[2] = {ny, nx}; // They lied when they said it was row-major
 
-    cl_int ret;
+    create_default_plan(plan, dim, clLengths);
 
-    ret = clfftCreateDefaultPlan(&plan, 
-				 ctx, 
-				 dim, 
-				 clLengths);
-    if(ret != CL_SUCCESS) std::cerr << clfft_errorstring(ret) << std::endl;
-    assert(ret == CL_SUCCESS);
+    cl_int ret;
 
     ret = clfftSetPlanPrecision(plan,
 				precision);
     if(ret != CL_SUCCESS) std::cerr << clfft_errorstring(ret) << std::endl;
     assert(ret == CL_SUCCESS);
 
-    ret = clfftSetLayout(plan, 
-			 CLFFT_REAL,
-			 CLFFT_HERMITIAN_INTERLEAVED);
+    if(forward) {
+      ret = clfftSetLayout(plan, 
+			   CLFFT_REAL,
+			   CLFFT_HERMITIAN_INTERLEAVED);
+    } else {
+      ret = clfftSetLayout(plan, 
+			   CLFFT_HERMITIAN_INTERLEAVED,
+			   CLFFT_REAL);
+    }
     if(ret != CL_SUCCESS) std::cerr << clfft_errorstring(ret) << std::endl;
     assert(ret == CL_SUCCESS);
 
-    ret = clfftSetResultLocation(plan, 
-				 inplace ? CLFFT_INPLACE : CLFFT_OUTOFPLACE);
-    if(ret != CL_SUCCESS) std::cerr << clfft_errorstring(ret) << std::endl;
-    assert(ret == CL_SUCCESS);
+    set_inout_place(plan, inplace);
 
-    ret = clfftBakePlan(plan,
-			1, // numQueues: number of experiments 
-			&queue, // commQueueFFT
-			NULL, // Always NULL
-			NULL // Always NULL
-			);
-    if(ret != CL_SUCCESS) std::cerr << clfft_errorstring(ret) << std::endl;
-    assert(ret == CL_SUCCESS);
+
+    //if(false) 
+    { // FIXME: is this stuff necessary or helpful?
+    // FIXME: deal with direction choices here. w00t.
+      {
+      // size_t clStride = {1};
+
+      // ret = clfftSetPlanInStride(plan,
+      // 				 dim, //const clfftDim  	dim,
+      // 				 &clStride //size_t * clStrides 
+      // 				 );
+      // if(ret != CL_SUCCESS) std::cerr << clfft_errorstring(ret) << std::endl;
+      // assert(ret == CL_SUCCESS);
+
+      // ret = clfftSetPlanOutStride(plan,
+      // 				  dim, //const clfftDim  	dim,
+      // 				  &clStride //size_t * clStrides 
+      // 				  );
+      // if(ret != CL_SUCCESS) std::cerr << clfft_errorstring(ret) << std::endl;
+      // assert(ret == CL_SUCCESS);
+      }
+      
+      {
+	size_t iDist = forward ? nreal(-1) : ncomplex(-1);
+	size_t oDist = forward ? ncomplex(-1) : nreal(-1);
+      
+	ret = clfftSetPlanDistance(plan,
+				   iDist,
+				   oDist);
+	if(ret != CL_SUCCESS) std::cerr << clfft_errorstring(ret) << std::endl;
+	assert(ret == CL_SUCCESS);
+      }
+
+      {
+	size_t iDist;
+	size_t oDist;
+	ret = clfftGetPlanDistance(plan,
+				   &iDist,
+				   &oDist
+				   );
+	if(ret != CL_SUCCESS) std::cerr << clfft_errorstring(ret) << std::endl;
+	assert(ret == CL_SUCCESS);
+	std::cout << "iDist: " << iDist << std::endl;
+	std::cout << "oDist: " << oDist << std::endl;
+      }
+
+      {
+	size_t istride, ostride;
+	ret = clfftGetPlanInStride(plan,
+				   dim,
+				   &istride);
+	if(ret != CL_SUCCESS) std::cerr << clfft_errorstring(ret) << std::endl;
+	assert(ret == CL_SUCCESS);
+      
+	ret = clfftGetPlanOutStride(plan,
+				    dim,
+				    &ostride);
+	if(ret != CL_SUCCESS) std::cerr << clfft_errorstring(ret) << std::endl;
+	assert(ret == CL_SUCCESS);
+	std::cout << "istride: " << istride << std::endl;
+	std::cout << "ostride: " << ostride << std::endl;
+      }
+    }
+
+    bake_plan(plan);
 
     set_workmem(plan);
   }
@@ -737,7 +784,7 @@ public:
     switch(dim) {
     case -1:
       //return (1 + ny / 2) * nx;
-      return nx * ny + 100; // FIXME: WTF?
+      return nx * ny; // FIXME: WTF?
     case 0:
       return nx;
     case 1:      
