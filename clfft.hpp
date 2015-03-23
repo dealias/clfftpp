@@ -75,6 +75,14 @@ protected:
     assert(ret == CL_SUCCESS);
   }
 
+  void set_precision(clfftPlanHandle &plan, clfftPrecision precision) {
+    cl_int ret;
+    ret = clfftSetPlanPrecision(plan,
+				precision);
+    if(ret != CL_SUCCESS) std::cerr << clfft_errorstring(ret) << std::endl;
+    assert(ret == CL_SUCCESS);
+  }
+
   void set_buf_size() {
     var_size = precision == CLFFT_DOUBLE ? sizeof(double) : sizeof(float);
     cbuf_size = ncomplex(-1) * 2 * var_size;
@@ -311,12 +319,9 @@ private:
 
     create_default_plan(plan, dim, clLengths);
 
-    cl_int ret;
+    set_precision(plan, precision);
 
-    ret = clfftSetPlanPrecision(plan, 
-				precision);
-    if(ret != CL_SUCCESS) std::cerr << clfft_errorstring(ret) << std::endl;
-    assert(ret == CL_SUCCESS);
+    cl_int ret;
 
     ret = clfftSetLayout(plan,
 			 CLFFT_COMPLEX_INTERLEAVED, 
@@ -403,12 +408,9 @@ private:
 
     create_default_plan(plan, dim, clLengths);
 
-    cl_int ret;
+    set_precision(plan, precision);
 
-    ret = clfftSetPlanPrecision(plan, 
-				precision);
-    if(ret != CL_SUCCESS) std::cerr << clfft_errorstring(ret) << std::endl;
-    assert(ret == CL_SUCCESS);
+    cl_int ret;
 
     ret = clfftSetLayout(plan, 
 			 CLFFT_COMPLEX_INTERLEAVED, 
@@ -497,14 +499,11 @@ private:
     clfftDim dim = CLFFT_1D;
     size_t clLengths[1] = {nx};
   
-    cl_int ret;
-
     create_default_plan(plan, dim, clLengths);
 
-    ret = clfftSetPlanPrecision(plan, 
-				precision);
-    if(ret != CL_SUCCESS) std::cerr << clfft_errorstring(ret) << std::endl;
-    assert(ret == CL_SUCCESS);
+    set_precision(plan, precision);
+
+    cl_int ret;
 
     if(forward) {
       ret = clfftSetLayout(plan, 
@@ -665,12 +664,9 @@ private:
 
     create_default_plan(plan, dim, clLengths);
 
-    cl_int ret;
+    set_precision(plan, precision);
 
-    ret = clfftSetPlanPrecision(plan,
-				precision);
-    if(ret != CL_SUCCESS) std::cerr << clfft_errorstring(ret) << std::endl;
-    assert(ret == CL_SUCCESS);
+    cl_int ret;
 
     if(forward) {
       ret = clfftSetLayout(plan, 
@@ -685,7 +681,6 @@ private:
     assert(ret == CL_SUCCESS);
 
     set_inout_place(plan, inplace);
-
 
     //if(false) 
     { // FIXME: is this stuff necessary or helpful?
