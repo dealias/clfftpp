@@ -111,6 +111,27 @@ protected:
     assert(ret == CL_SUCCESS);
   }
 
+  void set_data_layout(clfftPlanHandle &plan, bool forward = true) {
+    cl_int ret;
+    if(!realtocomplex) {
+      ret = clfftSetLayout(plan,
+			 CLFFT_COMPLEX_INTERLEAVED, 
+			 CLFFT_COMPLEX_INTERLEAVED);
+    } else {
+      if(forward) {
+	ret = clfftSetLayout(plan, 
+			     CLFFT_REAL,
+			     CLFFT_HERMITIAN_INTERLEAVED);
+      } else {
+    	ret = clfftSetLayout(plan, 
+    			     CLFFT_HERMITIAN_INTERLEAVED,
+    			     CLFFT_REAL);
+      }
+    }
+    if(ret != CL_SUCCESS) std::cerr << clfft_errorstring(ret) << std::endl;
+    assert(ret == CL_SUCCESS);
+  }
+
   void set_buf_size() {
     var_size = (precision == CLFFT_DOUBLE) ? sizeof(double) : sizeof(float);
     cbuf_size = ncomplex(-1) * 2 * var_size;
@@ -338,29 +359,16 @@ private:
   }
 
   void setup_plan(clfftPlanHandle &plan) {
-
     clfftDim dim = CLFFT_1D;
     size_t clLengths[1] = {nx};
 
     create_default_plan(plan, dim, clLengths);
-
     set_precision(plan, precision);
-
-    cl_int ret;
-
-    ret = clfftSetLayout(plan,
-			 CLFFT_COMPLEX_INTERLEAVED, 
-			 CLFFT_COMPLEX_INTERLEAVED);
-    if(ret != CL_SUCCESS) std::cerr << clfft_errorstring(ret) << std::endl;
-    assert(ret == CL_SUCCESS);
-
     set_inout_place(plan);
+    set_data_layout(plan);
 
     bake_plan(plan);
-
     set_workmem(plan);
-
-    backward_plan = forward_plan;
   }
 
 public:
@@ -432,17 +440,8 @@ private:
     size_t clLengths[2] = {ny, nx}; // They lied when they said it was row-major
 
     create_default_plan(plan, dim, clLengths);
-
     set_precision(plan, precision);
-
-    cl_int ret;
-
-    ret = clfftSetLayout(plan, 
-			 CLFFT_COMPLEX_INTERLEAVED, 
-			 CLFFT_COMPLEX_INTERLEAVED);
-    if(ret != CL_SUCCESS) std::cerr << clfft_errorstring(ret) << std::endl;
-    assert(ret == CL_SUCCESS);
-
+    set_data_layout(plan);
     set_inout_place(plan);
 
     bake_plan(plan);
@@ -525,25 +524,11 @@ private:
     size_t clLengths[1] = {nx};
   
     create_default_plan(plan, dim, clLengths);
-
     set_precision(plan, precision);
-
-    cl_int ret;
-
-    if(forward) {
-      ret = clfftSetLayout(plan, 
-			   CLFFT_REAL,
-			   CLFFT_HERMITIAN_INTERLEAVED);
-    } else {
-    	ret = clfftSetLayout(plan, 
-    			     CLFFT_HERMITIAN_INTERLEAVED,
-    			     CLFFT_REAL);
-    }
-    if(ret != CL_SUCCESS) std::cerr << clfft_errorstring(ret) << std::endl;
-    assert(ret == CL_SUCCESS);
-    
+    set_data_layout(plan, forward);
     set_inout_place(plan);
 
+    cl_int ret;
     { // FIXME: is this stuff necessary or helpful?
     // FIXME: deal with direction choices here. w00t.
       size_t clStride = {1};
@@ -693,25 +678,12 @@ private:
     size_t clLengths[2] = {ny, nx}; // They lied when they said it was row-major
 
     create_default_plan(plan, dim, clLengths);
-
+    set_precision(plan, precision);
+    set_data_layout(plan, forward);
+    set_inout_place(plan);
     set_precision(plan, precision);
 
     cl_int ret;
-
-    if(forward) {
-      ret = clfftSetLayout(plan,
-			   CLFFT_REAL,
-			   CLFFT_HERMITIAN_INTERLEAVED);
-    } else {
-      ret = clfftSetLayout(plan,
-			   CLFFT_HERMITIAN_INTERLEAVED,
-			   CLFFT_REAL);
-    }
-    if(ret != CL_SUCCESS) std::cerr << clfft_errorstring(ret) << std::endl;
-    assert(ret == CL_SUCCESS);
-
-    set_inout_place(plan);
-
     {
       {
 	size_t istride[2] = {1, inplace ? 2 * ncomplex(1) : nreal(1)};
@@ -755,7 +727,6 @@ private:
 		  << std::endl;
       }
       
-
       {
 	size_t iDist;
 	size_t oDist;
@@ -772,7 +743,6 @@ private:
     }
 
     bake_plan(plan);
-      
     set_workmem(plan);
   }
 
