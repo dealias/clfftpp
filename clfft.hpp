@@ -513,12 +513,7 @@ private:
   }
 
   void setup_plan(clfftPlanHandle &plan, clfftDirection direction) {
-    
-    bool forward = direction == CLFFT_FORWARD; 
-    if(forward) 
-      std::cout << "forward" << std::endl;
-    else
-      std::cout << "backward" << std::endl;
+     bool forward = direction == CLFFT_FORWARD; 
  
     clfftDim dim = CLFFT_1D;
     size_t clLengths[1] = {nx};
@@ -528,56 +523,12 @@ private:
     set_data_layout(plan, forward);
     set_inout_place(plan);
 
-    cl_int ret;
-    { // FIXME: is this stuff necessary or helpful?
-    // FIXME: deal with direction choices here. w00t.
-      size_t clStride = {1};
-      ret = clfftSetPlanInStride(plan,
-				 dim, //const clfftDim  	dim,
-				 &clStride //size_t * clStrides 
-				 );
-      if(ret != CL_SUCCESS) std::cerr << clfft_errorstring(ret) << std::endl;
-      assert(ret == CL_SUCCESS);
+    size_t iostrides[1] = {1};
+    set_strides(plan, dim, iostrides, iostrides);
 
-      ret = clfftSetPlanOutStride(plan,
-				  dim, //const clfftDim  	dim,
-				  &clStride //size_t * clStrides 
-				  );
-      if(ret != CL_SUCCESS) std::cerr << clfft_errorstring(ret) << std::endl;
-      assert(ret == CL_SUCCESS);
-
-      size_t iDist = forward ? nreal(0) : ncomplex(0);
-      size_t oDist = forward ? ncomplex(0) : nreal(0);
-      
-      ret = clfftSetPlanDistance(plan,
-				 iDist,
-				 oDist);
-      if(ret != CL_SUCCESS) std::cerr << clfft_errorstring(ret) << std::endl;
-      assert(ret == CL_SUCCESS);
-
-      ret = clfftGetPlanDistance(plan,
-				 &iDist,
-				 &oDist
-				 );
-      if(ret != CL_SUCCESS) std::cerr << clfft_errorstring(ret) << std::endl;
-      assert(ret == CL_SUCCESS);
-      std::cout << "iDist: " << iDist << std::endl;
-      std::cout << "oDist: " << oDist << std::endl;
-
-      size_t istride, ostride;
-      ret = clfftGetPlanInStride(plan,
-      				 dim,
-      				 &istride);
-      if(ret != CL_SUCCESS) std::cerr << clfft_errorstring(ret) << std::endl;
-      assert(ret == CL_SUCCESS);
-      ret = clfftGetPlanOutStride(plan,
-				  dim,
-				  &ostride);
-      if(ret != CL_SUCCESS) std::cerr << clfft_errorstring(ret) << std::endl;
-      assert(ret == CL_SUCCESS);
-      std::cout << "istride: " << istride << std::endl;
-      std::cout << "ostride: " << ostride << std::endl;
-    }
+    size_t idist = forward ? nreal(0) : ncomplex(0);
+    size_t odist = forward ? ncomplex(0) : nreal(0);
+    set_dists(plan, dim, idist, odist);      
 
     bake_plan(plan);
 
