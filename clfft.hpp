@@ -64,10 +64,9 @@ protected:
 				 clLengths);
     if(ret != CL_SUCCESS) std::cerr << clfft_errorstring(ret) << std::endl;
     assert(ret == CL_SUCCESS);
-
   }
 
-  void set_inout_place(clfftPlanHandle &plan, bool inplace) {
+  void set_inout_place(clfftPlanHandle &plan) {
     cl_int ret;
     ret = clfftSetResultLocation(plan, 
 				 inplace ? CLFFT_INPLACE : CLFFT_OUTOFPLACE);
@@ -102,11 +101,9 @@ protected:
     assert(ret == CL_SUCCESS);
   }
 
-  
   void set_dists(clfftPlanHandle &plan, clfftDim dim,
-		   size_t idist, size_t odist) {
+		 size_t idist, size_t odist) {
     cl_int ret;
-    
     ret = clfftSetPlanDistance(plan,
 			       idist,
 			       odist);
@@ -114,22 +111,17 @@ protected:
     assert(ret == CL_SUCCESS);
   }
 
-  
-
   void set_buf_size() {
-    var_size = precision == CLFFT_DOUBLE ? sizeof(double) : sizeof(float);
+    var_size = (precision == CLFFT_DOUBLE) ? sizeof(double) : sizeof(float);
     cbuf_size = ncomplex(-1) * 2 * var_size;
     if(realtocomplex) {
-      if(inplace)
-	rbuf_size = cbuf_size;
-      else
-	rbuf_size = nreal(-1) * var_size;
+      rbuf_size = inplace ? cbuf_size : nreal(-1) * var_size;
     } else {
       rbuf_size = 0;
     }
-    std::cout << "cbuf_size: " << cbuf_size 
-	      << ", rbuf_size: " << rbuf_size 
-	      << std::endl;
+    // std::cout << "cbuf_size: " << cbuf_size 
+    // 	      << ", rbuf_size: " << rbuf_size 
+    // 	      << std::endl;
   }
 
   void bake_plan(clfftPlanHandle &plan) {
@@ -362,7 +354,7 @@ private:
     if(ret != CL_SUCCESS) std::cerr << clfft_errorstring(ret) << std::endl;
     assert(ret == CL_SUCCESS);
 
-    set_inout_place(plan, inplace);
+    set_inout_place(plan);
 
     bake_plan(plan);
 
@@ -451,7 +443,7 @@ private:
     if(ret != CL_SUCCESS) std::cerr << clfft_errorstring(ret) << std::endl;
     assert(ret == CL_SUCCESS);
 
-    set_inout_place(plan, inplace);
+    set_inout_place(plan);
 
     bake_plan(plan);
 
@@ -550,7 +542,7 @@ private:
     if(ret != CL_SUCCESS) std::cerr << clfft_errorstring(ret) << std::endl;
     assert(ret == CL_SUCCESS);
     
-    set_inout_place(plan, inplace);
+    set_inout_place(plan);
 
     { // FIXME: is this stuff necessary or helpful?
     // FIXME: deal with direction choices here. w00t.
@@ -679,7 +671,7 @@ private:
 
   void setup() {
     realtocomplex = true;
-    inplace = false;
+    //    inplace = false;
 
     set_buf_size();
     setup_plan(forward_plan, CLFFT_FORWARD);
@@ -690,6 +682,11 @@ private:
   void setup_plan(clfftPlanHandle &plan, clfftDirection direction) {
 
     bool forward = direction == CLFFT_FORWARD; 
+
+    if(forward) 
+      std::cout << "setting up forward transform..." << std::endl;
+    else
+      std::cout << "setting up backward transform..." << std::endl;
 
     clfftDim dim = CLFFT_2D;
     //size_t clLengths[2] = {nx, ny};
@@ -702,47 +699,39 @@ private:
     cl_int ret;
 
     if(forward) {
-      ret = clfftSetLayout(plan, 
+      ret = clfftSetLayout(plan,
 			   CLFFT_REAL,
 			   CLFFT_HERMITIAN_INTERLEAVED);
     } else {
-      ret = clfftSetLayout(plan, 
+      ret = clfftSetLayout(plan,
 			   CLFFT_HERMITIAN_INTERLEAVED,
 			   CLFFT_REAL);
     }
     if(ret != CL_SUCCESS) std::cerr << clfft_errorstring(ret) << std::endl;
     assert(ret == CL_SUCCESS);
 
-    set_inout_place(plan, inplace);
+    set_inout_place(plan);
 
-    //if(false) 
-    { // FIXME: is this stuff necessary or helpful?
-      // FIXME: deal with direction choices here. w00t.
+    {
       {
-	size_t istride[2] = {1,6};
-	size_t ostride[2] = {1,3};
+	size_t istride[2] = {1, inplace ? 2 * ncomplex(1) : nreal(1)};
+	size_t ostride[2] = {1, ncomplex(1)};
 	set_strides(plan, dim, istride, ostride);
       }
 
       {
-	// size_t iDist = forward ? nreal(-1) : ncomplex(-1);
-	// size_t oDist = forward ? ncomplex(-1) : nreal(-1);
-
-	size_t idist = 18;
-	size_t odist = 19;
+	size_t idist = forward ? nreal(-1) : ncomplex(-1);
+	size_t odist = forward ? ncomplex(-1) : nreal(-1);
+	
+	// size_t idist = 18;
+	// size_t odist = 9;
 	set_dists(plan, dim, idist, odist);
       }
 
+      // Output the parameters:
       {
-	size_t lengths[2] = {4, 3};
-	ret = clfftSetPlanLength(plan, dim, lengths); 	
-	if(ret != CL_SUCCESS) std::cerr << clfft_errorstring(ret) << std::endl;
-	assert(ret == CL_SUCCESS);
-      }
-
-      {
-	size_t istride[2] = {0,0};
-	size_t ostride[2] = {0,0};
+	size_t istride[2];
+	size_t ostride[2];
 	ret = clfftGetPlanInStride(plan,
 				   dim,
 				   istride);
@@ -779,12 +768,12 @@ private:
 	std::cout << "iDist: " << iDist << std::endl;
 	std::cout << "oDist: " << oDist << std::endl;
       }
-
-    bake_plan(plan);
-
-    set_workmem(plan);
     
     }
+
+    bake_plan(plan);
+      
+    set_workmem(plan);
   }
 
 public:
@@ -802,6 +791,7 @@ public:
     queue = queue0;
     ctx = ctx0;
     inplace = inplace0;
+    realtocomplex = true;
     setup();
   }
 
@@ -815,7 +805,7 @@ public:
   const unsigned int ncomplex(const int dim = -1) {
     switch(dim) {
     case -1:
-      return nx * ny;
+      return nx * (1 + ny / 2);
     case 0:
       return nx;
     case 1:      
