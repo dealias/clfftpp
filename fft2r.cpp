@@ -143,10 +143,12 @@ int main(int argc, char *argv[]) {
     clWaitForEvents(1, &c2r_event);
     
     std::cout << "\nTransformed:" << std::endl;
-    if(nx <= maxout)
-      showH(Xout, fft.ncomplex(0), fft.ncomplex(1), fft.nreal(1) / 2 - 1);
-    else
+    if(nx <= maxout) {
+      //showH(Xout, fft.ncomplex(0), fft.ncomplex(1), fft.nreal(1) / 2 - 1);
+      showH(Xout, fft.ncomplex(0), fft.ncomplex(1), 0);
+    } else {
       std::cout << Xout[0] << std::endl;
+    }
 
     if(inplace) {
       fft.backward(&inbuf, NULL, 1, &forward_event, &backward_event);

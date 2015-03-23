@@ -83,6 +83,39 @@ protected:
     assert(ret == CL_SUCCESS);
   }
 
+  void set_strides(clfftPlanHandle &plan, clfftDim dim,
+		   size_t *istride, size_t *ostride) {
+    cl_int ret;
+    
+    ret = clfftSetPlanInStride(plan,
+			       dim, //const clfftDim  	dim,
+			       istride //size_t * clStrides 
+			       );
+    if(ret != CL_SUCCESS) std::cerr << clfft_errorstring(ret) << std::endl;
+    assert(ret == CL_SUCCESS);
+
+    ret = clfftSetPlanOutStride(plan,
+				dim, //const clfftDim  	dim,
+				ostride //size_t * clStrides 
+				);
+    if(ret != CL_SUCCESS) std::cerr << clfft_errorstring(ret) << std::endl;
+    assert(ret == CL_SUCCESS);
+  }
+
+  
+  void set_dists(clfftPlanHandle &plan, clfftDim dim,
+		   size_t idist, size_t odist) {
+    cl_int ret;
+    
+    ret = clfftSetPlanDistance(plan,
+			       idist,
+			       odist);
+    if(ret != CL_SUCCESS) std::cerr << clfft_errorstring(ret) << std::endl;
+    assert(ret == CL_SUCCESS);
+  }
+
+  
+
   void set_buf_size() {
     var_size = precision == CLFFT_DOUBLE ? sizeof(double) : sizeof(float);
     cbuf_size = ncomplex(-1) * 2 * var_size;
@@ -684,35 +717,55 @@ private:
 
     //if(false) 
     { // FIXME: is this stuff necessary or helpful?
-    // FIXME: deal with direction choices here. w00t.
+      // FIXME: deal with direction choices here. w00t.
       {
-      // size_t clStride = {1};
-
-      // ret = clfftSetPlanInStride(plan,
-      // 				 dim, //const clfftDim  	dim,
-      // 				 &clStride //size_t * clStrides 
-      // 				 );
-      // if(ret != CL_SUCCESS) std::cerr << clfft_errorstring(ret) << std::endl;
-      // assert(ret == CL_SUCCESS);
-
-      // ret = clfftSetPlanOutStride(plan,
-      // 				  dim, //const clfftDim  	dim,
-      // 				  &clStride //size_t * clStrides 
-      // 				  );
-      // if(ret != CL_SUCCESS) std::cerr << clfft_errorstring(ret) << std::endl;
-      // assert(ret == CL_SUCCESS);
+	size_t istride[2] = {1,6};
+	size_t ostride[2] = {1,3};
+	set_strides(plan, dim, istride, ostride);
       }
-      
+
       {
-	size_t iDist = forward ? nreal(-1) : ncomplex(-1);
-	size_t oDist = forward ? ncomplex(-1) : nreal(-1);
-      
-	ret = clfftSetPlanDistance(plan,
-				   iDist,
-				   oDist);
+	// size_t iDist = forward ? nreal(-1) : ncomplex(-1);
+	// size_t oDist = forward ? ncomplex(-1) : nreal(-1);
+
+	size_t idist = 18;
+	size_t odist = 19;
+	set_dists(plan, dim, idist, odist);
+      }
+
+      {
+	size_t lengths[2] = {4, 3};
+	ret = clfftSetPlanLength(plan, dim, lengths); 	
 	if(ret != CL_SUCCESS) std::cerr << clfft_errorstring(ret) << std::endl;
 	assert(ret == CL_SUCCESS);
       }
+
+      {
+	size_t istride[2] = {0,0};
+	size_t ostride[2] = {0,0};
+	ret = clfftGetPlanInStride(plan,
+				   dim,
+				   istride);
+	if(ret != CL_SUCCESS) std::cerr << clfft_errorstring(ret) << std::endl;
+	assert(ret == CL_SUCCESS);
+      
+	ret = clfftGetPlanOutStride(plan,
+				    dim,
+				    ostride);
+	if(ret != CL_SUCCESS) std::cerr << clfft_errorstring(ret) << std::endl;
+	assert(ret == CL_SUCCESS);
+	std::cout << "istride: " 
+		  << istride[0] 
+		  << " "
+		  << istride[1]
+		  << std::endl;
+	std::cout << "ostride: " 
+		  << ostride[0] 
+		  << " "
+		  << ostride[1] 
+		  << std::endl;
+      }
+      
 
       {
 	size_t iDist;
@@ -727,27 +780,11 @@ private:
 	std::cout << "oDist: " << oDist << std::endl;
       }
 
-      {
-	size_t istride, ostride;
-	ret = clfftGetPlanInStride(plan,
-				   dim,
-				   &istride);
-	if(ret != CL_SUCCESS) std::cerr << clfft_errorstring(ret) << std::endl;
-	assert(ret == CL_SUCCESS);
-      
-	ret = clfftGetPlanOutStride(plan,
-				    dim,
-				    &ostride);
-	if(ret != CL_SUCCESS) std::cerr << clfft_errorstring(ret) << std::endl;
-	assert(ret == CL_SUCCESS);
-	std::cout << "istride: " << istride << std::endl;
-	std::cout << "ostride: " << ostride << std::endl;
-      }
-    }
-
     bake_plan(plan);
 
     set_workmem(plan);
+    
+    }
   }
 
 public:
@@ -778,8 +815,7 @@ public:
   const unsigned int ncomplex(const int dim = -1) {
     switch(dim) {
     case -1:
-      //return (1 + ny / 2) * nx;
-      return nx * ny; // FIXME: WTF?
+      return nx * ny;
     case 0:
       return nx;
     case 1:      
