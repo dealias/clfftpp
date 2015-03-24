@@ -63,7 +63,7 @@ void showH(const T *X, unsigned int nx, unsigned int ny, int skip)
   // 		<< ")\n";
   // }
 
-  std::cout << "skip = " << skip << std::endl;
+  //std::cout << "skip = " << skip << std::endl;
   unsigned int pos = 0;
   for(unsigned int i = 0; i < nx; ++i) {
     for(unsigned int j = 0; j < ny; ++j) {

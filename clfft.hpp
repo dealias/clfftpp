@@ -632,14 +632,12 @@ private:
     set_precision(plan, precision);
 
     if(forward) {
-      // size_t istride[2] = {nreal(0), 1};
-      // size_t ostride[2] = {1, ncomplex(1)};
       size_t istride[2] = {1, nreal(1)};
       size_t ostride[2] = {1, ncomplex(1)};
       set_strides(plan, dim, istride, ostride);
     } else {
-      size_t istride[2] = {1, inplace ? 2 * ncomplex(1) : nreal(1)};
-      size_t ostride[2] = {1, ncomplex(1)};
+      size_t ostride[2] = {1, nreal(1)};
+      size_t istride[2] = {1, ncomplex(1)};
       set_strides(plan, dim, istride, ostride);
     }
 
@@ -647,41 +645,41 @@ private:
     size_t odist = forward ? ncomplex(-1) : 2 * nreal(-1);
     set_dists(plan, dim, idist, odist);
     
-    {
-      cl_int ret;
-      // Output the parameters:
-      {
-	size_t istride[2];
-	size_t ostride[2];
-	ret = clfftGetPlanInStride(plan,
-				   dim,
-				   istride);
-	if(ret != CL_SUCCESS) std::cerr << clfft_errorstring(ret) << std::endl;
-	assert(ret == CL_SUCCESS);
+    // {
+    //   cl_int ret;
+    //   // Output the parameters:
+    //   {
+    // 	size_t istride[2];
+    // 	size_t ostride[2];
+    // 	ret = clfftGetPlanInStride(plan,
+    // 				   dim,
+    // 				   istride);
+    // 	if(ret != CL_SUCCESS) std::cerr << clfft_errorstring(ret) << std::endl;
+    // 	assert(ret == CL_SUCCESS);
       
-	ret = clfftGetPlanOutStride(plan,
-				    dim,
-				    ostride);
-	if(ret != CL_SUCCESS) std::cerr << clfft_errorstring(ret) << std::endl;
-	assert(ret == CL_SUCCESS);
-	std::cout << "istride: " << istride[0] << " " << istride[1]<< std::endl;
-	std::cout << "ostride: " << ostride[0] << " " << ostride[1]<< std::endl;
-      }
+    // 	ret = clfftGetPlanOutStride(plan,
+    // 				    dim,
+    // 				    ostride);
+    // 	if(ret != CL_SUCCESS) std::cerr << clfft_errorstring(ret) << std::endl;
+    // 	assert(ret == CL_SUCCESS);
+    // 	std::cout << "istride: " << istride[0] << " " << istride[1]<< std::endl;
+    // 	std::cout << "ostride: " << ostride[0] << " " << ostride[1]<< std::endl;
+    //   }
       
-      {
-	size_t iDist;
-	size_t oDist;
-	ret = clfftGetPlanDistance(plan,
-				   &iDist,
-				   &oDist
-				   );
-	if(ret != CL_SUCCESS) std::cerr << clfft_errorstring(ret) << std::endl;
-	assert(ret == CL_SUCCESS);
-	std::cout << "iDist: " << iDist << std::endl;
-	std::cout << "oDist: " << oDist << std::endl;
-      }
+    //   {
+    // 	size_t iDist;
+    // 	size_t oDist;
+    // 	ret = clfftGetPlanDistance(plan,
+    // 				   &iDist,
+    // 				   &oDist
+    // 				   );
+    // 	if(ret != CL_SUCCESS) std::cerr << clfft_errorstring(ret) << std::endl;
+    // 	assert(ret == CL_SUCCESS);
+    // 	std::cout << "iDist: " << iDist << std::endl;
+    // 	std::cout << "oDist: " << oDist << std::endl;
+    //   }
     
-    }
+    // }
 
     bake_plan(plan);
     set_workmem(plan);
