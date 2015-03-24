@@ -145,8 +145,8 @@ int main(int argc, char *argv[]) {
     std::cout << "\nTransformed:" << std::endl;
     if(nx <= maxout) {
       //showH(Xout, fft.ncomplex(0), fft.ncomplex(1), fft.nreal(1) / 2 - 1);
-      //showH(Xout, fft.ncomplex(0), fft.ncomplex(1), inplace ? 1 : 0);
-      showH(Xout, fft.ncomplex(0), fft.ncomplex(1) + 1, 0);
+      showH(Xout, fft.ncomplex(0), fft.ncomplex(1), inplace ? 1 : 0);
+      //showH(Xout, fft.ncomplex(0), fft.ncomplex(1) + 1, 0);
     } else {
       std::cout << Xout[0] << std::endl;
     }
