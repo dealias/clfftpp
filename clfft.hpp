@@ -140,9 +140,6 @@ protected:
     } else {
       rbuf_size = 0;
     }
-    // std::cout << "cbuf_size: " << cbuf_size 
-    // 	      << ", rbuf_size: " << rbuf_size 
-    // 	      << std::endl;
   }
 
   void bake_plan(clfftPlanHandle &plan) {
@@ -634,14 +631,22 @@ private:
     set_inout_place(plan);
     set_precision(plan, precision);
 
-    size_t istride[2] = {1, inplace ? 2 * ncomplex(1) : nreal(1)};
-    size_t ostride[2] = {1, ncomplex(1)};
-    set_strides(plan, dim, istride, ostride);
+    if(forward) {
+      // size_t istride[2] = {nreal(0), 1};
+      // size_t ostride[2] = {1, ncomplex(1)};
+      size_t istride[2] = {nreal(1), 1};
+      size_t ostride[2] = {1, ncomplex(1)};
+      set_strides(plan, dim, istride, ostride);
+    } else {
+      size_t istride[2] = {1, inplace ? 2 * ncomplex(1) : nreal(1)};
+      size_t ostride[2] = {1, ncomplex(1)};
+      set_strides(plan, dim, istride, ostride);
+    }
 
-    size_t idist = forward ? nreal(-1) : ncomplex(-1);
-    size_t odist = forward ? ncomplex(-1) : nreal(-1);
+    size_t idist = forward ? 2 * nreal(-1) : ncomplex(-1);
+    size_t odist = forward ? ncomplex(-1) : 2 * nreal(-1);
     set_dists(plan, dim, idist, odist);
-
+    
     {
       cl_int ret;
       // Output the parameters:
@@ -659,16 +664,8 @@ private:
 				    ostride);
 	if(ret != CL_SUCCESS) std::cerr << clfft_errorstring(ret) << std::endl;
 	assert(ret == CL_SUCCESS);
-	std::cout << "istride: " 
-		  << istride[0] 
-		  << " "
-		  << istride[1]
-		  << std::endl;
-	std::cout << "ostride: " 
-		  << ostride[0] 
-		  << " "
-		  << ostride[1] 
-		  << std::endl;
+	std::cout << "istride: " << istride[0] << " " << istride[1]<< std::endl;
+	std::cout << "ostride: " << ostride[0] << " " << ostride[1]<< std::endl;
       }
       
       {
