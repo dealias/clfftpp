@@ -11,7 +11,8 @@ void usage(unsigned int dim)
 	    << "\t-d <int>\tOpenCL device number \n"
 	    << "\t-c <0 or 1>\tinclude memory copy in time \n"
 	    << "\t-m <int>\tproblem size \n"
-	    << "\t-x <int>\tproblem size in first dimension \n";
+	    << "\t-x <int>\tproblem size in first dimension \n"
+	    << "\t-i <bool>\tin-place (1) or out-of-place (0) transform \n";
   if(dim > 1)
     std::cout <<  "\t-y <int>\tproblem size in second dimension\n";
   std::cout << "\t-N <int>\tNumber of tests \n"
