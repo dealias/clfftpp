@@ -613,14 +613,7 @@ private:
   }
 
   void setup_plan(clfftPlanHandle &plan, clfftDirection direction) {
-
     bool forward = direction == CLFFT_FORWARD; 
-
-    // if(forward) 
-    //   std::cout << "setting up forward transform..." << std::endl;
-    // else
-    //   std::cout << "setting up backward transform..." << std::endl;
-
     clfftDim dim = CLFFT_2D;
     //size_t clLengths[2] = {nx, ny};
     size_t clLengths[2] = {ny, nx}; // They lied when they said it was row-major

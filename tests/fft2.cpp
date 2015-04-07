@@ -155,7 +155,7 @@ int main(int argc, char *argv[]) {
     if(inplace) {
       fft.backward(&inbuf, NULL, 1, &forward_event, &backward_event);
     } else {
-      fft.backward(&inbuf, &outbuf, 1, &forward_event, &backward_event);
+      fft.backward(&outbuf, &inbuf, 1, &forward_event, &backward_event);
     }
     fft.cbuf_to_ram(X, &inbuf, 1, &backward_event, &c2r_event);
     clWaitForEvents(1, &c2r_event);
@@ -165,6 +165,26 @@ int main(int argc, char *argv[]) {
       show2C(X, nx, ny);
     else 
       std::cout << X[0] << std::endl;
+    
+    // Compute the round-trip error.
+    {
+      double *X0 = new double[2 * fft.ncomplex()];
+      init(X0, nx, ny);
+      double L2error = 0.0;
+      double maxerror = 0.0;
+      for(unsigned int i = 0; i < fft.ncomplex(); ++i) {
+	double rdiff = X[2 * i] - X0[2 * i];
+	double idiff = X[2 * i + 1] - X0[2 * i + 1];
+	double diff = sqrt(rdiff * rdiff + idiff * idiff);
+	L2error += diff * diff;
+	if(diff > maxerror)
+	  maxerror = diff;
+      }
+      L2error = sqrt(L2error / (double) nx);
+      std::cout << std::endl;
+      std::cout << "L2 error: " << L2error << std::endl;
+      std::cout << "max error: " << maxerror << std::endl;
+    }
 
   } else { // Perform timing tests.
     // double *T = new double[N];

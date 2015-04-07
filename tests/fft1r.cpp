@@ -100,8 +100,7 @@ int main(int argc, char *argv[]) {
   std::cout << "Allocating "
 	    << fft.nreal() 
 	    << " doubles for real." << std::endl;
-  //double *Xin = new double[fft.nreal()];
-  double *Xin = new double[2 * fft.ncomplex()]; // FIXME: needed to prevent memory error, but this should not be the case.
+  double *Xin = new double[inplace ? 2 * fft.ncomplex() : fft.nreal()];
   std::cout << "Allocating " 
 	    << 2 * fft.ncomplex()
 	    << " doubles for complex." << std::endl;
@@ -139,11 +138,10 @@ int main(int argc, char *argv[]) {
     std::cout << "\nTransformed back:" << std::endl;
     if(inplace) {
       fft.backward(&inbuf, NULL, 1, &forward_event, &backward_event);
-      fft.rbuf_to_ram(Xin, &inbuf, 1, &backward_event, NULL);
     } else {
-      fft.backward(&inbuf, &outbuf, 1, &forward_event, &backward_event);
-      fft.rbuf_to_ram(Xin, &inbuf, 1, &backward_event, NULL);
+      fft.backward(&outbuf, &inbuf, 1, &forward_event, &backward_event);
     }
+    fft.rbuf_to_ram(Xin, &inbuf, 1, &backward_event, NULL);
     clWaitForEvents(1, &c2r_event);
     fft.finish();
     
@@ -151,7 +149,25 @@ int main(int argc, char *argv[]) {
       show1R(Xin, nx);
     else 
       std::cout << Xin[0] << std::endl;
-
+    
+    // Compute the round-trip error.
+    {
+      double *X0 = new double[fft.nreal()];
+      initR(X0, nx);
+      double L2error = 0.0;
+      double maxerror = 0.0;
+      for(unsigned int i = 0; i < fft.nreal(); ++i) {
+	double diff = Xin[i] - X0[i];
+	L2error += diff * diff;
+	if(diff > maxerror)
+	  maxerror = diff;
+      }
+      L2error = sqrt(L2error / (double) nx);
+      std::cout << std::endl;
+      std::cout << "L2 error: " << L2error << std::endl;
+      std::cout << "max error: " << maxerror << std::endl;
+    }
+    
   } else {
     // FIXME: put timing stuff here.
   }

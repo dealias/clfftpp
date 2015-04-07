@@ -106,18 +106,16 @@ int main(int argc, char *argv[]) {
     fft.create_cbuf(&outbuf);
   }
 
-  int nfloat = 1000000; //FIXME: temp
-  
   std::cout << "Allocating " 
-	    << fft.nreal() 
+	    << (inplace ? 2 * fft.ncomplex() : fft.nreal())
 	    << " doubles for real." << std::endl;
-  double *Xin = new double[nfloat] ; //fft.nreal()];
+  double *Xin = new double[inplace ? 2 * fft.ncomplex() : fft.nreal()];
   std::cout << "Allocating "
 	    << 2 * fft.ncomplex() 
 	    << " doubles for complex." << std::endl;
-  //double *Xout = new double[2 * fft.ncomplex()];
-  double *Xout = new double[nfloat];
+  double *Xout = new double[2 * fft.ncomplex()];
 
+  // Create OpenCL events
   cl_event r2c_event = clCreateUserEvent(ctx, NULL);
   cl_event c2r_event = clCreateUserEvent(ctx, NULL);
   cl_event forward_event = clCreateUserEvent(ctx, NULL);
@@ -144,9 +142,7 @@ int main(int argc, char *argv[]) {
     
     std::cout << "\nTransformed:" << std::endl;
     if(nx <= maxout) {
-      //showH(Xout, fft.ncomplex(0), fft.ncomplex(1), fft.nreal(1) / 2 - 1);
       showH(Xout, fft.ncomplex(0), fft.ncomplex(1), inplace ? 1 : 0);
-      //showH(Xout, fft.ncomplex(0), fft.ncomplex(1) + 1, 0);
     } else {
       std::cout << Xout[0] << std::endl;
     }
@@ -154,21 +150,40 @@ int main(int argc, char *argv[]) {
     if(inplace) {
       fft.backward(&inbuf, NULL, 1, &forward_event, &backward_event);
     } else {
-      fft.backward(&inbuf, &outbuf, 1, &forward_event, &backward_event);
+      fft.backward(&outbuf, &inbuf, 1, &forward_event, &backward_event);
     }
     fft.rbuf_to_ram(Xin, &inbuf, 1, &backward_event, &c2r_event);
 
     std::cout << "\nTransformed back:" << std::endl;
-    if(nx <= maxout) 
+    if(nx <= maxout)
       show2R(Xin, nx, ny);
     else 
       std::cout << Xin[0] << std::endl;
+
+    // compute the round-trip error.
+    {
+      double *X0 = new double[fft.nreal()];
+      init2R(X0, nx, ny);
+      double L2error = 0.0;
+      double maxerror = 0.0;
+      for(unsigned int i = 0; i < fft.nreal(); ++i) {
+	double diff = fabs(Xin[i] - X0[i]);
+	L2error += diff * diff;
+	if(diff > maxerror)
+	  maxerror = diff;
+      }
+      L2error = sqrt(L2error / (double) nx);
+      std::cout << std::endl;
+      std::cout << "L2 error: " << L2error << std::endl;
+      std::cout << "max error: " << maxerror << std::endl;
+    } 
+
   } else {
     // FIXME: put timing stuff here.
   }
+  //delete[] Xout; // FIXME: causes a segfault when in-place
   delete[] Xin;
-  delete[] Xout;
-
+  
   /* Release OpenCL working objects. */
   clReleaseCommandQueue(queue);
   clReleaseContext(ctx);
