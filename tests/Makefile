@@ -19,6 +19,10 @@ INCL+=-I$(FFTWPP_INCLUDE_PATH)/tests
 endif
 
 INCL+=-I.
+INCL+=-I..
+
+vpath %.cpp ../
+vpath %.c ../
 
 # Set up CXXFLAGS
 CXXFLAGS=
@@ -99,7 +103,7 @@ fft2r: $(OBJS) fft2r.o
 
 .PHONY: clean
 clean: FORCE
-	rm -f *.o *.gch $(output) *.d
+	rm -f *.o *.gch $(OUTPUT) *.d
 
 ifeq (,$(findstring clean,${MAKECMDGOALS}))
 -include $(ALL:=.d)
