@@ -14,27 +14,20 @@
 template<class T>
 void init(T *X, unsigned int n)
 {
-  for(unsigned int i=0; i < n; ++i) {
-    X[2*i] = i;
-    X[2*i + 1] = 0.0;
+  for(unsigned int i = 0; i < n; ++i) {
+    X[2 * i] = i;
+    X[2 * i + 1] = 0.0;
   }
 }
 
 int main(int argc, char *argv[]) {
   int platnum = 0;
   int devnum = 0;
-
   bool time_copy = false;
-  
   bool inplace = true;
-
   unsigned int nx = 4;
-  //nx=262144;
-
   int N = 0;
-
   unsigned int stats = 0; // Type of statistics used in timing test.
-
   unsigned int maxout = 32; // maximum size of array output in entierety
 
 #ifdef __GNUC__	
