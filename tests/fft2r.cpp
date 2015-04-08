@@ -149,10 +149,12 @@ int main(int argc, char *argv[]) {
 
     if(inplace) {
       fft.backward(&inbuf, NULL, 1, &forward_event, &backward_event);
+      fft.cbuf_to_ram(Xin, &inbuf, 1, &backward_event, &c2r_event);
     } else {
       fft.backward(&outbuf, &inbuf, 1, &forward_event, &backward_event);
+      fft.rbuf_to_ram(Xin, &inbuf, 1, &backward_event, &c2r_event);
     }
-    fft.rbuf_to_ram(Xin, &inbuf, 1, &backward_event, &c2r_event);
+    clWaitForEvents(1, &c2r_event);
 
     std::cout << "\nTransformed back:" << std::endl;
     if(nx <= maxout)
@@ -162,15 +164,15 @@ int main(int argc, char *argv[]) {
 
     // compute the round-trip error.
     {
-      double *X0 = new double[fft.nreal()];
+      double *X0 = new double[inplace ? 2 * fft.ncomplex() : fft.nreal()];
       init2R(X0, nx, ny);
       double L2error = 0.0;
       double maxerror = 0.0;
       for(unsigned int i = 0; i < fft.nreal(); ++i) {
-	double diff = fabs(Xin[i] - X0[i]);
-	L2error += diff * diff;
-	if(diff > maxerror)
-	  maxerror = diff;
+    	double diff = fabs(Xin[i] - X0[i]);
+    	L2error += diff * diff;
+    	if(diff > maxerror)
+    	  maxerror = diff;
       }
       L2error = sqrt(L2error / (double) nx);
       std::cout << std::endl;
@@ -181,7 +183,7 @@ int main(int argc, char *argv[]) {
   } else {
     // FIXME: put timing stuff here.
   }
-  //delete[] Xout; // FIXME: causes a segfault when in-place
+  delete[] Xout;
   delete[] Xin;
   
   /* Release OpenCL working objects. */

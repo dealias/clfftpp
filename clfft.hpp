@@ -629,8 +629,8 @@ private:
       size_t ostride[2] = {1, ncomplex(1)};
       set_strides(plan, dim, istride, ostride);
     } else {
-      size_t ostride[2] = {1, nreal(1)};
       size_t istride[2] = {1, ncomplex(1)};
+      size_t ostride[2] = {1, nreal(1)};
       set_strides(plan, dim, istride, ostride);
     }
 
