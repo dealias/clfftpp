@@ -11,9 +11,10 @@
 #include "utils.hpp"
 #include "Array.h"
 //using namespace Array;
-#include "convolution.h"
+//#include "convolution.h"
+#include "Complex.h"
 #include "fftw++.h"
-//using namespace fftwpp;
+using namespace fftwpp;
 //using namespace std;
 
 template<class T>
@@ -181,7 +182,7 @@ int main(int argc, char *argv[]) {
 
       size_t align = sizeof(Complex);
       Array::array1<Complex> f(nx, align);
-      fftwpp::fft1d Forward(-1, f);
+      fft1d Forward(-1, f);
       //fft1d Backward(1, f);
       //init(f(), nx);
     }

@@ -8,8 +8,6 @@ INCL+=-I$(OPENCL_INCLUDE_PATH)
 endif
 
 ifneq ($(strip $(CLFFT_INCLUDE_PATH)),)
-# erratic:
-# export CLFFT_INCLUDE_PATH=${HOME}/clFFT/include
 INCL+=-I$(CLFFT_INCLUDE_PATH)
 endif
 
@@ -18,24 +16,31 @@ INCL+=-I$(FFTWPP_INCLUDE_PATH)
 INCL+=-I$(FFTWPP_INCLUDE_PATH)/tests
 endif
 
-ifneq ($(strip $(FFTW_INCLUDE_PATH)),)
+#ifneq ($(strip $(FFTW_INCLUDE_PATH)),)
 INCL+=-I$(FFTW_INCLUDE_PATH)
 vpath %.cc $(FFTW_INCLUDE_PATH)
-endif
+#endif
 
 INCL+=-I.
 INCL+=-I..
+INCL+=-I/home/mal/fftw++
 
+vpath %.cc /home/mal/fftw++
 vpath %.cpp ../
 vpath %.c ../
+
+#VPATH=.:../:$(FFTWPP_INCLUDE_PATH)
 
 # Set up CXXFLAGS
 CXXFLAGS=
 CXXFLAGS+=-O3
 CXXFLAGS+=-Wall
 CXXFLAGS+=-fopenmp
+CXXFLAGS+=-march=native -mtune=native
 
+CXXFLAGS+=-g -Wall -ansi -fomit-frame-pointer -fstrict-aliasing -ffast-math -mavx -mfpmath=sse
 CXXFLAGS+=$(INCL)
+
 
 # Set up CFLAGS
 CFLAGS=$(CXXFLAGS)
@@ -68,13 +73,15 @@ OUTPUT=fft1 fft2 fft1r fft2r
 
 SRCS_CPP=clfft platform
 SRCS_C=clutils
-SRCS_CC=fftw++
+#SRCS_CC=fftw++
 OBJS=$(SRCS_CPP:=.o) $(SRCS_C:=.o) $(SRCS_CC:=.o)
 ALL=$(SRCS_CPP) $(SRCS_C) $(SRCS_CC) $(OUTPUT)
 
 all: $(OUTPUT)
 
-fft1: $(OBJS) fft1.o
+fft1: $(OBJS) fft1.o fftw++.o
+	@echo compiling $@
+	@echo $(OBJS)
 	$(CXX) $(CXXFLAGS) $^ -o $@ $(LDFLAGS) $(LDLIBS)
 
 fft1r: $(OBJS) fft1r.o
@@ -89,20 +96,17 @@ fft2r: $(OBJS) fft2r.o
 	@echo compiling $@
 	$(CXX) -o $@ $^ $(LDFLAGS) $(LDLIBS)
 
-fftw++.o: fftw++.cc fftw++.h
-	$(CXX) -o $@ $^ $(LDFLAGS) $(LDLIBS)
+.cc.o: %.cc %.h %.d
+	@echo  $@
+	$(CXX) $(CXXFLAGS) $< -c -o $@ $(LDFLAGS) $(LDLIBS)
 
-# %.o : %.c %.h %.d
-# 	@echo creating $@
-# 	$(CC) -c $(CFLAGS) $(INCL) $^ $(LDFLAGS)
+.cpp.o: %.cpp %.hpp %.d
+	@echo  $@
+	$(CXX) $(CXXFLAGS) $< -c $(LDFLAGS) $(LDLIBS)
 
-# %.o : %.cc %.h %.d
-# 	@echo creating $@
-# 	$(CXX) -c $(CXXFLAGS) $(INCL) $^ $(LDFLAGS)
-
-# %.o : %.cpp %.hpp %.d
-# 	@echo creating $@
-# 	$(CXX) -c $(CXXFLAGS) $(INCL) $^ $(LDFLAGS)
+.c.o: %.c %.h %.d
+	@echo  $@
+	$(CC) $(CFLAGS) $< -c $(LDFLAGS) $(LDLIBS)
 
 .cc.d:
 	@echo Creating $@; \
@@ -127,7 +131,8 @@ fftw++.o: fftw++.cc fftw++.h
 
 .SUFFIXES: .c .cc .cpp .o .d
 
-.PHONY: clean
+.PHONY: clean all
+
 clean: FORCE
 	rm -f *.o *.gch $(OUTPUT) *.d
 
