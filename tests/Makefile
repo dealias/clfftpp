@@ -23,13 +23,11 @@ vpath %.cc $(FFTW_INCLUDE_PATH)
 
 INCL+=-I.
 INCL+=-I..
-INCL+=-I/home/mal/fftw++
+INCL+=-I$(FFTWPP_INCLUDE_PATH)
 
-vpath %.cc /home/mal/fftw++
+vpath %.cc $(FFTWPP_INCLUDE_PATH)
 vpath %.cpp ../
 vpath %.c ../
-
-#VPATH=.:../:$(FFTWPP_INCLUDE_PATH)
 
 # Set up CXXFLAGS
 CXXFLAGS=
