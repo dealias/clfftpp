@@ -5,11 +5,16 @@
 #include <iostream>
 #include <timing.h>
 #include <seconds.h>
-
 #include <vector>
-
 #include <getopt.h>
+
 #include "utils.hpp"
+#include "Array.h"
+//using namespace Array;
+#include "convolution.h"
+#include "fftw++.h"
+//using namespace fftwpp;
+//using namespace std;
 
 template<class T>
 void init(T *X, unsigned int n)
@@ -165,9 +170,23 @@ int main(int argc, char *argv[]) {
       }
       L2error = sqrt(L2error / (double) nx);
       std::cout << std::endl;
+      std::cout << "Round-trip error:"  << std::endl;
       std::cout << "L2 error: " << L2error << std::endl;
       std::cout << "max error: " << maxerror << std::endl;
     }
+    
+    // Compute the error with respect to FFTW
+    {
+      //fftw::maxthreads=get_max_threads();
+
+      size_t align = sizeof(Complex);
+      Array::array1<Complex> f(nx, align);
+      fftwpp::fft1d Forward(-1, f);
+      //fft1d Backward(1, f);
+      //init(f(), nx);
+    }
+
+
 
   } else {
     // double *T = new double[N];

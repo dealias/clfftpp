@@ -18,6 +18,11 @@ INCL+=-I$(FFTWPP_INCLUDE_PATH)
 INCL+=-I$(FFTWPP_INCLUDE_PATH)/tests
 endif
 
+ifneq ($(strip $(FFTW_INCLUDE_PATH)),)
+INCL+=-I$(FFTW_INCLUDE_PATH)
+vpath %.cc $(FFTW_INCLUDE_PATH)
+endif
+
 INCL+=-I.
 INCL+=-I..
 
@@ -28,6 +33,7 @@ vpath %.c ../
 CXXFLAGS=
 CXXFLAGS+=-O3
 CXXFLAGS+=-Wall
+CXXFLAGS+=-fopenmp
 
 CXXFLAGS+=$(INCL)
 
@@ -49,41 +55,61 @@ ifneq ($(strip $(CLFFT_LIB_PATH)),)
 LDFLAGS+=-L$(CLFFT_LIB_PATH)
 endif
 
-LDFLAGS+=-lpthread
+ifneq ($(strip $(FFTW_LIB_PATH)),)
+LDFLAGS+=-L$(FFTW_LIB_PATH)
+endif
+
+LDLIBS=
+LDLIBS+=-lfftw3_omp -lfftw3
+LDLIBS+=-lm
 
 # The programs to be produced
 OUTPUT=fft1 fft2 fft1r fft2r
 
 SRCS_CPP=clfft platform
 SRCS_C=clutils
-OBJS=$(SRCS_CPP:=.o) $(SRCS_C:=.o)
-ALL=$(SRCS_CPP) $(SRCS_C) $(OUTPUT)
+SRCS_CC=fftw++
+OBJS=$(SRCS_CPP:=.o) $(SRCS_C:=.o) $(SRCS_CC:=.o)
+ALL=$(SRCS_CPP) $(SRCS_C) $(SRCS_CC) $(OUTPUT)
 
 all: $(OUTPUT)
 
 fft1: $(OBJS) fft1.o
-	@echo compiling $@
-	$(CXX) -o $@ $^ $(LDFLAGS)
+	$(CXX) $(CXXFLAGS) $^ -o $@ $(LDFLAGS) $(LDLIBS)
 
 fft1r: $(OBJS) fft1r.o
 	@echo compiling $@
-	$(CXX) -o $@ $^ $(LDFLAGS)
+	$(CXX) -o $@ $^ $(LDFLAGS) $(LDLIBS)
 
 fft2: $(OBJS) fft2.o
 	@echo compiling $@
-	$(CXX) -o $@ $^ $(LDFLAGS)
+	$(CXX) -o $@ $^ $(LDFLAGS) $(LDLIBS)
 
 fft2r: $(OBJS) fft2r.o
 	@echo compiling $@
-	$(CXX) -o $@ $^ $(LDFLAGS)
+	$(CXX) -o $@ $^ $(LDFLAGS) $(LDLIBS)
+
+fftw++.o: fftw++.cc fftw++.h
+	$(CXX) -o $@ $^ $(LDFLAGS) $(LDLIBS)
 
 # %.o : %.c %.h %.d
-# 	@echo $@
-# 	$(CC) -c $(CFLAGS) $(INCL) $<
+# 	@echo creating $@
+# 	$(CC) -c $(CFLAGS) $(INCL) $^ $(LDFLAGS)
+
+# %.o : %.cc %.h %.d
+# 	@echo creating $@
+# 	$(CXX) -c $(CXXFLAGS) $(INCL) $^ $(LDFLAGS)
 
 # %.o : %.cpp %.hpp %.d
-# 	@echo $@
-# 	$(CXX) -c $(CXXFLAGS) $(INCL) $<
+# 	@echo creating $@
+# 	$(CXX) -c $(CXXFLAGS) $(INCL) $^ $(LDFLAGS)
+
+.cc.d:
+	@echo Creating $@; \
+	rm -f $@; \
+	${CXX} $(MAKEDEPEND) $(INCL) $< > $@.$$$$ 2>/dev/null && \
+	sed 's,\($*\)\.o[ :]*,\1.o $@ : ,g' < $@.$$$$ > $@; \
+	rm -f $@.$$$$
 
 .cpp.d:
 	@echo Creating $@; \
@@ -99,7 +125,7 @@ fft2r: $(OBJS) fft2r.o
 	sed 's,\($*\)\.o[ :]*,\1.o $@ : ,g' < $@.$$$$ > $@; \
 	rm -f $@.$$$$
 
-.SUFFIXES: .c .cpp .o .d
+.SUFFIXES: .c .cc .cpp .o .d
 
 .PHONY: clean
 clean: FORCE
