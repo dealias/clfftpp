@@ -10,12 +10,8 @@
 
 #include "utils.hpp"
 #include "Array.h"
-//using namespace Array;
-//#include "convolution.h"
 #include "Complex.h"
 #include "fftw++.h"
-using namespace fftwpp;
-//using namespace std;
 
 template<class T>
 void init(T *X, unsigned int n)
@@ -37,7 +33,7 @@ int main(int argc, char *argv[]) {
   unsigned int maxout = 32; // maximum size of array output in entierety
 
 #ifdef __GNUC__	
-  optind=0;
+  optind = 0;
 #endif
   for (;;) {
     int c = getopt(argc,argv,"p:d:c:m:x:N:S:hi:");
@@ -112,6 +108,7 @@ int main(int argc, char *argv[]) {
 	    << 2 * fft.ncomplex() 
 	    << " doubles." << std::endl;
   double *X = new double[2 * fft.ncomplex()];
+  double *FX = new double[2 * fft.ncomplex()];
 
   std::cout << "\nInput:" << std::endl;
   init(X, nx);
@@ -128,18 +125,18 @@ int main(int argc, char *argv[]) {
     fft.ram_to_cbuf(X, &inbuf, 0, NULL, &r2c_event);
     if(inplace) {
       fft.forward(&inbuf, NULL, 1, &r2c_event, &forward_event);
-      fft.cbuf_to_ram(X, &inbuf, 1, &forward_event, &r2c_event);
+      fft.cbuf_to_ram(FX, &inbuf, 1, &forward_event, &r2c_event);
     } else {
       fft.forward(&inbuf, &outbuf, 1, &r2c_event, &forward_event);
-      fft.cbuf_to_ram(X, &outbuf, 1, &forward_event, &r2c_event);
+      fft.cbuf_to_ram(FX, &outbuf, 1, &forward_event, &r2c_event);
     }
     clWaitForEvents(1, &r2c_event);
 
     std::cout << "\nTransformed:" << std::endl;
     if(nx <= maxout)
-      show1C(X, nx);
+      show1C(FX, nx);
     else
-      std::cout << X[0] << std::endl;
+      std::cout << FX[0] << std::endl;
     
     if(inplace) {
       fft.backward(&inbuf, NULL, 1, &forward_event, &backward_event);
@@ -179,15 +176,32 @@ int main(int argc, char *argv[]) {
     // Compute the error with respect to FFTW
     {
       //fftw::maxthreads=get_max_threads();
-
       size_t align = sizeof(Complex);
       Array::array1<Complex> f(nx, align);
-      fft1d Forward(-1, f);
-      //fft1d Backward(1, f);
-      //init(f(), nx);
+      fftwpp::fft1d Forward(-1, f);
+      fftwpp::fft1d Backward(1, f);
+      double *df = (double *)f();
+      init(df, nx);
+      //show1C(df, nx);
+      Forward.fft(f);
+      //show1C(df, nx);
+      double L2error = 0.0;
+      double maxerror = 0.0;
+      
+      for(unsigned int i = 0; i < nx; ++i) {
+	double rdiff = FX[2 * i] - f[i].re;
+	double idiff = FX[2 * i + 1] - f[i].im;
+	double diff = sqrt(rdiff * rdiff + idiff * idiff);
+	L2error += diff * diff;
+	if(diff > maxerror)
+	  maxerror = diff;
+      }
+      L2error = sqrt(L2error / (double) nx);
+      std::cout << std::endl;
+      std::cout << "Error with respect to FFTW:"  << std::endl;
+      std::cout << "L2 error: " << L2error << std::endl;
+      std::cout << "max error: " << maxerror << std::endl;
     }
-
-
 
   } else {
     // double *T = new double[N];
