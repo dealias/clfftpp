@@ -58,13 +58,12 @@ void show2C(const T *X, unsigned int nx, unsigned int ny)
 template<class T>
 void showH(const T *X, unsigned int nx, unsigned int ny, int skip)
 {
-  unsigned int pos = 0;
   for(unsigned int i = 0; i < nx; ++i) {
     for(unsigned int j = 0; j < ny; ++j) {      
-      std::cout << "(" << X[pos]
-		<< "," << X[pos + 1]
+      unsigned int pos = i * (ny + skip) + j;
+      std::cout << "(" << X[2 * pos]
+		<< "," << X[2 *pos + 1]
 		<< ") ";
-      pos += 2;
     }
     std::cout << std::endl;
   }

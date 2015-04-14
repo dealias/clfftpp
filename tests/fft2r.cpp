@@ -186,7 +186,7 @@ int main(int argc, char *argv[]) {
 
     // Compute the error with respect to FFTW
     {
-      //fftw::maxthreads=get_max_threads();
+      fftwpp::fftw::maxthreads = get_max_threads();
       size_t align = sizeof(Complex);
       Array::array2<double> f(nx, ny, align);
       Array::array2<Complex> g(nx, ny / 2 + 1, align);
@@ -200,22 +200,25 @@ int main(int argc, char *argv[]) {
       Forward.fft(f, g);
       //show1C(df, nx);
 
+      //std::cout << g << std::endl;
+
       double L2error = 0.0;
       double maxerror = 0.0;
       for(unsigned int i = 0; i < nx; ++i) {
 	for(unsigned int j = 0; j < ny / 2 + 1; ++j) {
-	  int pos = i * (ny / 2 + 1) + j;
+	  int pos = i * (ny / 2 + 1 + inplace) + j;
+	  int pos0 = i * (ny / 2 + 1) + j;
 	  // std::cout << "(" << Xout[2 * pos] 
 	  // 	    << " " << Xout[2 * pos + 1]
 	  // 	    << ")";
-	  double rdiff = Xout[2 * pos] - dg[2 * pos];
-	  double idiff = Xout[2 * pos + 1] - dg[2 * pos + 1];
+	  double rdiff = Xout[2 * pos] - dg[2 * pos0];
+	  double idiff = Xout[2 * pos + 1] - dg[2 * pos0 + 1];
 	  double diff = sqrt(rdiff * rdiff + idiff * idiff);
 	  L2error += diff * diff;
 	  if(diff > maxerror)
 	    maxerror = diff;
 	}
-	// std::cout << std::endl;
+	//std::cout << std::endl;
       }
       L2error = sqrt(L2error / (double) nx);
 

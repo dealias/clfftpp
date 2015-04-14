@@ -115,8 +115,8 @@ protected:
     cl_int ret;
     if(!realtocomplex) {
       ret = clfftSetLayout(plan,
-			 CLFFT_COMPLEX_INTERLEAVED, 
-			 CLFFT_COMPLEX_INTERLEAVED);
+			   CLFFT_COMPLEX_INTERLEAVED, 
+			   CLFFT_COMPLEX_INTERLEAVED);
     } else {
       if(forward) {
 	ret = clfftSetLayout(plan, 
@@ -298,7 +298,7 @@ public:
 		 cl_uint nwait = 0, cl_event *wait = NULL, 
 		 cl_event *done = NULL) {
     clfftPlanHandle plan 
-          = (direction == CLFFT_FORWARD) ? forward_plan : backward_plan;
+      = (direction == CLFFT_FORWARD) ? forward_plan : backward_plan;
     
     cl_int ret;
     ret = clfftEnqueueTransform(plan, // clfftPlanHandle plHandle,
@@ -510,7 +510,7 @@ private:
   }
 
   void setup_plan(clfftPlanHandle &plan, clfftDirection direction) {
-     bool forward = direction == CLFFT_FORWARD; 
+    bool forward = direction == CLFFT_FORWARD; 
  
     clfftDim dim = CLFFT_1D;
     size_t clLengths[1] = {nx};
@@ -626,10 +626,10 @@ private:
 
     if(forward) {
       size_t istride[2] = {1, nreal(1)};
-      size_t ostride[2] = {1, ncomplex(1)};
+      size_t ostride[2] = {1, ncomplex(1) + inplace};
       set_strides(plan, dim, istride, ostride);
     } else {
-      size_t istride[2] = {1, ncomplex(1)};
+      size_t istride[2] = {1, ncomplex(1) + inplace};
       size_t ostride[2] = {1, nreal(1)};
       set_strides(plan, dim, istride, ostride);
     }
@@ -707,7 +707,7 @@ public:
   const unsigned int ncomplex(const int dim = -1) {
     switch(dim) {
     case -1:
-      return nx * (1 + ny / 2);
+      return nx * (1 + ny / 2 + inplace);
     case 0:
       return nx;
     case 1:      
