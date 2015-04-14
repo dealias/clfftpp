@@ -84,15 +84,15 @@ fft1: $(OBJS) fft1.o fftw++.o
 
 fft1r: $(OBJS) fft1r.o
 	@echo compiling $@
-	$(CXX) -o $@ $^ $(LDFLAGS) $(LDLIBS)
+	$(CXX) $(CXXFLAGS) $^ -o $@ $(LDFLAGS) $(LDLIBS)
 
-fft2: $(OBJS) fft2.o
+fft2: $(OBJS) fft2.o fftw++.o
 	@echo compiling $@
-	$(CXX) -o $@ $^ $(LDFLAGS) $(LDLIBS)
+	$(CXX) $(CXXFLAGS) $^ -o $@ $(LDFLAGS) $(LDLIBS)
 
 fft2r: $(OBJS) fft2r.o
 	@echo compiling $@
-	$(CXX) -o $@ $^ $(LDFLAGS) $(LDLIBS)
+	$(CXX) $(CXXFLAGS) $^ -o $@ $(LDFLAGS) $(LDLIBS)
 
 .cc.o: %.cc %.h %.d
 	@echo  $@

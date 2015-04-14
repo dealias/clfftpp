@@ -5,10 +5,10 @@
 #include <iostream>
 #include <timing.h>
 #include <seconds.h>
-#include <vector>
-#include <getopt.h>
 
+#include <getopt.h>
 #include "utils.hpp"
+
 #include "Array.h"
 #include "Complex.h"
 #include "fftw++.h"
@@ -167,6 +167,7 @@ int main(int argc, char *argv[]) {
 	  maxerror = diff;
       }
       L2error = sqrt(L2error / (double) nx);
+
       std::cout << std::endl;
       std::cout << "Round-trip error:"  << std::endl;
       std::cout << "L2 error: " << L2error << std::endl;
@@ -185,9 +186,9 @@ int main(int argc, char *argv[]) {
       //show1C(df, nx);
       Forward.fft(f);
       //show1C(df, nx);
+
       double L2error = 0.0;
       double maxerror = 0.0;
-      
       for(unsigned int i = 0; i < nx; ++i) {
 	double rdiff = FX[2 * i] - f[i].re;
 	double idiff = FX[2 * i + 1] - f[i].im;
@@ -197,6 +198,7 @@ int main(int argc, char *argv[]) {
 	  maxerror = diff;
       }
       L2error = sqrt(L2error / (double) nx);
+
       std::cout << std::endl;
       std::cout << "Error with respect to FFTW:"  << std::endl;
       std::cout << "L2 error: " << L2error << std::endl;

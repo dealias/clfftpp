@@ -1,15 +1,17 @@
 #include <stdlib.h>
+#include <platform.hpp>
+#include <clfft.hpp>
 
 #include <iostream>
 #include <timing.h>
 #include <seconds.h>
-#include <platform.hpp>
-#include <clfft.hpp>
-
-#include <vector>
 
 #include <getopt.h>
 #include "utils.hpp"
+
+#include "Array.h"
+#include "Complex.h"
+#include "fftw++.h"
 
 template<class T>
 void init(T *X, unsigned int nx, unsigned int ny)
@@ -181,7 +183,42 @@ int main(int argc, char *argv[]) {
 	  maxerror = diff;
       }
       L2error = sqrt(L2error / (double) nx);
+
       std::cout << std::endl;
+      std::cout << "Round-trip error:"  << std::endl;
+      std::cout << "L2 error: " << L2error << std::endl;
+      std::cout << "max error: " << maxerror << std::endl;
+    }
+
+    // Compute the error with respect to FFTW
+    { 
+      size_t align = sizeof(Complex);
+      Array::array2<Complex> f(nx, ny, align);
+      fftwpp::fft2d Forward(-1, f);
+      fftwpp::fft2d Backward(1, f);
+      double *df = (double *)f();
+      init(df, nx, ny);
+      //show2C(df, nx, ny);
+      Forward.fft(f);
+      //show2C(df, nx, ny);
+
+      double L2error = 0.0;
+      double maxerror = 0.0;
+      for(unsigned int i = 0; i < nx; ++i){
+	for(unsigned int j = 0; j < ny; ++j) {
+	  int pos = i * ny + j;
+	  double rdiff = Xout[2 * pos] - f[i][j].re;
+	  double idiff = Xout[2 * pos + 1] - f[i][j].im;
+	  double diff = sqrt(rdiff * rdiff + idiff * idiff);
+	  L2error += diff * diff;
+	  if(diff > maxerror)
+	    maxerror = diff;
+	}
+      }
+      L2error = sqrt(L2error / (double) nx);
+
+      std::cout << std::endl;
+      std::cout << "Error with respect to FFTW:"  << std::endl;
       std::cout << "L2 error: " << L2error << std::endl;
       std::cout << "max error: " << maxerror << std::endl;
     }
