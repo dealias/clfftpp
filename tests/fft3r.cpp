@@ -196,8 +196,9 @@ int main(int argc, char *argv[]) {
     {
       fftwpp::fftw::maxthreads = get_max_threads();
       size_t align = sizeof(Complex);
+      unsigned int nzp = nz / 2 + 1;
       Array::array3<double> f(nx, ny, nz, align);
-      Array::array3<Complex> g(nx, ny, nz / 2 + 1, align);
+      Array::array3<Complex> g(nx, ny, nzp, align);
       fftwpp::rcfft3d Forward(nx, ny, nz, f, g);
       fftwpp::crfft3d Backward(nx, ny, nz, g, f);
     
@@ -207,16 +208,15 @@ int main(int argc, char *argv[]) {
       //show1C(df, nx);
       Forward.fft(f, g);
       //show1C(df, nx);
-
-      std::cout << g << std::endl;
-
+      
+      //std::cout << g << std::endl;
+      
       double L2error = 0.0;
       double maxerror = 0.0;
-      unsigned int nzp = nz / 2 + 1;
       for(unsigned int i = 0; i < nx; ++i) {
       	for(unsigned int j = 0; j < ny; ++j) {
 	  for(unsigned int k = 0; k < nzp; ++k) {
-	    int pos = i * ny * nzp + j * ny + k;
+	    int pos = i * ny * nzp + j * nzp + k;
 	    int pos0 = pos;
 	    // std::cout << "(" << Xout[2 * pos] 
 	    // 	    << " " << Xout[2 * pos + 1]
