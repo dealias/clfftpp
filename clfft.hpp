@@ -495,6 +495,86 @@ public:
   }
 };
 
+class clfft3 : public clfft_base
+{
+private:
+  unsigned nx, ny, nz; // size of problem
+
+  void setup() {
+    realtocomplex = false;
+    set_buf_size();
+
+    setup_plan(forward_plan);
+    setup_plan(backward_plan);
+  }
+
+  void setup_plan(clfftPlanHandle &plan) {
+
+    clfftDim dim = CLFFT_3D;
+    // They lied when they said it was row-major
+    size_t clLengths[3] = {nz, ny, nx}; 
+
+    create_default_plan(plan, dim, clLengths);
+    set_precision(plan, precision);
+    set_data_layout(plan);
+    set_inout_place(plan);
+
+    bake_plan(plan);
+
+    set_workmem(plan);
+  }
+
+public:
+  clfft3() {
+    ctx = NULL;
+    queue = NULL;
+    inplace = true;
+    nx = 0;
+    set_buf_size();
+  }
+
+  clfft3(unsigned int nx0, unsigned int ny0, unsigned int nz0, bool inplace0,
+	 cl_command_queue queue0, cl_context ctx0) {
+    nx = nx0;
+    ny = ny0;
+    nz = nz0;
+    inplace = inplace0;
+    queue = queue0;
+    ctx = ctx0;
+    setup();
+  }
+
+  ~clfft3() {
+    cl_int ret;
+    ret = clfftDestroyPlan(&forward_plan);
+    if(ret != CL_SUCCESS) std::cerr << clErrorString(ret) << std::endl;
+  }
+
+  const unsigned int nreal(const int dim = -1) {return 0;}
+  const unsigned int ncomplex(const int dim = -1) {
+    switch(dim) {
+    case -1:
+      return nx * ny * nz;
+    case 0:
+      return nx;
+    case 1:
+      return ny;
+    case 2:
+      return nz;
+    default:
+      std::cerr << dim 
+		<< "is an invalid dimension for clfft2::ncomplex"
+		<< std::endl;
+      exit(1);
+    }
+    return 0;
+  }
+
+  virtual const unsigned int complex_buf_size(const int dim) {
+    return nx * ny * nz * 2 * var_size;
+  }
+};
+
 class clfft1r : public clfft_base
 {
 private:

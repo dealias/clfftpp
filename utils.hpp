@@ -41,7 +41,6 @@ void show1R(const T *X, unsigned int n)
     std::cout << X[i] << std::endl;
 }
 
-
 template<class T>
 void show2C(const T *X, unsigned int nx, unsigned int ny)
 {
@@ -55,6 +54,24 @@ void show2C(const T *X, unsigned int nx, unsigned int ny)
     std::cout << std::endl;
   }
 }
+
+template<class T>
+void show3C(const T *X, unsigned int nx, unsigned int ny, unsigned int nz)
+{
+  for(unsigned int i = 0; i < nx; ++i) {
+    for(unsigned int j = 0; j < ny; ++j) {
+      for(unsigned int k = 0; k < ny; ++k) {
+	int pos = (i * ny + j) * ny + k;
+	std::cout << "(" << X[2 * pos]
+		  << "," << X[2 * pos + 1] 
+		  << ") ";
+      }
+      std::cout << std::endl;
+    } 
+    std::cout << std::endl;
+  }
+}
+
 template<class T>
 void showH(const T *X, unsigned int nx, unsigned int ny, int skip)
 {
