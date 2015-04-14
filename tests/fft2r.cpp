@@ -6,10 +6,12 @@
 #include <timing.h>
 #include <seconds.h>
 
-#include <vector>
-
 #include <getopt.h>
 #include "utils.hpp"
+
+#include "Array.h"
+#include "Complex.h"
+#include "fftw++.h"
 
 template<class T>
 void init2R(T *X, unsigned int nx, unsigned int ny)
@@ -175,10 +177,53 @@ int main(int argc, char *argv[]) {
     	  maxerror = diff;
       }
       L2error = sqrt(L2error / (double) nx);
+
       std::cout << std::endl;
+      std::cout << "Round-trip error:"  << std::endl;
       std::cout << "L2 error: " << L2error << std::endl;
       std::cout << "max error: " << maxerror << std::endl;
     } 
+
+    // Compute the error with respect to FFTW
+    {
+      //fftw::maxthreads=get_max_threads();
+      size_t align = sizeof(Complex);
+      Array::array2<double> f(nx, ny, align);
+      Array::array2<Complex> g(nx, ny / 2 + 1, align);
+      fftwpp::rcfft2d Forward(nx, ny, f, g);
+      fftwpp::crfft2d Backward(nx, ny, g, f);
+    
+      double *df = (double *)f();
+      double *dg = (double *)g();
+      init2R(df, nx, ny);
+      //show1C(df, nx);
+      Forward.fft(f, g);
+      //show1C(df, nx);
+
+      double L2error = 0.0;
+      double maxerror = 0.0;
+      for(unsigned int i = 0; i < nx; ++i) {
+	for(unsigned int j = 0; j < ny / 2 + 1; ++j) {
+	  int pos = i * (ny / 2 + 1) + j;
+	  // std::cout << "(" << Xout[2 * pos] 
+	  // 	    << " " << Xout[2 * pos + 1]
+	  // 	    << ")";
+	  double rdiff = Xout[2 * pos] - dg[2 * pos];
+	  double idiff = Xout[2 * pos + 1] - dg[2 * pos + 1];
+	  double diff = sqrt(rdiff * rdiff + idiff * idiff);
+	  L2error += diff * diff;
+	  if(diff > maxerror)
+	    maxerror = diff;
+	}
+	// std::cout << std::endl;
+      }
+      L2error = sqrt(L2error / (double) nx);
+
+      std::cout << std::endl;
+      std::cout << "Error with respect to FFTW:"  << std::endl;
+      std::cout << "L2 error: " << L2error << std::endl;
+      std::cout << "max error: " << maxerror << std::endl;
+    }
 
   } else {
     // FIXME: put timing stuff here.

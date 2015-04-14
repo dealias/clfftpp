@@ -90,7 +90,7 @@ fft2: $(OBJS) fft2.o fftw++.o
 	@echo compiling $@
 	$(CXX) $(CXXFLAGS) $^ -o $@ $(LDFLAGS) $(LDLIBS)
 
-fft2r: $(OBJS) fft2r.o
+fft2r: $(OBJS) fft2r.o fftw++.o
 	@echo compiling $@
 	$(CXX) $(CXXFLAGS) $^ -o $@ $(LDFLAGS) $(LDLIBS)
 
