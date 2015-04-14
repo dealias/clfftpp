@@ -6,10 +6,12 @@
 #include <timing.h>
 #include <seconds.h>
 
-#include<vector>
-
 #include <getopt.h>
 #include "utils.hpp"
+
+#include "Array.h"
+#include "Complex.h"
+#include "fftw++.h"
 
 template<class T>
 void initR(T *X, unsigned int n)
@@ -163,7 +165,42 @@ int main(int argc, char *argv[]) {
 	  maxerror = diff;
       }
       L2error = sqrt(L2error / (double) nx);
+
       std::cout << std::endl;
+      std::cout << "Round-trip error:"  << std::endl;
+      std::cout << "L2 error: " << L2error << std::endl;
+      std::cout << "max error: " << maxerror << std::endl;
+    }
+
+     // Compute the error with respect to FFTW
+    {
+      //fftw::maxthreads=get_max_threads();
+      size_t align = sizeof(Complex);
+      Array::array1<double> f(nx, align);
+      Array::array1<Complex> g(nx / 2 + 1, align);
+      fftwpp::rcfft1d Forward(nx, f, g);
+      fftwpp::crfft1d Backward(nx, g, f);
+  
+      double *df = (double *)f();
+      initR(df, nx);
+      //show1C(df, nx);
+      Forward.fft(f, g);
+      //show1C(df, nx);
+
+      double L2error = 0.0;
+      double maxerror = 0.0;
+      for(int i = 0; i < nx / 2 + 1; ++i) {
+	double rdiff = Xout[2 * i] - g[i].re;
+	double idiff = Xout[2 * i + 1] - g[i].im;
+	double diff = sqrt(rdiff * rdiff + idiff * idiff);
+	L2error += diff * diff;
+	if(diff > maxerror)
+	  maxerror = diff;
+      }
+      L2error = sqrt(L2error / (double) nx);
+
+      std::cout << std::endl;
+      std::cout << "Error with respect to FFTW:"  << std::endl;
       std::cout << "L2 error: " << L2error << std::endl;
       std::cout << "max error: " << maxerror << std::endl;
     }

@@ -204,16 +204,13 @@ int main(int argc, char *argv[]) {
 
       double L2error = 0.0;
       double maxerror = 0.0;
-      for(unsigned int i = 0; i < nx; ++i){
-	for(unsigned int j = 0; j < ny; ++j) {
-	  int pos = i * ny + j;
-	  double rdiff = Xout[2 * pos] - f[i][j].re;
-	  double idiff = Xout[2 * pos + 1] - f[i][j].im;
-	  double diff = sqrt(rdiff * rdiff + idiff * idiff);
-	  L2error += diff * diff;
-	  if(diff > maxerror)
-	    maxerror = diff;
-	}
+      for(unsigned int i = 0; i < nx * ny; ++i) {
+	double rdiff = Xout[2 * i] - df[2 * i];
+	double idiff = Xout[2 * i + 1] - df[2 * i + 1];
+	double diff = sqrt(rdiff * rdiff + idiff * idiff);
+	L2error += diff * diff;
+	if(diff > maxerror)
+	  maxerror = diff;
       }
       L2error = sqrt(L2error / (double) nx);
 
