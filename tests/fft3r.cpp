@@ -14,12 +14,14 @@
 #include "fftw++.h"
 
 template<class T>
-void init2R(T *X, unsigned int nx, unsigned int ny)
+void init3R(T *X, unsigned int nx, unsigned int ny, unsigned int nz)
 {
   for(unsigned int i = 0; i < nx; ++i) {
     for(unsigned int j = 0; j < ny; ++j) {
-      unsigned int pos = i * ny + j; 
-      X[pos] = i * i + j;
+      for(unsigned int k = 0; k < nz; ++k) {
+	unsigned int pos = i * ny * nz + j * nz + k;
+	X[pos] = i * i + j + 0.1 * k;
+      }
     }
   }
 }
@@ -31,6 +33,7 @@ int main(int argc, char *argv[]) {
   bool time_copy = false;
   unsigned int nx = 4;
   unsigned int ny = 4;
+  unsigned int nz = 4;
   unsigned int N = 0;
   unsigned int stats = 0; // Type of statistics used in timing test.
   bool inplace = false;
@@ -41,7 +44,7 @@ int main(int argc, char *argv[]) {
   optind = 0;
 #endif	
   for (;;) {
-    int c = getopt(argc,argv,"p:d:m:x:y:N:S:hi:");
+    int c = getopt(argc,argv,"p:d:m:x:y:z:N:S:hi:");
     if (c == -1) break;
     
     switch (c) {
@@ -56,6 +59,9 @@ int main(int argc, char *argv[]) {
       break;
     case 'y':
       ny = atoi(optarg);
+      break;
+    case 'z':
+      nz = atoi(optarg);
       break;
     case 'm':
       nx = atoi(optarg);
@@ -97,7 +103,7 @@ int main(int argc, char *argv[]) {
   cl_context ctx = create_context(platform, device);
   cl_command_queue queue = create_queue(ctx, device, CL_QUEUE_PROFILING_ENABLE);
 
-  clfft2r fft(nx, ny, inplace, queue, ctx);
+  clfft3r fft(nx, ny, nz, inplace, queue, ctx);
   cl_mem inbuf, outbuf;
   if(inplace) {
     fft.create_cbuf(&inbuf);
@@ -125,9 +131,9 @@ int main(int argc, char *argv[]) {
 
   if(N == 0) {
     std::cout << "\nInput:" << std::endl;
-    init2R(Xin, nx, ny);
+    init3R(Xin, nx, ny, nz);
     if(nx <= maxout)
-      show2R(Xin, nx, ny);
+      show3R(Xin, nx, ny, nz);
     else
       std::cout << Xin[0] << std::endl;
     
@@ -144,7 +150,8 @@ int main(int argc, char *argv[]) {
     
     std::cout << "\nTransformed:" << std::endl;
     if(nx <= maxout) {
-      show2H(Xout, fft.ncomplex(0), fft.ncomplex(1), inplace ? 1 : 0);
+      show3H(Xout, fft.ncomplex(0), fft.ncomplex(1), fft.ncomplex(2), 
+	     inplace ? 1 : 0);
     } else {
       std::cout << Xout[0] << std::endl;
     }
@@ -160,14 +167,15 @@ int main(int argc, char *argv[]) {
 
     std::cout << "\nTransformed back:" << std::endl;
     if(nx <= maxout)
-      show2R(Xin, nx, ny);
+      show3R(Xin, nx, ny, nz);
     else 
       std::cout << Xin[0] << std::endl;
 
     // compute the round-trip error.
     {
       double *X0 = new double[inplace ? 2 * fft.ncomplex() : fft.nreal()];
-      init2R(X0, nx, ny);
+      init3R(X0, nx, ny, nz);
+      //show3R(X0, nx, ny, nz);
       double L2error = 0.0;
       double maxerror = 0.0;
       for(unsigned int i = 0; i < fft.nreal(); ++i) {
@@ -188,37 +196,40 @@ int main(int argc, char *argv[]) {
     {
       fftwpp::fftw::maxthreads = get_max_threads();
       size_t align = sizeof(Complex);
-      Array::array2<double> f(nx, ny, align);
-      Array::array2<Complex> g(nx, ny / 2 + 1, align);
-      fftwpp::rcfft2d Forward(nx, ny, f, g);
-      fftwpp::crfft2d Backward(nx, ny, g, f);
+      Array::array3<double> f(nx, ny, nz, align);
+      Array::array3<Complex> g(nx, ny, nz / 2 + 1, align);
+      fftwpp::rcfft3d Forward(nx, ny, nz, f, g);
+      fftwpp::crfft3d Backward(nx, ny, nz, g, f);
     
       double *df = (double *)f();
       double *dg = (double *)g();
-      init2R(df, nx, ny);
+      init3R(df, nx, ny, nz);
       //show1C(df, nx);
       Forward.fft(f, g);
       //show1C(df, nx);
 
-      //std::cout << g << std::endl;
+      std::cout << g << std::endl;
 
       double L2error = 0.0;
       double maxerror = 0.0;
+      unsigned int nzp = nz / 2 + 1;
       for(unsigned int i = 0; i < nx; ++i) {
-	for(unsigned int j = 0; j < ny / 2 + 1; ++j) {
-	  int pos = i * (ny / 2 + 1 + inplace) + j;
-	  int pos0 = i * (ny / 2 + 1) + j;
-	  // std::cout << "(" << Xout[2 * pos] 
-	  // 	    << " " << Xout[2 * pos + 1]
-	  // 	    << ")";
-	  double rdiff = Xout[2 * pos] - dg[2 * pos0];
-	  double idiff = Xout[2 * pos + 1] - dg[2 * pos0 + 1];
-	  double diff = sqrt(rdiff * rdiff + idiff * idiff);
-	  L2error += diff * diff;
-	  if(diff > maxerror)
-	    maxerror = diff;
+      	for(unsigned int j = 0; j < ny; ++j) {
+	  for(unsigned int k = 0; k < nzp; ++k) {
+	    int pos = i * ny * nzp + j * ny + k;
+	    int pos0 = pos;
+	    // std::cout << "(" << Xout[2 * pos] 
+	    // 	    << " " << Xout[2 * pos + 1]
+	    // 	    << ")";
+	    double rdiff = Xout[2 * pos] - dg[2 * pos0];
+	    double idiff = Xout[2 * pos + 1] - dg[2 * pos0 + 1];
+	    double diff = sqrt(rdiff * rdiff + idiff * idiff);
+	    L2error += diff * diff;
+	    if(diff > maxerror)
+	      maxerror = diff;
+	  }
+	  //std::cout << std::endl;
 	}
-	//std::cout << std::endl;
       }
       L2error = sqrt(L2error / (double) nx);
 

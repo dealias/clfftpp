@@ -718,42 +718,6 @@ private:
     size_t odist = forward ? ncomplex(-1) : 2 * nreal(-1);
     set_dists(plan, dim, idist, odist);
     
-    // {
-    //   cl_int ret;
-    //   // Output the parameters:
-    //   {
-    // 	size_t istride[2];
-    // 	size_t ostride[2];
-    // 	ret = clfftGetPlanInStride(plan,
-    // 				   dim,
-    // 				   istride);
-    // 	if(ret != CL_SUCCESS) std::cerr << clfft_errorstring(ret) << std::endl;
-    // 	assert(ret == CL_SUCCESS);
-      
-    // 	ret = clfftGetPlanOutStride(plan,
-    // 				    dim,
-    // 				    ostride);
-    // 	if(ret != CL_SUCCESS) std::cerr << clfft_errorstring(ret) << std::endl;
-    // 	assert(ret == CL_SUCCESS);
-    // 	std::cout << "istride: " << istride[0] << " " << istride[1]<< std::endl;
-    // 	std::cout << "ostride: " << ostride[0] << " " << ostride[1]<< std::endl;
-    //   }
-      
-    //   {
-    // 	size_t iDist;
-    // 	size_t oDist;
-    // 	ret = clfftGetPlanDistance(plan,
-    // 				   &iDist,
-    // 				   &oDist
-    // 				   );
-    // 	if(ret != CL_SUCCESS) std::cerr << clfft_errorstring(ret) << std::endl;
-    // 	assert(ret == CL_SUCCESS);
-    // 	std::cout << "iDist: " << iDist << std::endl;
-    // 	std::cout << "oDist: " << oDist << std::endl;
-    //   }
-    
-    // }
-
     bake_plan(plan);
     set_workmem(plan);
   }
@@ -815,6 +779,117 @@ public:
     default:
       std::cerr << dim 
 		<< "is an invalid dimension for clfft2r::ncomplex"
+		<< std::endl;
+      exit(1);
+    }
+    return 0;
+  }
+};
+
+class clfft3r : public clfft_base
+{
+private:
+  unsigned nx, ny, nz; // size of problem for clFFT
+
+  void setup() {
+    realtocomplex = true;
+
+    set_buf_size();
+
+    setup_plan(forward_plan, CLFFT_FORWARD);
+    setup_plan(backward_plan, CLFFT_BACKWARD);
+    // FIXME: delete backplan
+  }
+
+  void setup_plan(clfftPlanHandle &plan, clfftDirection direction) {
+    bool forward = direction == CLFFT_FORWARD; 
+    clfftDim dim = CLFFT_3D;
+    size_t clLengths[3] = {nz, ny, nx};
+
+    create_default_plan(plan, dim, clLengths);
+    set_precision(plan, precision);
+    set_data_layout(plan, forward);
+    set_inout_place(plan);
+    set_precision(plan, precision);
+
+    size_t istride[3] = {1, nreal(1), nreal(1) * nreal(2)};
+    size_t ostride[3] = {1, ncomplex(1), ncomplex(1) * (ncomplex(1) + inplace)};
+    if(forward) {
+      set_strides(plan, dim, istride, ostride);
+    } else {
+      set_strides(plan, dim, ostride, istride);
+    }
+
+    size_t idist = forward ? 2 * nreal(-1) : ncomplex(-1);
+    size_t odist = forward ? ncomplex(-1) : 2 * nreal(-1);
+    set_dists(plan, dim, idist, odist);
+    
+    bake_plan(plan);
+    set_workmem(plan);
+  }
+
+public:
+  clfft3r() {
+    ctx = NULL;
+    queue = NULL;
+    nx = 0;
+    set_buf_size();
+  }
+
+  clfft3r(unsigned int nx0, unsigned int ny0, unsigned int nz0, bool inplace0, 
+	  cl_command_queue queue0, cl_context ctx0) {
+    nx = nx0;
+    ny = ny0;
+    nz = nz0;
+    queue = queue0;
+    ctx = ctx0;
+    inplace = inplace0;
+    realtocomplex = true;
+    setup();
+  }
+
+  ~clfft3r() {
+    cl_int ret;
+    ret = clfftDestroyPlan(&forward_plan);
+    if(ret != CL_SUCCESS) std::cerr << clfft_errorstring(ret) << std::endl;
+    assert(ret == CL_SUCCESS);
+  }
+
+  const unsigned int ncomplex(const int dim = -1) {
+    switch(dim) {
+    case -1:
+      return nx * ny * (1 + nz / 2 + inplace);
+    case 0:
+      return nx;
+    case 1:
+      return ny;
+    case 2:
+      return 1 + nz / 2;
+    default:
+      std::cerr << dim 
+		<< "is an invalid dimension for clfft3r::ncomplex"
+		<< std::endl;
+      exit(1);
+    }
+    return 0;
+  }
+
+  const unsigned int nreal(const int dim = -1) {
+    switch(dim) {
+    case -1:
+      if(inplace)
+	return ncomplex(-1);
+      else
+	return nx * ny * nz;
+    case 0:
+      return nx;
+    case 1:
+      return ny;
+    case 2:
+      return nz;
+    default:
+      std::cerr << dim 
+		<< "is an invalid dimension for clfft3r::nreal"
 		<< std::endl;
       exit(1);
     }

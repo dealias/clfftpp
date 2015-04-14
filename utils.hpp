@@ -35,13 +35,6 @@ void show1C(const T *X, unsigned int n)
 }
 
 template<class T>
-void show1R(const T *X, unsigned int n)
-{
-  for(unsigned int i = 0; i < n; ++i)
-    std::cout << X[i] << std::endl;
-}
-
-template<class T>
 void show2C(const T *X, unsigned int nx, unsigned int ny)
 {
   for(unsigned int i = 0; i < nx; ++i) {
@@ -61,7 +54,7 @@ void show3C(const T *X, unsigned int nx, unsigned int ny, unsigned int nz)
   for(unsigned int i = 0; i < nx; ++i) {
     for(unsigned int j = 0; j < ny; ++j) {
       for(unsigned int k = 0; k < ny; ++k) {
-	int pos = (i * ny + j) * ny + k;
+	int pos = i * ny * nz + j * nz + k;
 	std::cout << "(" << X[2 * pos]
 		  << "," << X[2 * pos + 1] 
 		  << ") ";
@@ -73,17 +66,10 @@ void show3C(const T *X, unsigned int nx, unsigned int ny, unsigned int nz)
 }
 
 template<class T>
-void showH(const T *X, unsigned int nx, unsigned int ny, int skip)
+void show1R(const T *X, unsigned int n)
 {
-  for(unsigned int i = 0; i < nx; ++i) {
-    for(unsigned int j = 0; j < ny; ++j) {      
-      unsigned int pos = i * (ny + skip) + j;
-      std::cout << "(" << X[2 * pos]
-		<< "," << X[2 *pos + 1]
-		<< ") ";
-    }
-    std::cout << std::endl;
-  }
+  for(unsigned int i = 0; i < n; ++i)
+    std::cout << X[i] << std::endl;
 }
 
 template<class T>
@@ -95,6 +81,53 @@ void show2R(const T *X, unsigned int nx, unsigned int ny)
       std::cout << X[pos] << " ";
     }
     std::cout << std::endl;
+  }
+}
+
+template<class T>
+void show2H(const T *X, unsigned int nx, unsigned int ny, int skip)
+{
+  for(unsigned int i = 0; i < nx; ++i) {
+    for(unsigned int j = 0; j < ny; ++j) {      
+      unsigned int pos = i * (ny + skip) + j;
+      std::cout << "(" << X[2 * pos]
+		<< "," << X[2 * pos + 1]
+		<< ") ";
+    }
+    std::cout << std::endl;
+  }
+}
+
+template<class T>
+void show3R(const T *X, unsigned int nx, unsigned int ny, unsigned int nz)
+{
+  for(unsigned int i = 0; i < nx; ++i) {
+    for(unsigned int j = 0; j < ny; ++j) {
+      for(unsigned int k = 0; k < nz; ++k) {
+	unsigned int pos = i * ny * nz + j * nz + k;
+	std::cout << X[pos] << " ";
+      }
+      std::cout << std::endl;
+    }
+    std::cout << std::endl;
+  }
+}
+
+template<class T>
+void show3H(const T *X, unsigned int nx, unsigned int ny, unsigned int nz, 
+	    int skip)
+{
+  for(unsigned int i = 0; i < nx; ++i) {
+    for(unsigned int j = 0; j < ny; ++j) {
+      for(unsigned int k = 0; k < nz; ++k) {
+	unsigned int pos = i * ny * nz + j * nz + k; // FIXME: add skip
+	std::cout << "(" << X[2 * pos]
+		  << "," << X[2 * pos + 1]
+		  << ") ";
+	std::cout << std::endl;
+      }
+      std::cout << std::endl;
+    }
   }
 }
 

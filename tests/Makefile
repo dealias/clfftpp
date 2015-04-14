@@ -67,7 +67,7 @@ LDLIBS+=-lfftw3_omp -lfftw3
 LDLIBS+=-lm
 
 # The programs to be produced
-OUTPUT=fft1 fft2 fft3 fft1r fft2r
+OUTPUT=fft1 fft2 fft3 fft1r fft2r fft3r
 
 SRCS_CPP=clfft platform
 SRCS_C=clutils
@@ -95,6 +95,10 @@ fft1r: $(OBJS) fft1r.o fftw++.o
 	$(CXX) $(CXXFLAGS) $^ -o $@ $(LDFLAGS) $(LDLIBS)
 
 fft2r: $(OBJS) fft2r.o fftw++.o
+	@echo compiling $@
+	$(CXX) $(CXXFLAGS) $^ -o $@ $(LDFLAGS) $(LDLIBS)
+
+fft3r: $(OBJS) fft3r.o fftw++.o
 	@echo compiling $@
 	$(CXX) $(CXXFLAGS) $^ -o $@ $(LDFLAGS) $(LDLIBS)
 
