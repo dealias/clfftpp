@@ -20,7 +20,7 @@ void init3R(T *X, unsigned int nx, unsigned int ny, unsigned int nz)
     for(unsigned int j = 0; j < ny; ++j) {
       for(unsigned int k = 0; k < nz; ++k) {
 	unsigned int pos = i * ny * nz + j * nz + k;
-	X[pos] = i * i + j + 0.1 * k;
+	X[pos] = i * i + j + 10 * k;
       }
     }
   }
@@ -132,7 +132,7 @@ int main(int argc, char *argv[]) {
   if(N == 0) {
     std::cout << "\nInput:" << std::endl;
     init3R(Xin, nx, ny, nz);
-    if(nx <= maxout)
+    if(nx * ny * nz <= maxout)
       show3R(Xin, nx, ny, nz);
     else
       std::cout << Xin[0] << std::endl;
@@ -149,7 +149,7 @@ int main(int argc, char *argv[]) {
     clWaitForEvents(1, &c2r_event);
     
     std::cout << "\nTransformed:" << std::endl;
-    if(nx <= maxout) {
+    if(nx * ny * nz <= maxout) {
       show3H(Xout, fft.ncomplex(0), fft.ncomplex(1), fft.ncomplex(2), 
 	     inplace ? 1 : 0);
     } else {
@@ -166,10 +166,10 @@ int main(int argc, char *argv[]) {
     clWaitForEvents(1, &c2r_event);
 
     std::cout << "\nTransformed back:" << std::endl;
-    if(nx <= maxout)
-      show3R(Xin, nx, ny, nz);
-    else 
-      std::cout << Xin[0] << std::endl;
+    // if(nx <= maxout)
+    //   show3R(Xin, nx, ny, nz);
+    // else 
+    //   std::cout << Xin[0] << std::endl;
 
     // compute the round-trip error.
     {
@@ -209,20 +209,27 @@ int main(int argc, char *argv[]) {
       Forward.fft(f, g);
       //show1C(df, nx);
       
-      //std::cout << g << std::endl;
+      //std::cout << "g:\n" << g << std::endl;
       
+      unsigned int nzpskip = nzp + inplace;
       double L2error = 0.0;
       double maxerror = 0.0;
       for(unsigned int i = 0; i < nx; ++i) {
       	for(unsigned int j = 0; j < ny; ++j) {
 	  for(unsigned int k = 0; k < nzp; ++k) {
 	    int pos = i * ny * nzp + j * nzp + k;
-	    int pos0 = pos;
-	    // std::cout << "(" << Xout[2 * pos] 
-	    // 	    << " " << Xout[2 * pos + 1]
-	    // 	    << ")";
-	    double rdiff = Xout[2 * pos] - dg[2 * pos0];
-	    double idiff = Xout[2 * pos + 1] - dg[2 * pos0 + 1];
+	    int pos0 = i * ny * nzpskip + j * nzpskip + k;
+	    // std::cout << "pos0:  " << pos0  
+	    // 	      << "\t(" << Xout[2 * pos0] 
+	    // 	      << " " << Xout[2 * pos0 + 1]
+	    // 	      << ")" << std::endl;
+	    // std::cout << "pos:   " << pos  
+	    // 	      << "\t(" << dg[2 * pos] 
+	    // 	      << " " << dg[2 * pos + 1]
+	    // 	      << ")" << std::endl;
+	    // std::cout << std::endl;
+	    double rdiff = Xout[2 * pos0] - dg[2 * pos];
+	    double idiff = Xout[2 * pos0 + 1] - dg[2 * pos + 1];
 	    double diff = sqrt(rdiff * rdiff + idiff * idiff);
 	    L2error += diff * diff;
 	    if(diff > maxerror)
@@ -231,7 +238,7 @@ int main(int argc, char *argv[]) {
 	  //std::cout << std::endl;
 	}
       }
-      L2error = sqrt(L2error / (double) nx);
+      L2error = sqrt(L2error / (double) (nx * ny * nzp));
 
       std::cout << std::endl;
       std::cout << "Error with respect to FFTW:"  << std::endl;

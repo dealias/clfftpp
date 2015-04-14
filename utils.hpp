@@ -117,17 +117,18 @@ template<class T>
 void show3H(const T *X, unsigned int nx, unsigned int ny, unsigned int nz, 
 	    int skip)
 {
+  unsigned int nzskip = nz + skip;
   for(unsigned int i = 0; i < nx; ++i) {
     for(unsigned int j = 0; j < ny; ++j) {
       for(unsigned int k = 0; k < nz; ++k) {
-	unsigned int pos = i * ny * nz + j * nz + k; // FIXME: add skip
+	unsigned int pos = i * ny * nzskip + j * nzskip + k;
 	std::cout << "(" << X[2 * pos]
 		  << "," << X[2 * pos + 1]
 		  << ") ";
-	std::cout << std::endl;
       }
       std::cout << std::endl;
     }
+    std::cout << std::endl;
   }
 }
 

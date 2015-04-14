@@ -812,8 +812,12 @@ private:
     set_inout_place(plan);
     set_precision(plan, precision);
 
+    // size_t istride[3] = {1, nreal(2), nreal(1) * nreal(2)};
+    // size_t ostride[3] = {1, ncomplex(2), ncomplex(1) * (ncomplex(2) + inplace)};
     size_t istride[3] = {1, nreal(2), nreal(1) * nreal(2)};
-    size_t ostride[3] = {1, ncomplex(2), ncomplex(1) * (ncomplex(2) + inplace)};
+    size_t ostride[3] = {1, 
+			 ncomplex(2) + inplace, 
+			 ncomplex(1) * (ncomplex(2) + inplace)};
     if(forward) {
       set_strides(plan, dim, istride, ostride);
     } else {
