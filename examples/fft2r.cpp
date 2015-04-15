@@ -81,7 +81,7 @@ int main() {
   clWaitForEvents(1, &c2r_event);
     
   std::cout << "\nTransformed:" << std::endl;
-  showH(Xout, fft.ncomplex(0), fft.ncomplex(1), inplace ? 1 : 0);
+  show2H(Xout, fft.ncomplex(0), fft.ncomplex(1), inplace ? 1 : 0);
 
   if(inplace) {
     fft.backward(&inbuf, NULL, 1, &forward_event, &backward_event);
