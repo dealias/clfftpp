@@ -193,32 +193,35 @@ int main(int argc, char *argv[]) {
     // Compute the error with respect to FFTW
     {
       // //fftw::maxthreads=get_max_threads();
-      // size_t align = sizeof(Complex);
-      // Array::array1<Complex> f(nx, align);
-      // fftwpp::fft1d Forward(-1, f);
-      // fftwpp::fft1d Backward(1, f);
-      // double *df = (double *)f();
-      // init(df, nx);
-      // //show1C(df, nx);
-      // Forward.fft(f);
+      size_t align = sizeof(Complex);
+      Array::array2<Complex> f(nx, M, align);
+      fftwpp::mfft1d Forward(nx, -1, M, stride, dist, f);
+      fftwpp::mfft1d Backward(nx, 1, M, stride, dist, f);
+      double *df = (double *)f();
+      init(df, nx, M);
+      //show1C(df, nx, M);
+      Forward.fft(f);
       // //show1C(df, nx);
 
-      // double L2error = 0.0;
-      // double maxerror = 0.0;
-      // for(unsigned int i = 0; i < nx; ++i) {
-      // 	double rdiff = FX[2 * i] - f[i].re;
-      // 	double idiff = FX[2 * i + 1] - f[i].im;
-      // 	double diff = sqrt(rdiff * rdiff + idiff * idiff);
-      // 	L2error += diff * diff;
-      // 	if(diff > maxerror)
-      // 	  maxerror = diff;
-      // }
-      // L2error = sqrt(L2error / (double) nx);
+      double L2error = 0.0;
+      double maxerror = 0.0;
+      for(unsigned int m = 0; m < M; ++m) {
+	for(unsigned int i = 0; i < nx; ++i) {
+	  int pos = m * nx + i; 
+	  double rdiff = FX[2 * pos] - f[m][i].re;
+	  double idiff = FX[2 * pos + 1] - f[m][i].im;
+	  double diff = sqrt(rdiff * rdiff + idiff * idiff);
+	  L2error += diff * diff;
+	  if(diff > maxerror)
+	    maxerror = diff;
+	}
+      }
+      L2error = sqrt(L2error / (double) nx);
 
-      // std::cout << std::endl;
-      // std::cout << "Error with respect to FFTW:"  << std::endl;
-      // std::cout << "L2 error: " << L2error << std::endl;
-      // std::cout << "max error: " << maxerror << std::endl;
+      std::cout << std::endl;
+      std::cout << "Error with respect to FFTW:"  << std::endl;
+      std::cout << "L2 error: " << L2error << std::endl;
+      std::cout << "max error: " << maxerror << std::endl;
     }
 
   } else {
