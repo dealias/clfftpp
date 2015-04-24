@@ -194,7 +194,7 @@ int main(int argc, char *argv[]) {
     {
       // //fftw::maxthreads=get_max_threads();
       size_t align = sizeof(Complex);
-      Array::array2<Complex> f(nx, M, align);
+      Array::array2<Complex> f(M, nx, align);
       fftwpp::mfft1d Forward(nx, -1, M, stride, dist, f);
       fftwpp::mfft1d Backward(nx, 1, M, stride, dist, f);
       double *df = (double *)f();

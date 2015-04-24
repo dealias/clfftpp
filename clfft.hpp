@@ -612,6 +612,7 @@ private:
     size_t istride = {stride};
     size_t ostride = {stride};
     set_strides(plan, dim, &istride, &ostride);
+
     set_dists(plan, dim, dist, dist);
     
     bake_plan(plan);
@@ -662,7 +663,7 @@ public:
     return 0;
   }
 
-  const unsigned int nreal(const int dime = -1) {
+  const unsigned int nreal(const int dim = -1) {
     return 0;
   }
 };
@@ -989,6 +990,109 @@ public:
 		<< std::endl;
       exit(1);
     }
+    return 0;
+  }
+};
+
+class clmfft1r : public clfft_base
+{
+private:
+  unsigned int nx;
+  unsigned int M;
+  unsigned int stride;
+  unsigned int dist;
+
+  void setup() {
+    realtocomplex = true;
+    set_buf_size();
+    
+    setup_plan(forward_plan, CLFFT_FORWARD);
+    setup_plan(backward_plan, CLFFT_BACKWARD);
+  }
+
+  void setup_plan(clfftPlanHandle &plan, clfftDirection direction) {
+    bool forward = direction == CLFFT_FORWARD; 
+ 
+    clfftDim dim = CLFFT_1D;
+    size_t clLengths[1] = {nx};
+
+  
+    create_default_plan(plan, dim, clLengths);
+    set_precision(plan, precision);
+    set_data_layout(plan, forward);
+    set_inout_place(plan);
+
+    set_batchsize(plan, M);
+
+    size_t istride = {forward ? stride : 1};
+    size_t ostride = {forward ? 1 : stride};
+    set_strides(plan, dim, &istride, &ostride);
+
+    // FIXME: correct for in-place?
+    size_t idist = forward ? dist : dist / 2 + 1;
+    size_t odist = forward ? dist / 2 + 1 : dist;
+    set_dists(plan, dim, idist, odist);
+
+    //set_dists(plan, dim, dist, dist);
+    
+    bake_plan(plan);
+    set_workmem(plan);
+  }
+
+public:
+  clmfft1r() {
+    ctx = NULL;
+    queue = NULL;
+    nx = 0;
+    M = 0;
+    set_buf_size();
+  }
+
+  clmfft1r(unsigned int nx0, unsigned int M0, int stride0, int dist0, 
+	  bool inplace0, 
+	  cl_command_queue queue0, cl_context ctx0) {
+    nx = nx0;
+    M = M0;
+    stride = stride0;
+    dist = dist0;
+    inplace = inplace0;
+    queue = queue0;
+    ctx = ctx0;
+
+    setup();
+  }
+
+  const unsigned int ncomplex(const int dim = -1) {
+    switch(dim) {
+    case -1:
+      return (1 + nx / 2) * M;
+    case 0:
+      return (1 + nx / 2);
+    default:
+      std::cerr << dim 
+		<< "is an invalid dimension for clmfft1r::ncomplex"
+		<< std::endl;
+      exit(1);
+    }
+    return 0;
+  }
+
+  const unsigned int nreal(const int dim = -1) {
+    switch(dim) {
+    case -1:
+      if(inplace)
+	return ncomplex(-1) * 2;
+      else 
+	return nx * M;
+    case 0:
+      return nx;
+    default:
+      std::cerr << dim 
+		<< "is an invalid dimension for clmfft1r::nreal"
+		<< std::endl;
+      exit(1);
+    }
+
     return 0;
   }
 };

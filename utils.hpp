@@ -22,7 +22,7 @@ void usage(unsigned int dim)
 
 
 template<class T>
-void show1C(const T *X, unsigned int n)
+void show1C(const T *X, const unsigned int n)
 {
   for(unsigned int i = 0; i < n; ++i) {
     std::cout << "(" 
@@ -35,11 +35,13 @@ void show1C(const T *X, unsigned int n)
 }
 
 template<class T>
-void show1C(const T *X, unsigned int nx, unsigned int M)
+void show1C(const T *X, const unsigned int nx, const unsigned int M, 
+	    const unsigned int dist = 0)
 {
+  const unsigned int dist0 = dist == 0 ? nx : dist;
   for(unsigned int m = 0; m < M; ++m) {
     for(unsigned int i = 0; i < nx; ++i) {
-      int pos = nx * m + i;
+      int pos = dist0 * m + i;
       std::cout << "(" 
 		<< X[2 * pos]
 		<< ","
@@ -82,10 +84,24 @@ void show3C(const T *X, unsigned int nx, unsigned int ny, unsigned int nz)
 }
 
 template<class T>
-void show1R(const T *X, unsigned int n)
+void show1R(const T *X, const unsigned int n)
 {
   for(unsigned int i = 0; i < n; ++i)
     std::cout << X[i] << std::endl;
+}
+
+template<class T>
+void show1R(const T *X, const unsigned int nx, const unsigned int M, 
+	    const unsigned int dist = 0)
+{
+  int dist0 = dist == 0 ? nx : dist;
+  for(unsigned int m = 0; m < M; ++m) {
+    for(unsigned int i = 0; i < nx; ++i) {
+      int pos = m * dist0 + i;
+      std::cout << X[pos] << " ";
+    }
+    std::cout << std::endl;
+  }
 }
 
 template<class T>
