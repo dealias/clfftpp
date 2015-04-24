@@ -132,6 +132,13 @@ protected:
     assert(ret == CL_SUCCESS);
   }
 
+  void set_batchsize(clfftPlanHandle &plan, const size_t M) {
+    cl_int ret;
+    ret = clfftSetPlanBatchSize(plan, M); 
+    if(ret != CL_SUCCESS) std::cerr << clfft_errorstring(ret) << std::endl;
+    assert(ret == CL_SUCCESS);	
+  }
+
   void set_buf_size() {
     var_size = (precision == CLFFT_DOUBLE) ? sizeof(double) : sizeof(float);
     cbuf_size = ncomplex(-1) * 2 * var_size;
@@ -572,6 +579,79 @@ public:
 
   virtual const unsigned int complex_buf_size(const int dim) {
     return nx * ny * nz * 2 * var_size;
+  }
+};
+
+
+class clmfft1 : public clfft_base
+{
+private: 
+  unsigned int nx;
+  unsigned int M;
+
+  void setup() {
+    realtocomplex = false;
+    set_buf_size();
+
+    setup_plan(forward_plan);
+    setup_plan(backward_plan);
+  }
+
+  void setup_plan(clfftPlanHandle &plan) {
+    clfftDim dim = CLFFT_1D;
+    size_t clLengths[1] = {nx};
+
+    create_default_plan(plan, dim, clLengths);
+    set_precision(plan, precision);
+    set_inout_place(plan);
+    set_data_layout(plan);
+    set_batchsize(plan, M);
+
+    bake_plan(plan);
+    set_workmem(plan);
+
+  }
+
+public:
+  clmfft1() {
+    ctx = NULL;
+    queue = NULL;
+    nx = 0;
+    M = 0;
+    set_buf_size();
+    inplace = true;
+  }
+
+  clmfft1(unsigned int nx0, unsigned int M0, bool inplace0, 
+	  cl_command_queue queue0, cl_context ctx0) {
+    nx = nx0;
+    M = M0;
+    queue = queue0;
+    ctx = ctx0;
+    inplace = inplace0;
+    setup();
+  }
+
+  const unsigned int ncomplex(const int dim = -1) {
+    switch(dim) {
+    case -1:
+      return nx * M;
+      break;
+    case 0:
+      return nx;
+      break;
+    default:
+      std::cerr << dim
+		<< "is an invalid dimension for clmfft1::ncomplex"
+		<< std::endl;
+      exit(1);
+      return 0;
+    }
+    return 0;
+  }
+
+  const unsigned int nreal(const int dime = -1) {
+    return 0;
   }
 };
 

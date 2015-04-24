@@ -29,8 +29,23 @@ void show1C(const T *X, unsigned int n)
 	      << X[2 * i] 
 	      << "," 
 	      <<  X[2 * i +1] 
-	      << ")" 
-	      << std::endl;
+	      << ") "; 
+  }
+  std::cout << std::endl;
+}
+
+template<class T>
+void show1C(const T *X, unsigned int nx, unsigned int M)
+{
+  for(unsigned int m = 0; m < M; ++m) {
+    for(unsigned int i = 0; i < nx; ++i) {
+      std::cout << "(" 
+		<< X[2 * i] 
+		<< "," 
+		<<  X[2 * i +1] 
+		<< ") ";
+    }
+    std::cout << std::endl;
   }
 }
 
