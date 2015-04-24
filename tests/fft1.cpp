@@ -36,15 +36,15 @@ int main(int argc, char *argv[]) {
   optind = 0;
 #endif
   for (;;) {
-    int c = getopt(argc,argv,"p:d:c:m:x:N:S:hi:");
+    int c = getopt(argc,argv,"P:D:c:m:x:N:S:hi:");
     if (c == -1) break;
     
     switch (c) {
-    case 'p':
-      platnum=atoi(optarg);
+    case 'P':
+      platnum = atoi(optarg);
       break;
-    case 'd':
-      devnum=atoi(optarg);
+    case 'D':
+      devnum = atoi(optarg);
       break;
     case 'c':
       if(atoi(optarg) == 0)

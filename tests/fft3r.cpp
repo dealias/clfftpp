@@ -44,14 +44,14 @@ int main(int argc, char *argv[]) {
   optind = 0;
 #endif	
   for (;;) {
-    int c = getopt(argc,argv,"p:d:m:x:y:z:N:S:hi:");
+    int c = getopt(argc,argv,"P:D:m:x:y:z:N:S:hi:");
     if (c == -1) break;
     
     switch (c) {
-    case 'p':
+    case 'P':
       platnum = atoi(optarg);
       break;
-    case 'd':
+    case 'D':
       devnum = atoi(optarg);
       break;
     case 'x':

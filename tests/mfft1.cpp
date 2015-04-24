@@ -18,8 +18,9 @@ void init(T *X, const unsigned int nx, const unsigned int M)
 {
   for(unsigned int m = 0; m < M; ++m) {
     for(unsigned int i = 0; i < nx; ++i) {
-      X[2 * i] = i;
-      X[2 * i + 1] = 0.0;
+      int pos = m * nx + i; 
+      X[2 * pos] = i;
+      X[2 * pos + 1] = 0.0;
     }
   }
 }
@@ -31,6 +32,8 @@ int main(int argc, char *argv[]) {
   bool inplace = true;
   unsigned int nx = 4;
   unsigned int M = 7;
+  int stride = 1;
+  int dist = nx;
   int N = 0;
   unsigned int stats = 0; // Type of statistics used in timing test.
   unsigned int maxout = 32; // maximum size of array output in entierety
@@ -39,15 +42,15 @@ int main(int argc, char *argv[]) {
   optind = 0;
 #endif
   for (;;) {
-    int c = getopt(argc,argv,"p:d:c:m:x:N:S:hi:M:");
+    int c = getopt(argc,argv,"P:D:c:m:x:N:S:hi:M:s:d:");
     if (c == -1) break;
     
     switch (c) {
-    case 'p':
-      platnum=atoi(optarg);
+    case 'P':
+      platnum = atoi(optarg);
       break;
-    case 'd':
-      devnum=atoi(optarg);
+    case 'D':
+      devnum = atoi(optarg);
       break;
     case 'c':
       if(atoi(optarg) == 0)
@@ -72,6 +75,12 @@ int main(int argc, char *argv[]) {
       break;
     case 'i':
       inplace = atoi(optarg);
+      break;
+    case 's':
+      stride = atoi(optarg);
+      break;
+    case 'd':
+      dist = atoi(optarg);
       break;
     case 'h':
       usage(1);
@@ -100,7 +109,7 @@ int main(int argc, char *argv[]) {
   cl_context ctx = create_context(platform, device);
   cl_command_queue queue = create_queue(ctx, device, CL_QUEUE_PROFILING_ENABLE);
   
-  clmfft1 fft(nx, M, inplace, queue, ctx);
+  clmfft1 fft(nx, M, stride, dist, inplace, queue, ctx);
 
   cl_mem inbuf, outbuf;
   fft.create_cbuf(&inbuf);
@@ -155,7 +164,7 @@ int main(int argc, char *argv[]) {
 
     std::cout << "\nTransformed back:" << std::endl;
     if(nx <= maxout)
-      show1C(X, nx);
+      show1C(X, nx, M);
     else
       std::cout << X[0] << std::endl;
 
