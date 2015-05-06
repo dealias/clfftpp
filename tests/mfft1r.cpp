@@ -118,7 +118,7 @@ int main(int argc, char *argv[]) {
   cl_context ctx = create_context(platform, device);
   cl_command_queue queue = create_queue(ctx, device, CL_QUEUE_PROFILING_ENABLE);
   
-  clmfft1r fft(nx, M, istride, ostride, idist, odist,  inplace, queue, ctx);
+  clmfft1r fft(nx, M, istride, ostride, idist, odist, inplace, queue, ctx);
 
   std::cout << std::endl;
   cl_mem inbuf, outbuf;
@@ -147,11 +147,13 @@ int main(int argc, char *argv[]) {
 
   std::cout << "\nInput:" << std::endl;
   initR(X, nx, M);
-  if(nx <= maxout)
-    show1R(X, nx, M);
-  else
+  if(nx <= maxout) {
+    //show1R(X, nx, M);
+    show1R(X, nx * M, 1);
+  } else {
     std::cout << X[0] << std::endl;
- 
+  } 
+
   cl_event r2c_event = clCreateUserEvent(ctx, NULL);
   cl_event c2r_event = clCreateUserEvent(ctx, NULL);
   cl_event forward_event = clCreateUserEvent(ctx, NULL);
@@ -184,10 +186,12 @@ int main(int argc, char *argv[]) {
     clWaitForEvents(1, &c2r_event);
 
     std::cout << "\nTransformed back:" << std::endl;
-    if(nx <= maxout)
-      show1R(X, nx, M);
-    else
+    if(nx <= maxout) {
+      //show1R(X, nx, M);
+      show1R(X, nx * M, 1);
+    } else {
       std::cout << X[0] << std::endl;
+    }
 
     // Compute the round-trip error.
     {
@@ -218,13 +222,13 @@ int main(int argc, char *argv[]) {
       Array::array2<double> f(M, nx, align);
       Array::array2<Complex> g(M, nx / 2 + 1, align);
       fftwpp::mrcfft1d Forward(nx, M, istride, idist, f, g);
-      fftwpp::mcrfft1d Backward(nx, M, ostride, odist, g, f);
+      //fftwpp::mcrfft1d Backward(nx, M, ostride, odist, g, f);
       double *df = (double *)f();
+      double *dg = (double *)g();
       initR(df, nx, M);
-      //show1C(df, nx, M);
       Forward.fft(f, g);
-      // //show1C(df, nx);
 
+      show2C(dg, 1, M * (nx / 2 + 1));
       std::cout << g << std::endl;
 
       double L2error = 0.0;

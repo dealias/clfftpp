@@ -111,25 +111,45 @@ protected:
     assert(ret == CL_SUCCESS);
   }
 
-  void set_data_layout(clfftPlanHandle &plan, bool forward = true) {
+  
+  void set_data_layout_complex(clfftPlanHandle &plan) {
     cl_int ret;
-    if(!realtocomplex) {
-      ret = clfftSetLayout(plan,
-			   CLFFT_COMPLEX_INTERLEAVED, 
-			   CLFFT_COMPLEX_INTERLEAVED);
-    } else {
-      if(forward) {
-	ret = clfftSetLayout(plan, 
-			     CLFFT_REAL,
-			     CLFFT_HERMITIAN_INTERLEAVED);
-      } else {
-    	ret = clfftSetLayout(plan, 
-    			     CLFFT_HERMITIAN_INTERLEAVED,
-    			     CLFFT_REAL);
-      }
-    }
+
+    ret = clfftSetLayout(plan,
+			 CLFFT_COMPLEX_INTERLEAVED, 
+			 CLFFT_COMPLEX_INTERLEAVED);
     if(ret != CL_SUCCESS) std::cerr << clfft_errorstring(ret) << std::endl;
     assert(ret == CL_SUCCESS);
+  }
+
+  void set_data_layout_real_to_complex(clfftPlanHandle &plan) {
+    cl_int ret;
+    ret = clfftSetLayout(plan, 
+			 CLFFT_REAL,
+			 CLFFT_HERMITIAN_INTERLEAVED);
+    if(ret != CL_SUCCESS) std::cerr << clfft_errorstring(ret) << std::endl;
+    assert(ret == CL_SUCCESS);
+  }
+
+  void set_data_layout_complex_to_real(clfftPlanHandle &plan) {
+    cl_int ret;
+    ret = clfftSetLayout(plan, 
+			 CLFFT_HERMITIAN_INTERLEAVED,
+			 CLFFT_REAL);
+    if(ret != CL_SUCCESS) std::cerr << clfft_errorstring(ret) << std::endl;
+    assert(ret == CL_SUCCESS);
+  }
+
+  void set_data_layout(clfftPlanHandle &plan, bool forward = true) {
+    if(!realtocomplex) {
+      set_data_layout_complex(plan);
+    } else {
+      if(forward) {
+	set_data_layout_real_to_complex(plan);
+      } else {
+	set_data_layout_complex_to_real(plan);
+      }
+    }
   }
 
   void set_batchsize(clfftPlanHandle &plan, const size_t M) {
@@ -266,7 +286,6 @@ public:
 		   const cl_uint nwait,
 		   const cl_event *wait, cl_event *event) {
     ram_to_buf(X, buf, rbuf_size, nwait, wait, event);
-    std::cout << "rbuf_size/sizeof(double): " << rbuf_size/sizeof(double) << std::endl;
   }
 
   void buf_to_ram(double *X, cl_mem *buf, const size_t buf_size,
@@ -290,7 +309,6 @@ public:
 		   const cl_uint nwait,
 		   const cl_event *wait, cl_event *event) {
     buf_to_ram(X, buf, cbuf_size, nwait, wait, event);
-    std::cout << "cbuf_size/sizeof(double): " << cbuf_size/sizeof(double) << std::endl;
   }
 
   // FIXME: add overloaded operators to deal with events or no.
@@ -1026,6 +1044,10 @@ private:
 
     create_default_plan(plan, dim, clLengths);
     set_precision(plan, precision);
+    if(forward)
+      set_data_layout_real_to_complex(plan);
+    else
+      set_data_layout_complex_to_real(plan);
     set_data_layout(plan, forward);
     set_inout_place(plan);
 
