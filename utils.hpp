@@ -20,7 +20,6 @@ void usage(unsigned int dim)
 	    << std::endl;
 }
 
-
 template<class T>
 void show1C(const T *X, const unsigned int n)
 {

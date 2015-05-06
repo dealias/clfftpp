@@ -14,8 +14,8 @@ protected:
   cl_context ctx;
   cl_command_queue queue;
   size_t rbuf_size, cbuf_size, var_size;
+  bool inplace, realtocomplex;
   clfftPrecision precision;
-  bool realtocomplex, inplace;
   cl_mem workmem;
 
   const char *clfft_errorstring(const cl_int err) {
@@ -162,14 +162,23 @@ protected:
   }
 
 public:
-  clfft_base() {
+  clfft_base() :
+    inplace(true), realtocomplex(false), precision(CLFFT_DOUBLE) {
     if(count_zero == 0)
       clfft_setup();
     ++count_zero;
-    precision = CLFFT_DOUBLE;
+
     //precision = CLFFT_SINGLE;
-    realtocomplex = false;
-    inplace = true;
+  }
+
+  clfft_base(cl_context ctx, cl_command_queue queue,
+	     bool inplace, bool realtocomplex,
+	     clfftPrecision precision = CLFFT_DOUBLE) :
+    ctx(ctx), queue(queue), 
+    inplace(inplace), realtocomplex(realtocomplex), precision(precision) {
+    if(count_zero == 0)
+      clfft_setup();
+    ++count_zero;
   }
 
   ~clfft_base() {
@@ -261,6 +270,7 @@ public:
 		   const cl_uint nwait,
 		   const cl_event *wait, cl_event *event) {
     ram_to_buf(X, buf, rbuf_size, nwait, wait, event);
+    std::cout << "rbuf_size/sizeof(double): " << rbuf_size/sizeof(double) << std::endl;
   }
 
   void buf_to_ram(double *X, cl_mem *buf, const size_t buf_size,
@@ -284,6 +294,7 @@ public:
 		   const cl_uint nwait,
 		   const cl_event *wait, cl_event *event) {
     buf_to_ram(X, buf, cbuf_size, nwait, wait, event);
+    std::cout << "cbuf_size/sizeof(double): " << cbuf_size/sizeof(double) << std::endl;
   }
 
   // FIXME: add overloaded operators to deal with events or no.
@@ -292,6 +303,7 @@ public:
 		   const cl_uint nwait,
 		   const cl_event *wait, cl_event *event) {
     buf_to_ram(X, buf, rbuf_size, nwait, wait, event);
+    std::cout << "rbuf_size/sizeof(double): " << rbuf_size/sizeof(double) << std::endl;
   }
 
   void finish() {
@@ -1012,11 +1024,10 @@ private:
 
   void setup_plan(clfftPlanHandle &plan, clfftDirection direction) {
     bool forward = direction == CLFFT_FORWARD; 
- 
+
     clfftDim dim = CLFFT_1D;
     size_t clLengths[1] = {nx};
 
-  
     create_default_plan(plan, dim, clLengths);
     set_precision(plan, precision);
     set_data_layout(plan, forward);
@@ -1025,16 +1036,25 @@ private:
     set_batchsize(plan, M);
 
     size_t istride = {forward ? stride : 1};
-    size_t ostride = {forward ? 1 : stride};
+    size_t ostride = {forward ? stride / 2 + 1  : 1};
+    //size_t ostride = {1};
     set_strides(plan, dim, &istride, &ostride);
 
     // FIXME: correct for in-place?
     size_t idist = forward ? dist : dist / 2 + 1;
     size_t odist = forward ? dist / 2 + 1 : dist;
+    //size_t odist = forward ? 3 : 4;
     set_dists(plan, dim, idist, odist);
 
-    //set_dists(plan, dim, dist, dist);
-    
+    if(forward)
+      std::cout << "forward" << std::endl;
+    else
+      std::cout << "backward" << std::endl;
+    std::cout << "\tistride: " << istride << std::endl;
+    std::cout << "\tostride: " << ostride << std::endl;
+    std::cout << "\tidist: " << idist << std::endl;
+    std::cout << "\todist: " << odist << std::endl;
+
     bake_plan(plan);
     set_workmem(plan);
   }
@@ -1048,16 +1068,11 @@ public:
     set_buf_size();
   }
 
-  clmfft1r(unsigned int nx0, unsigned int M0, int stride0, int dist0, 
-	  bool inplace0, 
-	  cl_command_queue queue0, cl_context ctx0) {
-    nx = nx0;
-    M = M0;
-    stride = stride0;
-    dist = dist0;
-    inplace = inplace0;
-    queue = queue0;
-    ctx = ctx0;
+  clmfft1r(unsigned int nx, unsigned int M, int stride, int dist, 
+	   bool inplace, 
+	   cl_command_queue queue, cl_context ctx) :
+    clfft_base(ctx, queue, inplace, true, CLFFT_DOUBLE), 
+    nx(nx), M(M), stride(stride), dist(dist) {
 
     setup();
   }
