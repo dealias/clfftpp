@@ -164,10 +164,8 @@ protected:
 public:
   clfft_base() :
     inplace(true), realtocomplex(false), precision(CLFFT_DOUBLE) {
-    if(count_zero == 0)
+    if(count_zero++ == 0)
       clfft_setup();
-    ++count_zero;
-
     //precision = CLFFT_SINGLE;
   }
 
@@ -176,14 +174,12 @@ public:
 	     clfftPrecision precision = CLFFT_DOUBLE) :
     ctx(ctx), queue(queue), 
     inplace(inplace), realtocomplex(realtocomplex), precision(precision) {
-    if(count_zero == 0)
+    if(count_zero++ == 0)
       clfft_setup();
-    ++count_zero;
   }
 
   ~clfft_base() {
-    --count_zero;
-    if(count_zero == 0)
+    if(--count_zero == 0) 
       clfftTeardown();
   }
 
@@ -1046,9 +1042,9 @@ private:
     size_t idist_t = idist;
     size_t odist_t = odist;
     if(forward)
-      set_dists(plan, dim, idist, odist);
+      set_dists(plan, dim, idist_t, odist_t);
     else
-      set_dists(plan, dim, odist, idist);
+      set_dists(plan, dim, odist_t, idist_t);
 
     if(forward)
       std::cout << "forward" << std::endl;

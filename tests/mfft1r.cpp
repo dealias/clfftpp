@@ -32,7 +32,7 @@ int main(int argc, char *argv[]) {
   bool time_copy = false;
   bool inplace = false;
   unsigned int nx = 4;
-  unsigned int M = 7;
+  unsigned int M = 4;
   int istride = 1;
   int ostride = 1;
   int idist = nx;
@@ -168,17 +168,19 @@ int main(int argc, char *argv[]) {
     clWaitForEvents(1, &r2c_event);
 
     std::cout << "\nTransformed:" << std::endl;
-    if(nx <= maxout)
+    if(nx <= maxout) {
       show2C(FX, 1, M * (nx / 2 + 1));
-    else
+    } else {
       std::cout << FX[0] << std::endl;
-    
+    }    
+
     if(inplace) {
       fft.backward(&inbuf, NULL, 1, &forward_event, &backward_event);
     } else {
       fft.backward(&outbuf, &inbuf, 1, &forward_event, &backward_event);
     }
-    fft.cbuf_to_ram(X, &inbuf, 1, &backward_event, &c2r_event);
+    fft.rbuf_to_ram(X, &inbuf, 1, &backward_event, &c2r_event);
+
     clWaitForEvents(1, &c2r_event);
 
     std::cout << "\nTransformed back:" << std::endl;
@@ -216,7 +218,7 @@ int main(int argc, char *argv[]) {
       Array::array2<double> f(M, nx, align);
       Array::array2<Complex> g(M, nx / 2 + 1, align);
       fftwpp::mrcfft1d Forward(nx, M, istride, idist, f, g);
-      fftwpp::mcrfft1d Backward(nx, M, istride, odist, g, f);
+      fftwpp::mcrfft1d Backward(nx, M, ostride, odist, g, f);
       double *df = (double *)f();
       initR(df, nx, M);
       //show1C(df, nx, M);
@@ -229,7 +231,7 @@ int main(int argc, char *argv[]) {
       double maxerror = 0.0;
       for(unsigned int m = 0; m < M; ++m) {
       	for(unsigned int i = 0; i < nx / 2 + 1; ++i) {
-      	  int pos = m * nx + i; 
+      	  int pos = m * (nx /2 + 1) + i; 
       	  double rdiff = FX[2 * pos] - g[m][i].re;
       	  double idiff = FX[2 * pos + 1] - g[m][i].im;
       	  double diff = sqrt(rdiff * rdiff + idiff * idiff);
