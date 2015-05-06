@@ -1011,8 +1011,8 @@ class clmfft1r : public clfft_base
 private:
   unsigned int nx;
   unsigned int M;
-  unsigned int stride;
-  unsigned int dist;
+  unsigned int istride, ostride;
+  unsigned int idist, odist;
 
   void setup() {
     realtocomplex = true;
@@ -1035,16 +1035,20 @@ private:
 
     set_batchsize(plan, M);
 
-    size_t istride = {forward ? stride : 1};
-    size_t ostride = {forward ? stride / 2 + 1  : 1};
-    //size_t ostride = {1};
-    set_strides(plan, dim, &istride, &ostride);
+    size_t istride_t = istride;
+    size_t ostride_t = ostride;
+    if(forward)
+      set_strides(plan, dim, &istride_t, &ostride_t);
+    else
+      set_strides(plan, dim, &ostride_t, &istride_t);
 
     // FIXME: correct for in-place?
-    size_t idist = forward ? dist : dist / 2 + 1;
-    size_t odist = forward ? dist / 2 + 1 : dist;
-    //size_t odist = forward ? 3 : 4;
-    set_dists(plan, dim, idist, odist);
+    size_t idist_t = idist;
+    size_t odist_t = odist;
+    if(forward)
+      set_dists(plan, dim, idist, odist);
+    else
+      set_dists(plan, dim, odist, idist);
 
     if(forward)
       std::cout << "forward" << std::endl;
@@ -1068,11 +1072,13 @@ public:
     set_buf_size();
   }
 
-  clmfft1r(unsigned int nx, unsigned int M, int stride, int dist, 
+  clmfft1r(unsigned int nx, unsigned int M, int istride, int ostride,
+	   int idist, int odist,  
 	   bool inplace, 
 	   cl_command_queue queue, cl_context ctx) :
     clfft_base(ctx, queue, inplace, true, CLFFT_DOUBLE), 
-    nx(nx), M(M), stride(stride), dist(dist) {
+    nx(nx), M(M), 
+    istride(istride), ostride(ostride), idist(idist), odist(odist) {
 
     setup();
   }
