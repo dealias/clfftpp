@@ -83,12 +83,12 @@ int main(int argc, char *argv[]) {
       inplace = atoi(optarg);
       break;
     case 'h':
-      usage(1);
+      usage(2);
       exit(0);
       break;
     default:
       std::cout << "Invalid option" << std::endl;
-      usage(1);
+      usage(2);
       exit(1);
     }
   }

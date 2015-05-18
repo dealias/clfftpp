@@ -32,8 +32,10 @@ int main(int argc, char *argv[]) {
   bool inplace = true;
   unsigned int nx = 4;
   unsigned int M = 7;
-  int stride = 1;
-  int dist = nx;
+  int instride = 1;
+  int outstride = 1;
+  int indist = nx;
+  int outdist = nx;
   int N = 0;
   unsigned int stats = 0; // Type of statistics used in timing test.
   unsigned int maxout = 32; // maximum size of array output in entierety
@@ -42,7 +44,7 @@ int main(int argc, char *argv[]) {
   optind = 0;
 #endif
   for (;;) {
-    int c = getopt(argc,argv,"P:D:c:m:x:N:S:hi:M:s:d:");
+    int c = getopt(argc,argv,"P:D:c:m:x:N:S:hi:M:s:t:d:e:");
     if (c == -1) break;
     
     switch (c) {
@@ -77,18 +79,24 @@ int main(int argc, char *argv[]) {
       inplace = atoi(optarg);
       break;
     case 's':
-      stride = atoi(optarg);
+      instride = atoi(optarg);
+      break;
+    case 't':
+      outstride = atoi(optarg);
       break;
     case 'd':
-      dist = atoi(optarg);
+      indist = atoi(optarg);
+      break;
+    case 'e':
+      outdist = atoi(optarg);
       break;
     case 'h':
-      usage(1);
+      usage(1, true);
       exit(0);
       break;
     default:
       std::cout << "Invalid option" << std::endl;
-      usage(1);
+      usage(1, true);
       exit(1);
     }
   }
@@ -109,7 +117,7 @@ int main(int argc, char *argv[]) {
   cl_context ctx = create_context(platform, device);
   cl_command_queue queue = create_queue(ctx, device, CL_QUEUE_PROFILING_ENABLE);
   
-  clmfft1 fft(nx, M, stride, dist, inplace, queue, ctx);
+  clmfft1 fft(nx, M, instride, outstride, indist, outdist, inplace, queue, ctx);
 
   cl_mem inbuf, outbuf;
   fft.create_cbuf(&inbuf);
@@ -195,8 +203,8 @@ int main(int argc, char *argv[]) {
       // //fftw::maxthreads=get_max_threads();
       size_t align = sizeof(Complex);
       Array::array2<Complex> f(M, nx, align);
-      fftwpp::mfft1d Forward(nx, -1, M, stride, dist, f);
-      fftwpp::mfft1d Backward(nx, 1, M, stride, dist, f);
+      fftwpp::mfft1d Forward(nx, -1, M, instride, indist, f);
+      fftwpp::mfft1d Backward(nx, 1, M, instride, indist, f);
       double *df = (double *)f();
       init(df, nx, M);
       //show1C(df, nx, M);

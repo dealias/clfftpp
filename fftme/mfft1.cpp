@@ -112,14 +112,14 @@ int main(int argc, char *argv[])
   unsigned int stats = MEAN; // Type of statistics used in timing test.
 
   for (;;) {
-    int c = getopt(argc,argv,"p:d:m:x:y:N:S:f:w:t:h");
+    int c = getopt(argc,argv,"P:D:m:x:y:N:S:f:w:t:h");
     if (c == -1) break;
     
     switch (c) {
-    case 'p':
-      platnum=atoi(optarg);
+    case 'P':
+      platnum = atoi(optarg);
       break;
-    case 'd':
+    case 'D':
       devnum = atoi(optarg);
       break;
     case 'x':

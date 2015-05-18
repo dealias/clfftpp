@@ -614,8 +614,10 @@ class clmfft1 : public clfft_base
 private: 
   unsigned int nx;
   unsigned int M;
-  unsigned int stride;
-  unsigned int dist;
+  unsigned int instride;
+  unsigned int ostride;
+  unsigned int indist;
+  unsigned int odist;
 
   void setup() {
     realtocomplex = false;
@@ -635,11 +637,11 @@ private:
     set_data_layout(plan);
     set_batchsize(plan, M);
     
-    size_t istride = {stride};
-    size_t ostride = {stride};
+    size_t istride = {instride};
+    size_t ostride = {ostride};
     set_strides(plan, dim, &istride, &ostride);
 
-    set_dists(plan, dim, dist, dist);
+    set_dists(plan, dim, indist, odist);
     
     bake_plan(plan);
     set_workmem(plan);
@@ -653,20 +655,19 @@ public:
     M = 0;
     set_buf_size();
     inplace = true;
-    stride = 0;
-    dist = 0;
+    instride = 0;
+    ostride = 0;
+    indist = 0;
+    odist = 0;
   }
 
-  clmfft1(unsigned int nx0, unsigned int M0, int stride0, int dist0, 
-	  bool inplace0, 
-	  cl_command_queue queue0, cl_context ctx0) {
-    nx = nx0;
-    M = M0;
-    stride = stride0;
-    dist = dist0;
-    inplace = inplace0;
-    queue = queue0;
-    ctx = ctx0;
+  clmfft1(unsigned int nx, unsigned int M, 
+	  int instride, int ostride, int indist, int odist, 
+	  bool inplace,
+	  cl_command_queue queue, cl_context ctx) :
+    clfft_base(ctx, queue, inplace, true, CLFFT_DOUBLE), 
+    nx(nx), M(M), 
+    instride(instride), ostride(ostride), indist(indist), odist(odist) {
 
     setup();
   }

@@ -92,12 +92,12 @@ int main(int argc, char *argv[]) {
       odist = atoi(optarg);
       break;
     case 'h':
-      usage(1);
+      usage(1, true);
       exit(0);
       break;
     default:
       std::cout << "Invalid option" << std::endl;
-      usage(1);
+      usage(1, true);
       exit(1);
     }
   }

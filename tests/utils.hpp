@@ -3,21 +3,30 @@
 
 #include <iostream>
 
-void usage(unsigned int dim) 
+void usage(unsigned int dim, bool mfft = false) 
 {
   std::cout << "usage:\n"
 	    << "./clfft1 \n"
-	    << "\t-p <int>\tOpenCL platform number \n"
-	    << "\t-d <int>\tOpenCL device number \n"
+	    << "\t-P <int>\tOpenCL platform number \n"
+	    << "\t-D <int>\tOpenCL device number \n"
 	    << "\t-c <0 or 1>\tinclude memory copy in time \n"
 	    << "\t-m <int>\tproblem size \n"
 	    << "\t-x <int>\tproblem size in first dimension \n"
 	    << "\t-i <bool>\tin-place (1) or out-of-place (0) transform \n";
   if(dim > 1)
     std::cout <<  "\t-y <int>\tproblem size in second dimension\n";
-  std::cout << "\t-N <int>\tNumber of tests \n"
-	    << "\t-S <int>\tStatistical measure to use \n"
-	    << std::endl;
+  if(dim > 2)
+    std::cout <<  "\t-z <int>\tproblem size in third dimension\n";
+  std::cout << "\t-N <int>\tNumber of tests\n"
+	    << "\t-S <int>\tStatistical measure to use\n";
+  if(mfft) {
+    std::cout << "\t-M <int>\tNumber of transforms\n"
+	      << "\t-s <int>\tInput stride\n"
+	      << "\t-t <int>\tOutput stride\n"
+	      << "\t-d <int>\tInput distance\n"
+	      << "\t-e <int>\tOutput distance\n";
+  }
+  std::cout << std::endl;
 }
 
 template<class T>
