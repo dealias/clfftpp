@@ -28,7 +28,6 @@ int main(int argc, char *argv[]) {
 
   int platnum = 0;
   int devnum = 0;
-  bool time_copy = false;
   unsigned int nx = 4;
   unsigned int ny = 4;
   unsigned int N = 0;

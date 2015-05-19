@@ -24,7 +24,6 @@ int main(int argc, char *argv[]) {
 
   int platnum = 0;
   int devnum = 0;
-  //bool time_copy = false;
   int nx = 4;
   int N = 0;
   unsigned int stats = 0; // Type of statistics used in timing test.

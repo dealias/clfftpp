@@ -28,7 +28,6 @@ void init(T *X, const unsigned int nx, const unsigned int M)
 int main(int argc, char *argv[]) {
   int platnum = 0;
   int devnum = 0;
-  bool time_copy = false;
   bool inplace = true;
   unsigned int nx = 4;
   unsigned int M = 7;
@@ -44,7 +43,7 @@ int main(int argc, char *argv[]) {
   optind = 0;
 #endif
   for (;;) {
-    int c = getopt(argc,argv,"P:D:c:m:x:N:S:hi:M:s:t:d:e:");
+    int c = getopt(argc,argv,"P:D:m:x:N:S:hi:M:s:t:d:e:");
     if (c == -1) break;
     
     switch (c) {
@@ -53,12 +52,6 @@ int main(int argc, char *argv[]) {
       break;
     case 'D':
       devnum = atoi(optarg);
-      break;
-    case 'c':
-      if(atoi(optarg) == 0)
-	time_copy = false;
-      else
-	time_copy = true;
       break;
     case 'x':
       nx = atoi(optarg);
