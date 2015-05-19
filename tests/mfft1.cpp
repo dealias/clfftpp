@@ -31,10 +31,10 @@ int main(int argc, char *argv[]) {
   bool inplace = true;
   unsigned int nx = 4;
   unsigned int M = 7;
-  int instride = 1;
-  int outstride = 1;
-  int indist = nx;
-  int outdist = nx;
+  int instride = 0;
+  int outstride = 0;
+  int indist = 0;
+  int outdist = 0;
   int N = 0;
   unsigned int stats = 0; // Type of statistics used in timing test.
   unsigned int maxout = 32; // maximum size of array output in entierety
@@ -93,6 +93,11 @@ int main(int argc, char *argv[]) {
       exit(1);
     }
   }
+
+  if(instride == 0) instride = 1;
+  if(outstride == 0) outstride = 1;
+  if(indist == 0) indist = nx;
+  if(outdist == 0) outdist = nx;
 
   show_devices();
   std::cout << "Using platform " << platnum
