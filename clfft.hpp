@@ -20,7 +20,6 @@ protected:
 
   const char *clfft_errorstring(const cl_int err) {
     const char *errstring = NULL;
-    
     errstring = clErrorString(err);
 
     switch (err) {
@@ -199,6 +198,16 @@ public:
   }
 
   ~clfft_base() {
+    cl_int ret;
+
+    ret = clfftDestroyPlan(&forward_plan);
+    if(ret != CL_SUCCESS) std::cerr << clErrorString(ret) << std::endl;
+    assert(ret == CL_SUCCESS);
+
+    ret = clfftDestroyPlan(&backward_plan);
+    if(ret != CL_SUCCESS) std::cerr << clErrorString(ret) << std::endl;
+    assert(ret == CL_SUCCESS);
+    
     if(--count_zero == 0) 
       clfftTeardown();
   }
@@ -413,10 +422,6 @@ public:
   }
 
   ~clfft1() {
-    cl_int ret;
-    ret = clfftDestroyPlan(&forward_plan);
-    if(ret != CL_SUCCESS) std::cerr << clErrorString(ret) << std::endl;
-    assert(ret == CL_SUCCESS);
   }
 
   const unsigned int nreal(const int dim = -1) {return 0;}
@@ -485,9 +490,6 @@ public:
   }
 
   ~clfft2() {
-    cl_int ret;
-    ret = clfftDestroyPlan(&forward_plan);
-    if(ret != CL_SUCCESS) std::cerr << clErrorString(ret) << std::endl;
   }
 
   const unsigned int nreal(const int dim = -1) {return 0;}
@@ -554,9 +556,6 @@ public:
   }
 
   ~clfft3() {
-    cl_int ret;
-    ret = clfftDestroyPlan(&forward_plan);
-    if(ret != CL_SUCCESS) std::cerr << clErrorString(ret) << std::endl;
   }
 
   const unsigned int nreal(const int dim = -1) {return 0;}
@@ -712,10 +711,6 @@ public:
   }
 
   ~clfft1r() {
-    cl_int ret;
-    ret = clfftDestroyPlan(&forward_plan);
-    if(ret != CL_SUCCESS) std::cerr << clfft_errorstring(ret) << std::endl;
-    assert(ret == CL_SUCCESS);
   }
 
   const unsigned int ncomplex(const int dim = -1) {
@@ -816,10 +811,6 @@ public:
   }
 
   ~clfft2r() {
-    cl_int ret;
-    ret = clfftDestroyPlan(&forward_plan);
-    if(ret != CL_SUCCESS) std::cerr << clfft_errorstring(ret) << std::endl;
-    assert(ret == CL_SUCCESS);
   }
 
   const unsigned int ncomplex(const int dim = -1) {
@@ -919,10 +910,6 @@ public:
   }
 
   ~clfft3r() {
-    cl_int ret;
-    ret = clfftDestroyPlan(&forward_plan);
-    if(ret != CL_SUCCESS) std::cerr << clfft_errorstring(ret) << std::endl;
-    assert(ret == CL_SUCCESS);
   }
 
   const unsigned int ncomplex(const int dim = -1) {
@@ -980,7 +967,7 @@ private:
     set_buf_size();
     
     setup_plan(forward_plan, CLFFT_FORWARD);
-    //setup_plan(backward_plan, CLFFT_BACKWARD);
+    setup_plan(backward_plan, CLFFT_BACKWARD);
   }
 
   void setup_plan(clfftPlanHandle &plan, clfftDirection direction) {
