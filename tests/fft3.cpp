@@ -18,10 +18,11 @@ void init(T *X, unsigned int nx, unsigned int ny, unsigned int nz)
 {
   for(unsigned int i = 0; i < nx; ++i) {
     for(unsigned int j = 0; j < ny; ++j) {
-      for(unsigned int k = 0; k < ny; ++k) {
-	  int pos = (i * ny + j) * ny + k;
-	  X[2 * pos] = i;
-	  X[2 * pos + 1] = j;
+      for(unsigned int k = 0; k < nz; ++k) {
+	int pos = i * nz * ny + j * nz + k;
+	X[2 * pos] = i;
+	X[2 * pos + 1] = j + k * k;
+	pos++;
       }
     }
   }
@@ -70,6 +71,7 @@ int main(int argc, char *argv[]) {
     case 'm':
       nx = atoi(optarg);
       ny = atoi(optarg);
+      nz = atoi(optarg);
       break;
     case 'N':
       N = atoi(optarg);
