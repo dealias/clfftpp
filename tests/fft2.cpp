@@ -28,18 +28,12 @@ void init(T *X, unsigned int nx, unsigned int ny)
 int main(int argc, char *argv[]) {
   int platnum = 0;
   int devnum = 0;
-
-  
   bool inplace = true;
-
   unsigned int nx = 4;
   unsigned int ny = 4;
-  //nx=262144;
-
   unsigned int N = 0;
 
   unsigned int maxout = 10000;
-
   unsigned int stats = 0; // Type of statistics used in timing test.
 
 #ifdef __GNUC__	
@@ -116,7 +110,7 @@ int main(int argc, char *argv[]) {
 	    << fft.ncomplex() 
 	    << " doubles." << std::endl;
   double *X = new double[2 * fft.ncomplex()];
-  double *Xout = new double[2 * fft.ncomplex()];
+  double *FX = new double[2 * fft.ncomplex()];
 
   cl_event r2c_event = clCreateUserEvent(ctx, NULL);
   cl_event c2r_event = clCreateUserEvent(ctx, NULL);
@@ -134,16 +128,16 @@ int main(int argc, char *argv[]) {
     fft.ram_to_cbuf(X, &inbuf, 0, NULL, &r2c_event);
     if(inplace) {
       fft.forward(&inbuf, NULL, 1, &r2c_event, &forward_event);
-      fft.cbuf_to_ram(Xout, &inbuf, 1, &forward_event, &r2c_event);
+      fft.cbuf_to_ram(FX, &inbuf, 1, &forward_event, &r2c_event);
     } else {
       fft.forward(&inbuf, &outbuf, 1, &r2c_event, &forward_event);
-      fft.cbuf_to_ram(Xout, &outbuf, 1, &forward_event, &r2c_event);
+      fft.cbuf_to_ram(FX, &outbuf, 1, &forward_event, &r2c_event);
     }
     clWaitForEvents(1, &r2c_event);
     
     std::cout << "\nTransformed:" << std::endl;
     if(nx * ny <= maxout) 
-      show2C(Xout, nx, ny);
+      show2C(FX, nx, ny);
     else 
       std::cout << X[0] << std::endl;
 
@@ -198,8 +192,8 @@ int main(int argc, char *argv[]) {
       double L2error = 0.0;
       double maxerror = 0.0;
       for(unsigned int i = 0; i < nx * ny; ++i) {
-	double rdiff = Xout[2 * i] - df[2 * i];
-	double idiff = Xout[2 * i + 1] - df[2 * i + 1];
+	double rdiff = FX[2 * i] - df[2 * i];
+	double idiff = FX[2 * i + 1] - df[2 * i + 1];
 	double diff = sqrt(rdiff * rdiff + idiff * idiff);
 	L2error += diff * diff;
 	if(diff > maxerror)
@@ -214,41 +208,34 @@ int main(int argc, char *argv[]) {
     }
 
   } else { // Perform timing tests.
-    // double *T = new double[N];
-    // cl_ulong time_start, time_end;
-    // for(int i = 0; i < N; ++i) {
-    //   init(X, nx, ny);
-    //   fft.ram_to_input(X, &r2c_event);
-    //   fft.forward(1, &r2c_event, &forward_event);
-    //   fft.input_to_ram(X, 1, &forward_event, &c2r_event);
-    //   clWaitForEvents(1, &c2r_event);
+    double *T = new double[N];
+  
+    cl_ulong time_start, time_end;
+    for(int i = 0; i < N; i++) {
+      init(X, nx, ny);
+      
+      fft.ram_to_cbuf(X, &inbuf, 0, NULL, &r2c_event);
+      if(inplace) {
+	fft.forward(&inbuf, NULL, 1, &r2c_event, &forward_event);
+	fft.cbuf_to_ram(FX, &inbuf, 1, &forward_event, &r2c_event);
+      } else {
+	fft.forward(&inbuf, &outbuf, 1, &r2c_event, &forward_event);
+	fft.cbuf_to_ram(FX, &outbuf, 1, &forward_event, &r2c_event);
+      }
+      clWaitForEvents(1, &r2c_event);
 
-    //   if(time_copy) {
-    // 	clGetEventProfilingInfo(r2c_event,
-    // 				CL_PROFILING_COMMAND_START,
-    // 				sizeof(time_start),
-    // 				&time_start, NULL);
-    // 	clGetEventProfilingInfo(c2r_event,
-    // 				CL_PROFILING_COMMAND_END,
-    // 				sizeof(time_end), 
-    // 				&time_end, NULL);
-    //   } else {
-    // 	clGetEventProfilingInfo(forward_event,
-    // 				CL_PROFILING_COMMAND_START,
-    // 				sizeof(time_start),
-    // 				&time_start, NULL);
-    // 	clGetEventProfilingInfo(forward_event,
-    // 				CL_PROFILING_COMMAND_END,
-    // 				sizeof(time_end), 
-    // 				&time_end, NULL);
-    //   }
-    //   T[i] = 1e-9 * (time_end - time_start); // milliseconds
-    // }
-    // if(time_copy) 
-    //   timings("fft with copy", nx, T, N, stats);
-    // else 
-    //   timings("fft without copy", nx, T, N, stats);
-    // delete[] T;
+      clGetEventProfilingInfo(forward_event,
+    			      CL_PROFILING_COMMAND_START,
+    			      sizeof(time_start),
+    			      &time_start, NULL);
+      clGetEventProfilingInfo(forward_event,
+    			      CL_PROFILING_COMMAND_END,
+    			      sizeof(time_end), 
+    			      &time_end, NULL);
+      T[i] = 1e-6 * (time_end - time_start);
+    }
+    timings("fft timing", nx, T, N,stats);
+    delete[] T;
   }
 
   delete X;

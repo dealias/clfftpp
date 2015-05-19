@@ -26,7 +26,8 @@ int main(int argc, char *argv[]) {
   int devnum = 0;
   bool inplace = true;
   unsigned int nx = 4;
-  int N = 0;
+  unsigned int N = 0;
+  
   unsigned int stats = 0; // Type of statistics used in timing test.
   unsigned int maxout = 32; // maximum size of array output in entierety
 
@@ -201,9 +202,8 @@ int main(int argc, char *argv[]) {
     double *T = new double[N];
   
     cl_ulong time_start, time_end;
-    for(int i = 0; i < N; i++) {
+    for(unsigned int i = 0; i < N; i++) {
       init(X, nx);
-
       
       fft.ram_to_cbuf(X, &inbuf, 0, NULL, &r2c_event);
       if(inplace) {
