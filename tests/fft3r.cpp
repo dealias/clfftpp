@@ -117,11 +117,11 @@ int main(int argc, char *argv[]) {
   std::cout << "Allocating " 
 	    << (inplace ? 2 * fft.ncomplex() : fft.nreal())
 	    << " doubles for real." << std::endl;
-  double *Xin = new double[inplace ? 2 * fft.ncomplex() : fft.nreal()];
+  double *X = new double[inplace ? 2 * fft.ncomplex() : fft.nreal()];
   std::cout << "Allocating "
 	    << 2 * fft.ncomplex() 
 	    << " doubles for complex." << std::endl;
-  double *Xout = new double[2 * fft.ncomplex()];
+  double *FX = new double[2 * fft.ncomplex()];
 
   // Create OpenCL events
   cl_event r2c_event = clCreateUserEvent(ctx, NULL);
@@ -131,45 +131,45 @@ int main(int argc, char *argv[]) {
 
   if(N == 0) {
     std::cout << "\nInput:" << std::endl;
-    init3R(Xin, nx, ny, nz);
+    init3R(X, nx, ny, nz);
     if(nx * ny * nz <= maxout)
-      show3R(Xin, nx, ny, nz);
+      show3R(X, nx, ny, nz);
     else
-      std::cout << Xin[0] << std::endl;
+      std::cout << X[0] << std::endl;
     
-    fft.ram_to_rbuf(Xin, &inbuf, 0, NULL, &r2c_event);
+    fft.ram_to_rbuf(X, &inbuf, 0, NULL, &r2c_event);
     if(inplace) {
       fft.forward(&inbuf, NULL, 1, &r2c_event, &forward_event);
       clWaitForEvents(1, &forward_event);
-      fft.cbuf_to_ram(Xout, &inbuf, 1, &forward_event, &c2r_event);
+      fft.cbuf_to_ram(FX, &inbuf, 1, &forward_event, &c2r_event);
     } else {
       fft.forward(&inbuf, &outbuf, 1, &r2c_event, &forward_event);
-      fft.cbuf_to_ram(Xout, &outbuf, 1, &forward_event, &c2r_event);
+      fft.cbuf_to_ram(FX, &outbuf, 1, &forward_event, &c2r_event);
     }
     clWaitForEvents(1, &c2r_event);
     
     std::cout << "\nTransformed:" << std::endl;
     if(nx * ny * nz <= maxout) {
-      show3H(Xout, fft.ncomplex(0), fft.ncomplex(1), fft.ncomplex(2), 
+      show3H(FX, fft.ncomplex(0), fft.ncomplex(1), fft.ncomplex(2), 
 	     inplace ? 1 : 0);
     } else {
-      std::cout << Xout[0] << std::endl;
+      std::cout << FX[0] << std::endl;
     }
 
     if(inplace) {
       fft.backward(&inbuf, NULL, 1, &forward_event, &backward_event);
-      fft.cbuf_to_ram(Xin, &inbuf, 1, &backward_event, &c2r_event);
+      fft.cbuf_to_ram(X, &inbuf, 1, &backward_event, &c2r_event);
     } else {
       fft.backward(&outbuf, &inbuf, 1, &forward_event, &backward_event);
-      fft.rbuf_to_ram(Xin, &inbuf, 1, &backward_event, &c2r_event);
+      fft.rbuf_to_ram(X, &inbuf, 1, &backward_event, &c2r_event);
     }
     clWaitForEvents(1, &c2r_event);
 
     std::cout << "\nTransformed back:" << std::endl;
     // if(nx <= maxout)
-    //   show3R(Xin, nx, ny, nz);
+    //   show3R(X, nx, ny, nz);
     // else 
-    //   std::cout << Xin[0] << std::endl;
+    //   std::cout << X[0] << std::endl;
 
     // compute the round-trip error.
     {
@@ -179,7 +179,7 @@ int main(int argc, char *argv[]) {
       double L2error = 0.0;
       double maxerror = 0.0;
       for(unsigned int i = 0; i < fft.nreal(); ++i) {
-    	double diff = fabs(Xin[i] - X0[i]);
+    	double diff = fabs(X[i] - X0[i]);
     	L2error += diff * diff;
     	if(diff > maxerror)
     	  maxerror = diff;
@@ -220,16 +220,16 @@ int main(int argc, char *argv[]) {
 	    int pos = i * ny * nzp + j * nzp + k;
 	    int pos0 = i * ny * nzpskip + j * nzpskip + k;
 	    // std::cout << "pos0:  " << pos0  
-	    // 	      << "\t(" << Xout[2 * pos0] 
-	    // 	      << " " << Xout[2 * pos0 + 1]
+	    // 	      << "\t(" << FX[2 * pos0] 
+	    // 	      << " " << FX[2 * pos0 + 1]
 	    // 	      << ")" << std::endl;
 	    // std::cout << "pos:   " << pos  
 	    // 	      << "\t(" << dg[2 * pos] 
 	    // 	      << " " << dg[2 * pos + 1]
 	    // 	      << ")" << std::endl;
 	    // std::cout << std::endl;
-	    double rdiff = Xout[2 * pos0] - dg[2 * pos];
-	    double idiff = Xout[2 * pos0 + 1] - dg[2 * pos + 1];
+	    double rdiff = FX[2 * pos0] - dg[2 * pos];
+	    double idiff = FX[2 * pos0 + 1] - dg[2 * pos + 1];
 	    double diff = sqrt(rdiff * rdiff + idiff * idiff);
 	    L2error += diff * diff;
 	    if(diff > maxerror)
@@ -247,10 +247,37 @@ int main(int argc, char *argv[]) {
     }
 
   } else {
-    // FIXME: put timing stuff here.
+    double *T = new double[N];
+  
+    cl_ulong time_start, time_end;
+    for(unsigned int i = 0; i < N; i++) {
+      init3R(X, nx, ny, nz);
+
+      fft.ram_to_rbuf(X, &inbuf, 0, NULL, &r2c_event);
+      if(inplace) {
+	fft.forward(&inbuf, NULL, 1, &r2c_event, &forward_event);
+	fft.cbuf_to_ram(FX, &inbuf, 1, &forward_event, &c2r_event);
+      } else {
+	fft.forward(&inbuf, &outbuf, 1, &r2c_event, &forward_event);
+	fft.cbuf_to_ram(FX, &outbuf, 1, &forward_event, &c2r_event);
+      }
+      clWaitForEvents(1, &c2r_event);
+    
+      clGetEventProfilingInfo(forward_event,
+    			      CL_PROFILING_COMMAND_START,
+    			      sizeof(time_start),
+    			      &time_start, NULL);
+      clGetEventProfilingInfo(forward_event,
+    			      CL_PROFILING_COMMAND_END,
+    			      sizeof(time_end), 
+    			      &time_end, NULL);
+      T[i] = 1e-6 * (time_end - time_start);
+    }
+    timings("fft timing", nx, T, N,stats);
+    delete[] T;
   }
-  delete[] Xout;
-  delete[] Xin;
+  delete[] FX;
+  delete[] X;
   
   /* Release OpenCL working objects. */
   clReleaseCommandQueue(queue);

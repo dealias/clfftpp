@@ -23,6 +23,7 @@ vpath %.cc $(FFTW_INCLUDE_PATH)
 
 INCL+=-I.
 INCL+=-I..
+INCL+=-I../examples
 INCL+=-I$(FFTWPP_INCLUDE_PATH)
 
 vpath %.cc $(FFTWPP_INCLUDE_PATH)

@@ -211,7 +211,7 @@ int main(int argc, char *argv[]) {
     double *T = new double[N];
   
     cl_ulong time_start, time_end;
-    for(int i = 0; i < N; i++) {
+    for(unsigned int i = 0; i < N; i++) {
       init(X, nx, ny);
       
       fft.ram_to_cbuf(X, &inbuf, 0, NULL, &r2c_event);
