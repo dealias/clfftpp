@@ -115,9 +115,11 @@ int main(int argc, char *argv[]) {
   cl_platform_id platform = plat_ids[platnum];
 
   cl_context ctx = create_context(platform, device);
-  cl_command_queue queue = create_queue(ctx, device, CL_QUEUE_PROFILING_ENABLE);
+  cl_command_queue queue = create_queue(ctx, device,
+					CL_QUEUE_PROFILING_ENABLE);
   
-  clmfft1 fft(nx, M, instride, outstride, indist, outdist, inplace, queue, ctx);
+  clmfft1 fft(nx, M, instride, outstride, indist, outdist, inplace,
+	      queue, ctx);
 
   cl_mem inbuf, outbuf;
   fft.create_cbuf(&inbuf);

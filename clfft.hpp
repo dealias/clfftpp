@@ -317,7 +317,7 @@ public:
 		   const cl_uint nwait,
 		   const cl_event *wait, cl_event *event) {
     buf_to_ram(X, buf, rbuf_size, nwait, wait, event);
-    std::cout << "rbuf_size/sizeof(double): " << rbuf_size/sizeof(double) << std::endl;
+    //std::cout << "rbuf_size/sizeof(double): " << rbuf_size/sizeof(double) << std::endl;
   }
 
   void finish() {
@@ -402,20 +402,13 @@ private:
   }
 
 public:
-  clfft1() {
-    ctx = NULL;
-    queue = NULL;
-    nx = 0;
+  clfft1() : clfft_base(), nx(0) {
     set_buf_size();
-    inplace = true;
   }
 
-  clfft1(unsigned int nx0, bool inplace0, 
-	 cl_command_queue queue0, cl_context ctx0) {
-    nx = nx0;
-    queue = queue0;
-    ctx = ctx0;
-    inplace = inplace0;
+  clfft1(unsigned int nx, bool inplace, 
+	 cl_command_queue queue, cl_context ctx) :
+    clfft_base(ctx, queue, inplace, true, CLFFT_DOUBLE), nx(nx) {
     setup();
   }
 
@@ -480,21 +473,14 @@ private:
   }
 
 public:
-  clfft2() {
-    ctx = NULL;
-    queue = NULL;
-    inplace = true;
-    nx = 0;
+  clfft2() :
+    clfft_base(), nx(0), ny(0) {
     set_buf_size();
   }
 
-  clfft2(unsigned int nx0, unsigned int ny0, bool inplace0,
-	 cl_command_queue queue0, cl_context ctx0) {
-    nx = nx0;
-    ny = ny0;
-    inplace = inplace0;
-    queue = queue0;
-    ctx = ctx0;
+  clfft2(unsigned int nx, unsigned int ny, bool inplace,
+	 cl_command_queue queue, cl_context ctx) :
+    clfft_base(ctx, queue, inplace, true, CLFFT_DOUBLE), nx(nx), ny(ny) {
     setup();
   }
 
@@ -521,8 +507,7 @@ public:
     }
     return 0;
   }
-
-
+  
   virtual const unsigned int complex_buf_size(const int dim) {
     return nx * ny * 2 * var_size;
   }
@@ -558,22 +543,13 @@ private:
   }
 
 public:
-  clfft3() {
-    ctx = NULL;
-    queue = NULL;
-    inplace = true;
-    nx = 0;
+  clfft3(): clfft_base(), nx(0), ny(0), nz(0) {
     set_buf_size();
   }
 
-  clfft3(unsigned int nx0, unsigned int ny0, unsigned int nz0, bool inplace0,
-	 cl_command_queue queue0, cl_context ctx0) {
-    nx = nx0;
-    ny = ny0;
-    nz = nz0;
-    inplace = inplace0;
-    queue = queue0;
-    ctx = ctx0;
+  clfft3(unsigned int nx, unsigned int ny, unsigned int nz, bool inplace,
+	 cl_command_queue queue, cl_context ctx) :
+    clfft_base(ctx, queue, inplace, true, CLFFT_DOUBLE), nx(nx), ny(ny), nz(nz){
     setup();
   }
 
@@ -614,13 +590,12 @@ class clmfft1 : public clfft_base
 private: 
   unsigned int nx;
   unsigned int M;
-  unsigned int instride;
+  unsigned int istride;
   unsigned int ostride;
-  unsigned int indist;
+  unsigned int idist;
   unsigned int odist;
 
   void setup() {
-    realtocomplex = false;
     set_buf_size();
 
     setup_plan(forward_plan);
@@ -637,41 +612,34 @@ private:
     set_data_layout(plan);
     set_batchsize(plan, M);
     
-    size_t istride = {instride};
-    size_t ostride = {ostride};
-    set_strides(plan, dim, &istride, &ostride);
+    size_t istride_t = {istride};
+    size_t ostride_t = {ostride};
+    set_strides(plan, dim, &istride_t, &ostride_t);
 
-    set_dists(plan, dim, indist, odist);
+    set_dists(plan, dim, idist, odist);
     
     bake_plan(plan);
     set_workmem(plan);
   }
 
 public:
-  clmfft1() {
-    ctx = NULL;
-    queue = NULL;
-    nx = 0;
-    M = 0;
+  clmfft1() : clfft_base(), nx(0), M(0), istride(0), ostride(0), idist(0),
+	      odist(0) {
+    realtocomplex = false;
     set_buf_size();
-    inplace = true;
-    instride = 0;
-    ostride = 0;
-    indist = 0;
-    odist = 0;
   }
 
   clmfft1(unsigned int nx, unsigned int M, 
-	  int instride, int ostride, int indist, int odist, 
+	  int istride, int ostride, int idist, int odist, 
 	  bool inplace,
 	  cl_command_queue queue, cl_context ctx) :
     clfft_base(ctx, queue, inplace, true, CLFFT_DOUBLE), 
     nx(nx), M(M), 
-    instride(instride), ostride(ostride), indist(indist), odist(odist) {
-
+    istride(istride), ostride(ostride), idist(idist), odist(odist) {
+    realtocomplex = false;
     setup();
   }
-
+  
   const unsigned int ncomplex(const int dim = -1) {
     switch(dim) {
     case -1:
@@ -733,20 +701,13 @@ private:
   }
 
 public:
-  clfft1r() {
-    ctx = NULL;
-    queue = NULL;
-    nx = 0;
+  clfft1r() : clfft_base(), nx(0) {
     set_buf_size();
   }
 
-  clfft1r(unsigned int nx0, bool inplace0, 
-	  cl_command_queue queue0, cl_context ctx0) {
-    nx = nx0;
-    queue = queue0;
-    ctx = ctx0;
-    inplace = inplace0;
-
+  clfft1r(unsigned int nx, bool inplace, 
+	  cl_command_queue queue, cl_context ctx) :
+    clfft_base(ctx, queue, inplace, true, CLFFT_DOUBLE), nx(nx) {
     setup();
   }
 
@@ -843,20 +804,13 @@ private:
   }
 
 public:
-  clfft2r() {
-    ctx = NULL;
-    queue = NULL;
-    nx = 0;
+  clfft2r() : clfft_base(), nx(0), ny(0) {
     set_buf_size();
   }
 
-  clfft2r(unsigned int nx0, unsigned int ny0, bool inplace0, 
-	  cl_command_queue queue0, cl_context ctx0) {
-    nx = nx0;
-    ny = ny0;
-    queue = queue0;
-    ctx = ctx0;
-    inplace = inplace0;
+  clfft2r(unsigned int nx, unsigned int ny, bool inplace, 
+	  cl_command_queue queue, cl_context ctx) :
+    clfft_base(ctx, queue, inplace, true, CLFFT_DOUBLE), nx(nx), ny(ny) {
     realtocomplex = true;
     setup();
   }
@@ -953,21 +907,13 @@ private:
   }
 
 public:
-  clfft3r() {
-    ctx = NULL;
-    queue = NULL;
-    nx = 0;
+  clfft3r() : clfft_base(), nx(0), ny(0), nz(0) {
     set_buf_size();
   }
 
-  clfft3r(unsigned int nx0, unsigned int ny0, unsigned int nz0, bool inplace0, 
-	  cl_command_queue queue0, cl_context ctx0) {
-    nx = nx0;
-    ny = ny0;
-    nz = nz0;
-    queue = queue0;
-    ctx = ctx0;
-    inplace = inplace0;
+  clfft3r(unsigned int nx, unsigned int ny, unsigned int nz, bool inplace, 
+	  cl_command_queue queue, cl_context ctx) :
+    clfft_base(ctx, queue, inplace, true, CLFFT_DOUBLE), nx(nx), ny(ny), nz(nz){
     realtocomplex = true;
     setup();
   }
@@ -1034,12 +980,12 @@ private:
     set_buf_size();
     
     setup_plan(forward_plan, CLFFT_FORWARD);
-    setup_plan(backward_plan, CLFFT_BACKWARD);
+    //setup_plan(backward_plan, CLFFT_BACKWARD);
   }
 
   void setup_plan(clfftPlanHandle &plan, clfftDirection direction) {
     bool forward = direction == CLFFT_FORWARD; 
-
+    
     clfftDim dim = CLFFT_1D;
     size_t clLengths[1] = {nx};
 
@@ -1083,11 +1029,7 @@ private:
   }
 
 public:
-  clmfft1r() {
-    ctx = NULL;
-    queue = NULL;
-    nx = 0;
-    M = 0;
+  clmfft1r() : clfft_base(), nx(0), M(0) {
     set_buf_size();
   }
 
@@ -1098,7 +1040,6 @@ public:
     clfft_base(ctx, queue, inplace, true, CLFFT_DOUBLE), 
     nx(nx), M(M), 
     istride(istride), ostride(ostride), idist(idist), odist(odist) {
-
     setup();
   }
 
