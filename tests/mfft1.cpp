@@ -35,7 +35,7 @@ int main(int argc, char *argv[]) {
   int outstride = 0;
   int indist = 0;
   int outdist = 0;
-  int N = 0;
+  unsigned int N = 0;
   unsigned int stats = 0; // Type of statistics used in timing test.
   unsigned int maxout = 32; // maximum size of array output in entierety
 
@@ -145,8 +145,8 @@ int main(int argc, char *argv[]) {
   cl_event c2r_event = clCreateUserEvent(ctx, NULL);
   cl_event forward_event = clCreateUserEvent(ctx, NULL);
   cl_event backward_event = clCreateUserEvent(ctx, NULL);
-   if(N == 0) {
-     fft.ram_to_cbuf(X, &inbuf, 0, NULL, &r2c_event);
+  if(N == 0) {
+    fft.ram_to_cbuf(X, &inbuf, 0, NULL, &r2c_event);
     if(inplace) {
       fft.forward(&inbuf, NULL, 1, &r2c_event, &forward_event);
       fft.cbuf_to_ram(FX, &inbuf, 1, &forward_event, &r2c_event);
@@ -233,43 +233,34 @@ int main(int argc, char *argv[]) {
     }
 
   } else {
-    // double *T = new double[N];
+    double *T = new double[N];
   
-    // cl_ulong time_start, time_end;
-    // for(int i=0; i < N; ++i) {
-    //   init(X,nx);
-    //   seconds();
-    //   fft.ramtoinput(X, &r2c_event);
-    //   fft.forward(1, &r2c_event, &forward_event);
-    //   fft.inputtoram(X, 1, &forward_event, &c2r_event);
-    //   clWaitForEvents(1, &c2r_event);
+    cl_ulong time_start, time_end;
+    for(unsigned int i = 0; i < N; i++) {
+      init(X, nx, M);
+      
+      fft.ram_to_cbuf(X, &inbuf, 0, NULL, &r2c_event);
+      if(inplace) {
+	fft.forward(&inbuf, NULL, 1, &r2c_event, &forward_event);
+	fft.cbuf_to_ram(FX, &inbuf, 1, &forward_event, &r2c_event);
+      } else {
+	fft.forward(&inbuf, &outbuf, 1, &r2c_event, &forward_event);
+	fft.cbuf_to_ram(FX, &outbuf, 1, &forward_event, &r2c_event);
+      }
+      clWaitForEvents(1, &r2c_event);
 
-    //   if(time_copy) {
-    // 	clGetEventProfilingInfo(r2c_event,
-    // 				CL_PROFILING_COMMAND_START,
-    // 				sizeof(time_start),
-    // 				&time_start, NULL);
-    // 	clGetEventProfilingInfo(c2r_event,
-    // 				CL_PROFILING_COMMAND_END,
-    // 				sizeof(time_end), 
-    // 				&time_end, NULL);
-    //   } else {
-    // 	clGetEventProfilingInfo(forward_event,
-    // 				CL_PROFILING_COMMAND_START,
-    // 				sizeof(time_start),
-    // 				&time_start, NULL);
-    // 	clGetEventProfilingInfo(forward_event,
-    // 				CL_PROFILING_COMMAND_END,
-    // 				sizeof(time_end), 
-    // 				&time_end, NULL);
-    //   }
-    //   T[i] = 1e-6 * (time_end - time_start);
-    // }
-    // if(time_copy)
-    //   timings("fft with copy",nx,T,N,stats);
-    // else 
-    //   timings("fft without copy",nx,T,N,stats);
-    // delete[] T;
+      clGetEventProfilingInfo(forward_event,
+    			      CL_PROFILING_COMMAND_START,
+    			      sizeof(time_start),
+    			      &time_start, NULL);
+      clGetEventProfilingInfo(forward_event,
+    			      CL_PROFILING_COMMAND_END,
+    			      sizeof(time_end), 
+    			      &time_end, NULL);
+      T[i] = 1e-6 * (time_end - time_start);
+    }
+    timings("fft timing", nx, T, N,stats);
+    delete[] T;
   }
 
   delete[] X;
