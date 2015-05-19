@@ -65,6 +65,7 @@ int main(int argc, char *argv[]) {
     case 'm':
       nx = atoi(optarg);
       ny = atoi(optarg);
+      nz = atoi(optarg);
       break;
     case 'N':
       N = atoi(optarg);
