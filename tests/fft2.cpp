@@ -94,7 +94,8 @@ int main(int argc, char *argv[]) {
   cl_platform_id platform = plat_ids[platnum];
 
   cl_context ctx = create_context(platform, device);
-  cl_command_queue queue = create_queue(ctx, device, CL_QUEUE_PROFILING_ENABLE);
+  cl_command_queue queue = create_queue(ctx, device, 
+					CL_QUEUE_PROFILING_ENABLE);
   
   clfft2 fft(nx, ny, inplace, queue, ctx);
   cl_mem inbuf, outbuf;
@@ -217,12 +218,12 @@ int main(int argc, char *argv[]) {
       fft.ram_to_cbuf(X, &inbuf, 0, NULL, &r2c_event);
       if(inplace) {
 	fft.forward(&inbuf, NULL, 1, &r2c_event, &forward_event);
-	fft.cbuf_to_ram(FX, &inbuf, 1, &forward_event, &r2c_event);
+	fft.cbuf_to_ram(FX, &inbuf, 1, &forward_event, &c2r_event);
       } else {
 	fft.forward(&inbuf, &outbuf, 1, &r2c_event, &forward_event);
-	fft.cbuf_to_ram(FX, &outbuf, 1, &forward_event, &r2c_event);
+	fft.cbuf_to_ram(FX, &outbuf, 1, &forward_event, &c2r_event);
       }
-      clWaitForEvents(1, &r2c_event);
+      clWaitForEvents(1, &c2r_event);
 
       clGetEventProfilingInfo(forward_event,
     			      CL_PROFILING_COMMAND_START,
@@ -232,7 +233,7 @@ int main(int argc, char *argv[]) {
     			      CL_PROFILING_COMMAND_END,
     			      sizeof(time_end), 
     			      &time_end, NULL);
-      T[i] = 1e-6 * (time_end - time_start);
+      T[i] = 1e-9 * (time_end - time_start);
     }
     timings("fft timing", nx, T, N,stats);
     delete[] T;
