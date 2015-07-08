@@ -38,8 +38,8 @@ def main(argv):
     -A<string> Extra arguments before main call
     -B<int> Extra arguments after main call
     -N<int> Number of tests
-    -a<int> Minimum test size
-    -b<int> Maximum test size
+    -a<int> log2 of minimum test size
+    -b<int> log2 of maximum test size
     -o<string> Output filename
     -d dry run
     -h display usage
@@ -48,8 +48,8 @@ def main(argv):
     progname = ""
     platformnum = 0
     devicenum = 0
-    a = 4
-    b = 16
+    a = 1
+    b = 3
     outfile = ""
     N = 100
 
@@ -113,8 +113,10 @@ def main(argv):
     cmd0.append("-N" + str(N))
     print cmd0
 
-    m = a
-    while m <= b:
+    mstart = 2**a
+    mstop = 2**b
+    m = mstart
+    while m <= mstop:
         print m
         cmd = deepcopy(cmd0)
         cmd.append("-m" + str(m))
