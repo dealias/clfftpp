@@ -75,6 +75,8 @@ def main(argv):
             prearg.append(arg)
         if opt in ("-a"):
             a = int(arg)
+        if opt in ("-b"):
+            b = int(arg)
         if opt in ("-N"):
             N = int(arg)
         if opt in ("-o"):
@@ -115,6 +117,7 @@ def main(argv):
 
     mstart = 2**a
     mstop = 2**b
+    print "Min m: " + str(mstart) + ", max m:" +str(mstop) + "." 
     m = mstart
     while m <= mstop:
         print m
