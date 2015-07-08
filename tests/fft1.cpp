@@ -21,7 +21,8 @@ void init(T *X, unsigned int n)
   }
 }
 
-int main(int argc, char *argv[]) {
+int main(int argc, char *argv[]) 
+{
   int platnum = 0;
   int devnum = 0;
   bool inplace = true;
@@ -70,23 +71,35 @@ int main(int argc, char *argv[]) {
       exit(1);
     }
   }
+  
 
   show_devices();
   std::cout << "Using platform " << platnum
 	    << " device " << devnum 
 	    << "." << std::endl;
-
+  
   std::vector<std::vector<cl_device_id> > dev_ids;
   create_device_tree(dev_ids);
   cl_device_id device = dev_ids[platnum][devnum];
-
+  
   std::vector<cl_platform_id> plat_ids;
   find_platform_ids(plat_ids);
   cl_platform_id platform = plat_ids[platnum];
-
+  
   cl_context ctx = create_context(platform, device);
   cl_command_queue queue = create_queue(ctx, device, CL_QUEUE_PROFILING_ENABLE);
-  
+
+  std::string init_source("\
+__kernel void init(__global double *X)\
+{\
+  const int i = get_global_id(0); \
+  X[2 * i] = i;\
+  X[2 * i + 1] = 0.0;\
+}");
+  cl_program initprog = create_program(init_source, ctx);
+  build_program(initprog, device);
+  cl_kernel initkernel = create_kernel(initprog, "init"); 
+
   clfft1 fft(nx, inplace, queue, ctx);
   cl_mem inbuf, outbuf;
   fft.create_cbuf(&inbuf);
@@ -96,13 +109,14 @@ int main(int argc, char *argv[]) {
     std::cout << "out-of-place transform" << std::endl;
     fft.create_cbuf(&outbuf);
   }
-  
+
+ 
   std::cout << "Allocating " 
 	    << 2 * fft.ncomplex() 
 	    << " doubles." << std::endl;
   double *X = new double[2 * fft.ncomplex()];
   double *FX = new double[2 * fft.ncomplex()];
-
+  
   std::cout << "\nInput:" << std::endl;
   init(X, nx);
   if(nx <= maxout)
@@ -115,7 +129,17 @@ int main(int argc, char *argv[]) {
   cl_event forward_event = clCreateUserEvent(ctx, NULL);
   cl_event backward_event = clCreateUserEvent(ctx, NULL);
   if(N == 0) {
-    fft.ram_to_cbuf(X, &inbuf, 0, NULL, &r2c_event);
+    //fft.ram_to_cbuf(X, &inbuf, 0, NULL, &r2c_event);
+    set_kernel_arg(initkernel, 0, sizeof(cl_mem), &inbuf);
+    size_t global_wsize[] = {nx};
+    clEnqueueNDRangeKernel(queue,
+			   initkernel,
+			   1, // cl_uint work_dim,
+			   NULL, // global_work_offset,
+			   global_wsize, // global_work_size, 
+			   NULL, // size_t *local_work_size, 
+			   0, NULL, &r2c_event);
+
     if(inplace) {
       fft.forward(&inbuf, NULL, 1, &r2c_event, &forward_event);
       fft.cbuf_to_ram(FX, &inbuf, 1, &forward_event, &r2c_event);

@@ -111,3 +111,42 @@ cl_command_queue create_queue(const cl_context ctx,
 			      properties,
 			      &err);
 }
+
+cl_program create_program(const std::string source, cl_context context)
+{
+  cl_int ret;
+  size_t size = source.size();
+  cl_program prog = clCreateProgramWithSource(context, 
+					      1, //number of strings passed
+					      (const char **)&source,
+					      (const size_t *)&size,
+					      &ret);
+  //check_cl_ret(ret,"clCreateProgrammWithSource"); 
+  assert(ret == CL_SUCCESS);
+  return prog;
+}
+
+void build_program(cl_program program, cl_device_id device,
+		   const char *options)
+{
+  cl_int ret;
+  ret = clBuildProgram(program, 
+		       1,
+		       &device, 
+		       options, // Options
+		       NULL, 
+		       NULL);
+  if(ret != CL_SUCCESS)
+    std::cout <<  print_build_debug(program, &device) << std::endl;
+  // check_cl_ret(ret,"clBuildProgram");
+  assert(ret == CL_SUCCESS);
+}
+
+cl_kernel create_kernel(cl_program program, const char *kernelname) 
+{
+  cl_int ret;
+  cl_kernel kernel = clCreateKernel(program, kernelname, &ret);
+  //check_cl_ret(ret,"create kernel");
+  assert(ret == CL_SUCCESS);
+  return kernel;
+}
