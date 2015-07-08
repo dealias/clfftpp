@@ -120,9 +120,10 @@ def main(argv):
     mstart = 2**a
     mstop = 2**b
     print "Min m: " + str(mstart) + ", max m:" +str(mstop) + "." 
-    m = mstart
-    while m <= mstop:
-        print m
+    mi = a
+    while mi <= b:
+        m = 2 ** mi
+        print mi, m
         cmd = deepcopy(cmd0)
         cmd.append("-m" + str(m))
         i = 0
@@ -147,7 +148,7 @@ def main(argv):
                 print "stdout:\n", out
                 print "stderr:\n", err
         
-        m *= 2
+        mi += 1
         
 if __name__ == "__main__":
     main(sys.argv[1:])
