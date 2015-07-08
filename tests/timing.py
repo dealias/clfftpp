@@ -113,6 +113,8 @@ def main(argv):
         i += 1
     cmd0.append("./" + progname)
     cmd0.append("-N" + str(N))
+    cmd0.append("-P" + str(platformnum))
+    cmd0.append("-D" + str(devicenum))
     print cmd0
 
     mstart = 2**a
