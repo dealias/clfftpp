@@ -107,6 +107,20 @@ int main(int argc, char *argv[]) {
     fft.create_cbuf(&outbuf);
   }
 
+  std::string init_source ="\
+__kernel void init(__global double *X, const unsigned int ny)		\
+{						\
+  const int i = get_global_id(0);		\
+  const int j = get_global_id(1);		\
+  unsigned pos = i * ny + j;			\
+  X[pos] = i * i + j;				\
+}";
+  cl_program initprog = create_program(init_source, ctx);
+  build_program(initprog, device);
+  cl_kernel initkernel = create_kernel(initprog, "init"); 
+  set_kernel_arg(initkernel, 0, sizeof(cl_mem), &inbuf);
+  set_kernel_arg(initkernel, 1, sizeof(unsigned int), &ny);
+
   std::cout << "Allocating " 
 	    << (inplace ? 2 * fft.ncomplex() : fft.nreal())
 	    << " doubles for real." << std::endl;
@@ -117,10 +131,10 @@ int main(int argc, char *argv[]) {
   double *FX = new double[2 * fft.ncomplex()];
 
   // Create OpenCL events
-  cl_event r2c_event = clCreateUserEvent(ctx, NULL);
-  cl_event c2r_event = clCreateUserEvent(ctx, NULL);
-  cl_event forward_event = clCreateUserEvent(ctx, NULL);
-  cl_event backward_event = clCreateUserEvent(ctx, NULL);
+  cl_event clv_init = clCreateUserEvent(ctx, NULL);
+  cl_event clv_toram = clCreateUserEvent(ctx, NULL);
+  cl_event clv_forward = clCreateUserEvent(ctx, NULL);
+  cl_event clv_backward = clCreateUserEvent(ctx, NULL);
 
   if(N == 0) {
     std::cout << "\nInput:" << std::endl;
@@ -130,16 +144,23 @@ int main(int argc, char *argv[]) {
     else
       std::cout << X[0] << std::endl;
     
-    fft.ram_to_rbuf(X, &inbuf, 0, NULL, &r2c_event);
-    if(inplace) {
-      fft.forward(&inbuf, NULL, 1, &r2c_event, &forward_event);
-      clWaitForEvents(1, &forward_event);
-      fft.cbuf_to_ram(FX, &inbuf, 1, &forward_event, &c2r_event);
-    } else {
-      fft.forward(&inbuf, &outbuf, 1, &r2c_event, &forward_event);
-      fft.cbuf_to_ram(FX, &outbuf, 1, &forward_event, &c2r_event);
-    }
-    clWaitForEvents(1, &c2r_event);
+    //fft.ram_to_rbuf(X, &inbuf, 0, NULL, &clv_init);
+    size_t global_wsize[] = {nx, ny};
+    clEnqueueNDRangeKernel(queue,
+			   initkernel,
+			   2, // cl_uint work_dim,
+			   NULL, // global_work_offset,
+			   global_wsize, // global_work_size, 
+			   NULL, // size_t *local_work_size, 
+			   0, NULL, &clv_init);
+
+
+    fft.forward(&inbuf, inplace ? NULL : &outbuf, 1, &clv_init, &clv_forward);
+    if(inplace)
+      fft.cbuf_to_ram(FX, &inbuf, 1, &clv_forward, &clv_toram);
+    else
+      fft.cbuf_to_ram(FX, &outbuf, 1, &clv_forward, &clv_toram);
+    clWaitForEvents(1, &clv_toram);
     
     std::cout << "\nTransformed:" << std::endl;
     if(nx <= maxout) {
@@ -148,14 +169,13 @@ int main(int argc, char *argv[]) {
       std::cout << FX[0] << std::endl;
     }
 
-    if(inplace) {
-      fft.backward(&inbuf, NULL, 1, &forward_event, &backward_event);
-      fft.cbuf_to_ram(X, &inbuf, 1, &backward_event, &c2r_event);
-    } else {
-      fft.backward(&outbuf, &inbuf, 1, &forward_event, &backward_event);
-      fft.rbuf_to_ram(X, &inbuf, 1, &backward_event, &c2r_event);
-    }
-    clWaitForEvents(1, &c2r_event);
+    fft.backward(inplace ? &inbuf : &outbuf, 
+		 inplace ? NULL : &inbuf, 1, &clv_forward, &clv_backward);
+    if(inplace)
+      fft.cbuf_to_ram(X, &inbuf, 1, &clv_backward, &clv_toram);
+    else
+      fft.rbuf_to_ram(X, &inbuf, 1, &clv_backward, &clv_toram);
+    clWaitForEvents(1, &clv_toram);
 
     std::cout << "\nTransformed back:" << std::endl;
     if(nx <= maxout)
@@ -232,23 +252,27 @@ int main(int argc, char *argv[]) {
   
     cl_ulong time_start, time_end;
     for(unsigned int i = 0; i < N; i++) {
-      init2R(X, nx, ny);
+      //init2R(X, nx, ny);
+      //fft.ram_to_rbuf(X, &inbuf, 0, NULL, &clv_init);
 
-      fft.ram_to_rbuf(X, &inbuf, 0, NULL, &r2c_event);
-      if(inplace) {
-	fft.forward(&inbuf, NULL, 1, &r2c_event, &forward_event);
-	fft.cbuf_to_ram(FX, &inbuf, 1, &forward_event, &c2r_event);
-      } else {
-	fft.forward(&inbuf, &outbuf, 1, &r2c_event, &forward_event);
-	fft.cbuf_to_ram(FX, &outbuf, 1, &forward_event, &c2r_event);
-      }
-      clWaitForEvents(1, &c2r_event);
+      size_t global_wsize[] = {nx, ny};
+      clEnqueueNDRangeKernel(queue,
+			     initkernel,
+			     2, // cl_uint work_dim,
+			     NULL, // global_work_offset,
+			     global_wsize, // global_work_size, 
+			     NULL, // size_t *local_work_size, 
+			     0, NULL, &clv_init);
+
+
+      fft.forward(&inbuf, inplace ? NULL : &outbuf, 1, &clv_init, &clv_forward);
+      clWaitForEvents(1, &clv_forward);
     
-      clGetEventProfilingInfo(forward_event,
+      clGetEventProfilingInfo(clv_forward,
     			      CL_PROFILING_COMMAND_START,
     			      sizeof(time_start),
     			      &time_start, NULL);
-      clGetEventProfilingInfo(forward_event,
+      clGetEventProfilingInfo(clv_forward,
     			      CL_PROFILING_COMMAND_END,
     			      sizeof(time_end), 
     			      &time_end, NULL);
