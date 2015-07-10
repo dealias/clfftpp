@@ -114,7 +114,6 @@ int main(int argc, char *argv[]) {
     fft.create_cbuf(&outbuf);
   }
 
-
   std::string init_source ="\
 __kernel void init(__global double *X, \
 const unsigned int ny, const unsigned int nz)	\
@@ -293,7 +292,7 @@ const unsigned int ny, const unsigned int nz)	\
     			      CL_PROFILING_COMMAND_END,
     			      sizeof(time_end), 
     			      &time_end, NULL);
-      T[i] = 1e-6 * (time_end - time_start);
+      T[i] = 1e-9 * (time_end - time_start);
     }
     timings("fft timing", nx, T, N,stats);
     delete[] T;

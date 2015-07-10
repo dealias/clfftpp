@@ -243,7 +243,7 @@ __kernel void init(__global double *X)\n	\
     			      CL_PROFILING_COMMAND_END,
     			      sizeof(time_end), 
     			      &time_end, NULL);
-      T[i] = 1e-6 * (time_end - time_start);
+      T[i] = 1e-9 * (time_end - time_start);
     }
     timings("fft timing", nx, T, N,stats);
     delete[] T;
