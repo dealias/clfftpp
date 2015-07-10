@@ -54,12 +54,13 @@ def main(argv):
     outdir = "timing"
     N = 100
     gstring = "fft timing"
+    usegpu = True
     
     prearg = []
     postarg = []
     
     try:
-        opts, args = getopt.getopt(argv,"p:g:P:D:A:B:a:b:N:o:dh")
+        opts, args = getopt.getopt(argv,"p:g:G:P:D:A:B:a:b:N:o:dh")
     except getopt.GetoptError:
         print "error in parsing arguments."
         print usage
@@ -71,6 +72,8 @@ def main(argv):
             gstring = arg
         if opt in ("-P"):
             platformnum = int(arg)
+        if opt in ("-G"):
+            usegpu = int(arg) == 1
         if opt in ("-D"):
             devicenum = int(arg)
         if opt in ("-A"):
@@ -116,8 +119,9 @@ def main(argv):
         i += 1
     cmd0.append("./" + progname)
     cmd0.append("-N" + str(N))
-    cmd0.append("-P" + str(platformnum))
-    cmd0.append("-D" + str(devicenum))
+    if usegpu:
+        cmd0.append("-P" + str(platformnum))
+        cmd0.append("-D" + str(devicenum))
     print cmd0
 
     mstart = 2**a
