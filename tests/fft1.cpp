@@ -101,6 +101,7 @@ int main(int argc, char *argv[])
 
   // Create OpenCL kernel to initialize OpenCL buffer
   std::string init_source = "\
+#pragma OPENCL EXTENSION cl_khr_fp64: enable\n	\
 __kernel void init(__global double *X)\n	\
 {\n						\
   const int i = get_global_id(0);\n		\

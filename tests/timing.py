@@ -33,6 +33,7 @@ def main(argv):
     usage = '''Usage:
     \ntiming.py
     -p<string> program name
+    -g<string> regexp match in line before timing output
     -P<int> OpenCL platform number
     -D<int> OpenCL device number
     -A<string> Extra arguments before main call
@@ -52,12 +53,13 @@ def main(argv):
     b = 3
     outfile = ""
     N = 100
-
+    gstring = "fft timing"
+    
     prearg = []
     postarg = []
     
     try:
-        opts, args = getopt.getopt(argv,"p:P:D:A:B:a:b:N:o:dh")
+        opts, args = getopt.getopt(argv,"p:g:P:D:A:B:a:b:N:o:dh")
     except getopt.GetoptError:
         print "error in parsing arguments."
         print usage
@@ -65,6 +67,8 @@ def main(argv):
     for opt, arg in opts:
         if opt in ("-p"):
             progname = arg
+        if opt in ("-g"):
+            gstring = arg
         if opt in ("-P"):
             platformnum = int(arg)
         if opt in ("-D"):
@@ -139,7 +143,7 @@ def main(argv):
             out, err = p.communicate()
             
             if (prc == 0):
-                data = lineafter("fft timing", out)
+                data = lineafter(gstring,  out)
                 print "\t", data
                 with open(outfile, "a") as myfile:
                     myfile.write(data + "\n")
