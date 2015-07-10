@@ -51,7 +51,7 @@ def main(argv):
     devicenum = 0
     a = 1
     b = 3
-    outfile = ""
+    outdir = "timing"
     N = 100
     gstring = "fft timing"
     
@@ -84,7 +84,7 @@ def main(argv):
         if opt in ("-N"):
             N = int(arg)
         if opt in ("-o"):
-            outfile = arg
+            outdir = arg
         elif opt in ("-d"):
             dryrun = True
         elif opt in ("-h"):
@@ -98,11 +98,10 @@ def main(argv):
         print "please specify a program with -p"
         print usage
         sys.exit(2)
-
-    if outfile == "":
-        outfile = "timing/" + progname
-    else:
-        outfile = "timing/" + outfile
+        
+    if not os.path.exists(outdir):
+        os.makedirs(outdir)
+    outfile = outdir + "/" + progname
 
     print "Output in", outfile
         
