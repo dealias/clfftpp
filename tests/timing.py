@@ -109,7 +109,8 @@ def main(argv):
     print "Output in", outfile
         
     f = open(outfile, 'wb') # erase file
-    f.write("#FIXME: comments\n")
+    f.write("# command: timing.py " + " ".join(argv) +  "\n")
+    f.write("#m\tmean\tsigma-\tsigma+\n")
     f.close()
         
     cmd0 = []

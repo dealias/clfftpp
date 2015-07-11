@@ -115,6 +115,7 @@ int main(int argc, char *argv[]) {
   }
 
   std::string init_source ="\
+#pragma OPENCL EXTENSION cl_khr_fp64: enable\n	\
 __kernel void init(__global double *X, \
 const unsigned int ny, const unsigned int nz)	\
 {						\
