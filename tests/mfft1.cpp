@@ -128,6 +128,22 @@ int main(int argc, char *argv[]) {
     fft.create_cbuf(&outbuf);
   }
   
+   std::string init_source ="\
+#pragma OPENCL EXTENSION cl_khr_fp64: enable\n	\
+__kernel void init(__global double *X, const unsigned int nx)		\
+{						\
+  const int m = get_global_id(0);		\
+  const int i = get_global_id(1);		\
+  int pos = m * nx + i;				\
+  X[2 * pos] = i;				\
+  X[2 * pos + 1] = 0.0;				\
+}";
+  cl_program initprog = create_program(init_source, ctx);
+  build_program(initprog, device);
+  cl_kernel initkernel = create_kernel(initprog, "init"); 
+  set_kernel_arg(initkernel, 0, sizeof(cl_mem), &inbuf);
+  set_kernel_arg(initkernel, 1, sizeof(unsigned int), &nx);
+
   std::cout << "Allocating " 
   	    << 2 * fft.ncomplex() 
   	    << " doubles." << std::endl;
@@ -141,34 +157,36 @@ int main(int argc, char *argv[]) {
   else
     std::cout << X[0] << std::endl;
  
-  cl_event r2c_event = clCreateUserEvent(ctx, NULL);
-  cl_event c2r_event = clCreateUserEvent(ctx, NULL);
-  cl_event forward_event = clCreateUserEvent(ctx, NULL);
-  cl_event backward_event = clCreateUserEvent(ctx, NULL);
+  cl_event clv_init = clCreateUserEvent(ctx, NULL);
+  cl_event clv_toram = clCreateUserEvent(ctx, NULL);
+  cl_event clv_forward = clCreateUserEvent(ctx, NULL);
+  cl_event clv_backward = clCreateUserEvent(ctx, NULL);
   if(N == 0) {
-    fft.ram_to_cbuf(X, &inbuf, 0, NULL, &r2c_event);
-    if(inplace) {
-      fft.forward(&inbuf, NULL, 1, &r2c_event, &forward_event);
-      fft.cbuf_to_ram(FX, &inbuf, 1, &forward_event, &r2c_event);
-    } else {
-      fft.forward(&inbuf, &outbuf, 1, &r2c_event, &forward_event);
-      fft.cbuf_to_ram(FX, &outbuf, 1, &forward_event, &r2c_event);
-    }
-    clWaitForEvents(1, &r2c_event);
+    //fft.ram_to_cbuf(X, &inbuf, 0, NULL, &r2c_event);
+
+    size_t global_wsize[] = {M, nx};
+    clEnqueueNDRangeKernel(queue,
+			   initkernel,
+			   2, // cl_uint work_dim,
+			   NULL, // global_work_offset,
+			   global_wsize, // global_work_size, 
+			   NULL, // size_t *local_work_size, 
+			   0, NULL, &clv_init);
+    fft.forward(&inbuf, inplace ? NULL : &outbuf, 1, &clv_init, &clv_forward);
+    fft.cbuf_to_ram(FX, inplace ? &inbuf : &outbuf, 
+		    1, &clv_forward, &clv_toram);
+    clWaitForEvents(1, &clv_toram);
 
     std::cout << "\nTransformed:" << std::endl;
     if(nx <= maxout)
       show1C(FX, nx, M);
     else
       std::cout << FX[0] << std::endl;
-    
-    if(inplace) {
-      fft.backward(&inbuf, NULL, 1, &forward_event, &backward_event);
-    } else {
-      fft.backward(&outbuf, &inbuf, 1, &forward_event, &backward_event);
-    }
-    fft.cbuf_to_ram(X, &inbuf, 1, &backward_event, &c2r_event);
-    clWaitForEvents(1, &c2r_event);
+
+    fft.backward(inplace ? &inbuf : &outbuf,
+		 inplace ? NULL : &inbuf, 1, &clv_forward, &clv_backward);
+    fft.cbuf_to_ram(X, &inbuf, 1, &clv_backward, &clv_toram);
+    clWaitForEvents(1, &clv_toram);
 
     std::cout << "\nTransformed back:" << std::endl;
     if(nx <= maxout)
@@ -233,6 +251,7 @@ int main(int argc, char *argv[]) {
     }
 
   } else {
+    /*
     double *T = new double[N];
   
     cl_ulong time_start, time_end;
@@ -261,6 +280,7 @@ int main(int argc, char *argv[]) {
     }
     timings("fft timing", nx, T, N,stats);
     delete[] T;
+    */
   }
 
   delete[] X;
