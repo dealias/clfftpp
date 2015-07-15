@@ -435,7 +435,7 @@ public:
       break;
     default:
       std::cerr << dim
-		<< "is an invalid dimension for clfft1::ncomplex"
+		<< " is an invalid dimension for clfft1::ncomplex"
 		<< std::endl;
       exit(1);
       return 0;
@@ -503,7 +503,7 @@ public:
       return ny;
     default:
       std::cerr << dim 
-		<< "is an invalid dimension for clfft2::ncomplex"
+		<< " is an invalid dimension for clfft2::ncomplex"
 		<< std::endl;
       exit(1);
     }
@@ -571,7 +571,7 @@ public:
       return nz;
     default:
       std::cerr << dim 
-		<< "is an invalid dimension for clfft2::ncomplex"
+		<< " is an invalid dimension for clfft2::ncomplex"
 		<< std::endl;
       exit(1);
     }
@@ -649,7 +649,7 @@ public:
       break;
     default:
       std::cerr << dim
-		<< "is an invalid dimension for clmfft1::ncomplex"
+		<< " is an invalid dimension for clmfft1::ncomplex"
 		<< std::endl;
       exit(1);
       return 0;
@@ -721,7 +721,7 @@ public:
       return 1 + nx / 2;
     default:
       std::cerr << dim 
-		<< "is an invalid dimension for clfft1r::ncomplex"
+		<< " is an invalid dimension for clfft1r::ncomplex"
 		<< std::endl;
       exit(1);
     }
@@ -736,7 +736,7 @@ public:
       return nx;
     default:
       std::cerr << dim 
-		<< "is an invalid dimension for clfft1r::nreal"
+		<< " is an invalid dimension for clfft1r::nreal"
 		<< std::endl;
       exit(1);
     }
@@ -823,7 +823,7 @@ public:
       return 1 + ny / 2;
     default:
       std::cerr << dim 
-		<< "is an invalid dimension for clfft2r::ncomplex"
+		<< " is an invalid dimension for clfft2r::ncomplex"
 		<< std::endl;
       exit(1);
     }
@@ -843,7 +843,7 @@ public:
       return ny;
     default:
       std::cerr << dim 
-		<< "is an invalid dimension for clfft2r::ncomplex"
+		<< " is an invalid dimension for clfft2r::ncomplex"
 		<< std::endl;
       exit(1);
     }
@@ -924,7 +924,7 @@ public:
       return 1 + nz / 2;
     default:
       std::cerr << dim 
-		<< "is an invalid dimension for clfft3r::ncomplex"
+		<< " is an invalid dimension for clfft3r::ncomplex"
 		<< std::endl;
       exit(1);
     }
@@ -946,7 +946,7 @@ public:
       return nz;
     default:
       std::cerr << dim 
-		<< "is an invalid dimension for clfft3r::nreal"
+		<< " is an invalid dimension for clfft3r::nreal"
 		<< std::endl;
       exit(1);
     }
@@ -1038,7 +1038,7 @@ public:
       return (1 + nx / 2);
     default:
       std::cerr << dim 
-		<< "is an invalid dimension for clmfft1r::ncomplex"
+		<< " is an invalid dimension for clmfft1r::ncomplex"
 		<< std::endl;
       exit(1);
     }
@@ -1056,7 +1056,7 @@ public:
       return nx;
     default:
       std::cerr << dim 
-		<< "is an invalid dimension for clmfft1r::nreal"
+		<< " is an invalid dimension for clmfft1r::nreal"
 		<< std::endl;
       exit(1);
     }

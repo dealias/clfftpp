@@ -43,7 +43,7 @@ LDFLAGS+=-L$(CLFFT_LIB_PATH)
 endif
 
 # The programs to be produced
-OUTPUT=fft1 fft2 fft1r fft2r fft3 fft3r
+OUTPUT=fft1 fft2 fft1r fft2r fft3 fft3r mfft1 mfft1r
 
 SRCS_CPP=clfft platform
 SRCS_C=clutils
@@ -68,6 +68,12 @@ fft3: $(OBJS) fft3.o
 	$(CXX) -o $@ $^ $(LDFLAGS)
 
 fft3r: $(OBJS) fft3r.o
+	$(CXX) -o $@ $^ $(LDFLAGS)
+
+mfft1: $(OBJS) mfft1.o
+	$(CXX) -o $@ $^ $(LDFLAGS)
+
+mfft1r: $(OBJS) mfft1r.o
 	$(CXX) -o $@ $^ $(LDFLAGS)
 
 .cpp.d:
