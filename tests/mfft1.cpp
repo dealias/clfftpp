@@ -162,8 +162,7 @@ __kernel void init(__global double *X, const unsigned int nx)		\
   cl_event clv_forward = clCreateUserEvent(ctx, NULL);
   cl_event clv_backward = clCreateUserEvent(ctx, NULL);
   if(N == 0) {
-    //fft.ram_to_cbuf(X, &inbuf, 0, NULL, &r2c_event);
-
+    //fft.ram_to_cbuf(X, &inbuf, 0, NULL, &clv_init);
     size_t global_wsize[] = {M, nx};
     clEnqueueNDRangeKernel(queue,
 			   initkernel,
@@ -251,28 +250,28 @@ __kernel void init(__global double *X, const unsigned int nx)		\
     }
 
   } else {
-    /*
     double *T = new double[N];
   
     cl_ulong time_start, time_end;
     for(unsigned int i = 0; i < N; i++) {
-      init(X, nx, M);
-      
-      fft.ram_to_cbuf(X, &inbuf, 0, NULL, &r2c_event);
-      if(inplace) {
-	fft.forward(&inbuf, NULL, 1, &r2c_event, &forward_event);
-	fft.cbuf_to_ram(FX, &inbuf, 1, &forward_event, &r2c_event);
-      } else {
-	fft.forward(&inbuf, &outbuf, 1, &r2c_event, &forward_event);
-	fft.cbuf_to_ram(FX, &outbuf, 1, &forward_event, &r2c_event);
-      }
-      clWaitForEvents(1, &r2c_event);
+      //init(X, nx, M);
+      //fft.ram_to_cbuf(X, &inbuf, 0, NULL, &clv_init);
+      size_t global_wsize[] = {M, nx};
+      clEnqueueNDRangeKernel(queue,
+			     initkernel,
+			     2, // cl_uint work_dim,
+			     NULL, // global_work_offset,
+			     global_wsize, // global_work_size, 
+			     NULL, // size_t *local_work_size, 
+			     0, NULL, &clv_init);
+      fft.forward(&inbuf, inplace ? NULL : &outbuf, 1, &clv_init, &clv_forward);
+      clWaitForEvents(1, &clv_forward);
 
-      clGetEventProfilingInfo(forward_event,
+      clGetEventProfilingInfo(clv_forward,
     			      CL_PROFILING_COMMAND_START,
     			      sizeof(time_start),
     			      &time_start, NULL);
-      clGetEventProfilingInfo(forward_event,
+      clGetEventProfilingInfo(clv_forward,
     			      CL_PROFILING_COMMAND_END,
     			      sizeof(time_end), 
     			      &time_end, NULL);
@@ -280,7 +279,6 @@ __kernel void init(__global double *X, const unsigned int nx)		\
     }
     timings("fft timing", nx, T, N,stats);
     delete[] T;
-    */
   }
 
   delete[] X;
