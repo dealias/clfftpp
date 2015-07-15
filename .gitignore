@@ -5,5 +5,9 @@ fft1
 fft2
 fft1r
 fft2r
+fft3r
+fft3r
+mfft1
+mfft1r
 *.gch
 wisdom3.txt
