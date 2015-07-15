@@ -4,17 +4,6 @@
 #include <iostream>
 #include "utils.hpp"
 
-template<class T>
-void init2R(T *X, unsigned int nx, unsigned int ny)
-{
-  for(unsigned int i = 0; i < nx; ++i) {
-    for(unsigned int j = 0; j < ny; ++j) {
-      unsigned int pos = i * ny + j; 
-      X[pos] = i * i + j;
-    }
-  }
-}
-
 int main() {
   int platnum = 0;
   int devnum = 0;
@@ -50,6 +39,21 @@ int main() {
     fft.create_cbuf(&outbuf);
   }
 
+  std::string init_source ="\
+#pragma OPENCL EXTENSION cl_khr_fp64: enable\n	\
+__kernel void init(__global double *X, const unsigned int ny)		\
+{						\
+  const int i = get_global_id(0);		\
+  const int j = get_global_id(1);		\
+  unsigned pos = i * ny + j;			\
+  X[pos] = i * i + j;				\
+}";
+  cl_program initprog = create_program(init_source, ctx);
+  build_program(initprog, device);
+  cl_kernel initkernel = create_kernel(initprog, "init"); 
+  set_kernel_arg(initkernel, 0, sizeof(cl_mem), &inbuf);
+  set_kernel_arg(initkernel, 1, sizeof(unsigned int), &ny);
+
   std::cout << "Allocating " 
 	    << (inplace ? 2 * fft.ncomplex() : fft.nreal())
 	    << " doubles for real." << std::endl;
@@ -60,40 +64,37 @@ int main() {
   double *Xout = new double[2 * fft.ncomplex()];
 
   // Create OpenCL events
-  cl_event r2c_event = clCreateUserEvent(ctx, NULL);
-  cl_event c2r_event = clCreateUserEvent(ctx, NULL);
-  cl_event forward_event = clCreateUserEvent(ctx, NULL);
-  cl_event backward_event = clCreateUserEvent(ctx, NULL);
+  cl_event clv_init = clCreateUserEvent(ctx, NULL);
+  cl_event clv_toram = clCreateUserEvent(ctx, NULL);
+  cl_event clv_forward = clCreateUserEvent(ctx, NULL);
+  cl_event clv_backward = clCreateUserEvent(ctx, NULL);
 
   std::cout << "\nInput:" << std::endl;
-  init2R(Xin, nx, ny);
+  size_t global_wsize[] = {nx, ny};
+  clEnqueueNDRangeKernel(queue,
+			 initkernel,
+			 2, // cl_uint work_dim,
+			 NULL, // global_work_offset,
+			 global_wsize, // global_work_size, 
+			 NULL, // size_t *local_work_size, 
+			 0, NULL, &clv_init);
+  fft.rbuf_to_ram(Xin, &inbuf, 1, &clv_init, &clv_toram);
   show2R(Xin, nx, ny);
-    
-  fft.ram_to_rbuf(Xin, &inbuf, 0, NULL, &r2c_event);
-  if(inplace) {
-    fft.forward(&inbuf, NULL, 1, &r2c_event, &forward_event);
-    clWaitForEvents(1, &forward_event);
-    fft.cbuf_to_ram(Xout, &inbuf, 1, &forward_event, &c2r_event);
-  } else {
-    fft.forward(&inbuf, &outbuf, 1, &r2c_event, &forward_event);
-    fft.cbuf_to_ram(Xout, &outbuf, 1, &forward_event, &c2r_event);
-  }
-  clWaitForEvents(1, &c2r_event);
-    
+
   std::cout << "\nTransformed:" << std::endl;
+  fft.forward(&inbuf, inplace ? NULL : &outbuf, 1, &clv_init, &clv_forward);
+  fft.cbuf_to_ram(Xout, inplace ? &inbuf : &outbuf, 
+		  1, &clv_forward, &clv_toram);
+  clWaitForEvents(1, &clv_toram);
   show2H(Xout, fft.ncomplex(0), fft.ncomplex(1), inplace ? 1 : 0);
 
-  if(inplace) {
-    fft.backward(&inbuf, NULL, 1, &forward_event, &backward_event);
-    fft.cbuf_to_ram(Xin, &inbuf, 1, &backward_event, &c2r_event);
-  } else {
-    fft.backward(&outbuf, &inbuf, 1, &forward_event, &backward_event);
-    fft.rbuf_to_ram(Xin, &inbuf, 1, &backward_event, &c2r_event);
-  }
-  clWaitForEvents(1, &c2r_event);
-
   std::cout << "\nTransformed back:" << std::endl;
+  fft.backward(inplace ? &inbuf : &outbuf, 
+	       inplace ? NULL : &inbuf, 1, &clv_forward, &clv_backward);
+  fft.rbuf_to_ram(Xin, &inbuf, 1, &clv_backward, &clv_toram);
+  clWaitForEvents(1, &clv_toram);
   show2R(Xin, nx, ny);
+
   delete[] Xout;
   delete[] Xin;
   
