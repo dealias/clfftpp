@@ -6,15 +6,6 @@
 
 #include "utils.hpp"
 
-template<class T>
-void init(T *X, unsigned int n)
-{
-  for(unsigned int i = 0; i < n; ++i) {
-    X[2 * i] = i;
-    X[2 * i + 1] = 0.0;
-  }
-}
-
 int main() {
   int platnum = 0;
   int devnum = 0;
