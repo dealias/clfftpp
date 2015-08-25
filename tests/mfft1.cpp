@@ -30,7 +30,9 @@ int main(int argc, char *argv[]) {
   int devnum = 0;
   bool inplace = true;
   unsigned int nx = 4;
-  unsigned int M = 7;
+  unsigned int ny = 4;
+  unsigned int M = 4;
+  unsigned int n = 4;
   int instride = 0;
   int outstride = 0;
   int indist = 0;
@@ -43,7 +45,7 @@ int main(int argc, char *argv[]) {
   optind = 0;
 #endif
   for (;;) {
-    int c = getopt(argc,argv,"P:D:m:x:N:S:hi:M:s:t:d:e:");
+    int c = getopt(argc,argv,"P:D:m:x:y:N:S:hi:M:n:s:t:d:e:");
     if (c == -1) break;
     
     switch (c) {
@@ -56,11 +58,17 @@ int main(int argc, char *argv[]) {
     case 'x':
       nx = atoi(optarg);
       break;
+    case 'y':
+      ny = atoi(optarg);
+      break;
     case 'm':
-      nx = atoi(optarg);
+      nx = ny = atoi(optarg);
       break;
     case 'M':
       M = atoi(optarg);
+      break;
+    case 'n':
+      n = atoi(optarg);
       break;
     case 'N':
       N = atoi(optarg);
@@ -84,12 +92,12 @@ int main(int argc, char *argv[]) {
       outdist = atoi(optarg);
       break;
     case 'h':
-      usage(1, true);
+      usage(2, true);
       exit(0);
       break;
     default:
       std::cout << "Invalid option" << std::endl;
-      usage(1, true);
+      usage(2, true);
       exit(1);
     }
   }
@@ -103,7 +111,7 @@ int main(int argc, char *argv[]) {
   std::cout << "Using platform " << platnum
 	    << " device " << devnum 
 	    << "." << std::endl;
-
+  
   std::vector<std::vector<cl_device_id> > dev_ids;
   create_device_tree(dev_ids);
   cl_device_id device = dev_ids[platnum][devnum];
@@ -116,25 +124,33 @@ int main(int argc, char *argv[]) {
   cl_command_queue queue = create_queue(ctx, device,
 					CL_QUEUE_PROFILING_ENABLE);
   
-  clmfft1 fft(nx, M, instride, outstride, indist, outdist, inplace,
+  std::cout << n << std::endl;
+  std::cout << M << std::endl;
+  clmfft1 fft(n, M, instride, outstride, indist, outdist, inplace,
 	      queue, ctx);
 
+  std::cout << "Allocating " 
+  	    << 2 * nx * ny
+  	    << " doubles." << std::endl;
+  double *X = new double[2 * nx * ny];
+  double *FX = new double[2 * nx * ny];
+
   cl_mem inbuf, outbuf;
-  fft.create_cbuf(&inbuf);
+  fft.create_cbuf(&inbuf, nx * ny);
   if(inplace) {
     std::cout << "in-place transform" << std::endl;
   } else {
     std::cout << "out-of-place transform" << std::endl;
-    fft.create_cbuf(&outbuf);
+    fft.create_cbuf(&outbuf, n * M);
   }
   
-   std::string init_source ="\
+  std::string init_source ="\
 #pragma OPENCL EXTENSION cl_khr_fp64: enable\n	\
 __kernel void init(__global double *X, const unsigned int nx)		\
 {						\
-  const int m = get_global_id(0);		\
-  const int i = get_global_id(1);		\
-  int pos = m * nx + i;				\
+  const int i = get_global_id(0);		\
+  const int j = get_global_id(1);		\
+  int pos = j * nx + i;				\
   X[2 * pos] = i;				\
   X[2 * pos + 1] = 0.0;				\
 }";
@@ -144,16 +160,10 @@ __kernel void init(__global double *X, const unsigned int nx)		\
   set_kernel_arg(initkernel, 0, sizeof(cl_mem), &inbuf);
   set_kernel_arg(initkernel, 1, sizeof(unsigned int), &nx);
 
-  std::cout << "Allocating " 
-  	    << 2 * fft.ncomplex() 
-  	    << " doubles." << std::endl;
-  double *X = new double[2 * fft.ncomplex()];
-  double *FX = new double[2 * fft.ncomplex()];
-
   std::cout << "\nInput:" << std::endl;
-  init(X, nx, M);
+  init(X, nx, ny);
   if(nx <= maxout)
-    show1C(X, nx, M);
+    show2C(X, nx, ny);
   else
     std::cout << X[0] << std::endl;
  
@@ -163,7 +173,7 @@ __kernel void init(__global double *X, const unsigned int nx)		\
   cl_event clv_backward = clCreateUserEvent(ctx, NULL);
   if(N == 0) {
     //fft.ram_to_cbuf(X, &inbuf, 0, NULL, &clv_init);
-    size_t global_wsize[] = {M, nx};
+    size_t global_wsize[] = {nx, ny};
     clEnqueueNDRangeKernel(queue,
 			   initkernel,
 			   2, // cl_uint work_dim,
@@ -172,13 +182,13 @@ __kernel void init(__global double *X, const unsigned int nx)		\
 			   NULL, // size_t *local_work_size, 
 			   0, NULL, &clv_init);
     fft.forward(&inbuf, inplace ? NULL : &outbuf, 1, &clv_init, &clv_forward);
-    fft.cbuf_to_ram(FX, inplace ? &inbuf : &outbuf, 
+    fft.buf_to_ram(FX, inplace ? &inbuf : &outbuf, n * M * sizeof(double), 
 		    1, &clv_forward, &clv_toram);
     clWaitForEvents(1, &clv_toram);
 
     std::cout << "\nTransformed:" << std::endl;
     if(nx <= maxout)
-      show1C(FX, nx, M);
+      show1C(FX, nx, ny);
     else
       std::cout << FX[0] << std::endl;
 
@@ -189,7 +199,7 @@ __kernel void init(__global double *X, const unsigned int nx)		\
 
     std::cout << "\nTransformed back:" << std::endl;
     if(nx <= maxout)
-      show1C(X, nx, M);
+      show2C(X, nx, ny);
     else
       std::cout << X[0] << std::endl;
 
@@ -219,13 +229,20 @@ __kernel void init(__global double *X, const unsigned int nx)		\
     {
       // //fftw::maxthreads=get_max_threads();
       size_t align = sizeof(Complex);
-      Array::array2<Complex> f(M, nx, align);
-      fftwpp::mfft1d Forward(nx, -1, M, instride, indist, f);
-      fftwpp::mfft1d Backward(nx, 1, M, instride, indist, f);
+      Array::array2<Complex> f(nx, ny, align);
+      fftwpp::mfft1d Forward(n, -1, M, instride, indist, f);
+      fftwpp::mfft1d Backward(n, 1, M, instride, indist, f);
       double *df = (double *)f();
-      init(df, nx, M);
-      //show1C(df, nx, M);
+      init(df, nx, ny);
+      
+      std::cout << std::endl;
+      std::cout << "fftw++ input:" << std::endl;
+      show2C(df, nx, ny);
+
       Forward.fft(f);
+      std::cout << "fftw++ output:" << std::endl;
+      show2C(df, nx, ny);
+
       // //show1C(df, nx);
 
       double L2error = 0.0;

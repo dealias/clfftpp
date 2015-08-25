@@ -3,7 +3,7 @@
 
 #include <iostream>
 
-void usage(unsigned int dim, bool mfft = false) 
+void usage(unsigned int dim, bool mfft = false)
 {
   std::cout << "usage:\n"
 	    << "./clfft1 \n"
@@ -21,6 +21,7 @@ void usage(unsigned int dim, bool mfft = false)
 	    << "\t-S <int>\tStatistical measure to use\n";
   if(mfft) {
     std::cout << "\t-M <int>\tNumber of transforms\n"
+	      << "\t-n <int>\tLength of transforms\n"
 	      << "\t-s <int>\tInput stride\n"
 	      << "\t-t <int>\tOutput stride\n"
 	      << "\t-d <int>\tInput distance\n"

@@ -13,9 +13,10 @@ protected:
   clfftPlanHandle forward_plan, backward_plan;
   cl_context ctx;
   cl_command_queue queue;
-  size_t rbuf_size, cbuf_size, var_size;
+  size_t rbuf_size, cbuf_size;
   bool inplace, realtocomplex;
   clfftPrecision precision;
+  size_t realsize;
   cl_mem workmem;
 
   const char *clfft_errorstring(const cl_int err) {
@@ -79,6 +80,10 @@ protected:
 				precision);
     if(ret != CL_SUCCESS) std::cerr << clfft_errorstring(ret) << std::endl;
     assert(ret == CL_SUCCESS);
+    if(precision == CLFFT_DOUBLE)
+      realsize = sizeof(double);
+    if(precision == CLFFT_SINGLE)
+      realsize = sizeof(float);
   }
 
   void set_strides(clfftPlanHandle &plan, clfftDim dim,
@@ -159,10 +164,9 @@ protected:
   }
 
   void set_buf_size() {
-    var_size = (precision == CLFFT_DOUBLE) ? sizeof(double) : sizeof(float);
-    cbuf_size = ncomplex(-1) * 2 * var_size;
+    cbuf_size = ncomplex(-1) * 2 * realsize;
     if(realtocomplex) {
-      rbuf_size = inplace ? cbuf_size : nreal(-1) * var_size;
+      rbuf_size = inplace ? cbuf_size : nreal(-1) * realsize;
     } else {
       rbuf_size = 0;
     }
@@ -183,6 +187,7 @@ protected:
 public:
   clfft_base() :
     inplace(true), realtocomplex(false), precision(CLFFT_DOUBLE) {
+    realsize = sizeof(double);
     if(count_zero++ == 0)
       clfft_setup();
     //precision = CLFFT_SINGLE;
@@ -193,6 +198,7 @@ public:
 	     clfftPrecision precision = CLFFT_DOUBLE) :
     ctx(ctx), queue(queue), 
     inplace(inplace), realtocomplex(realtocomplex), precision(precision) {
+    realsize = (precision == CLFFT_DOUBLE) ? sizeof(double) : sizeof(float);
     if(count_zero++ == 0)
       clfft_setup();
   }
@@ -245,22 +251,25 @@ public:
   virtual const unsigned int nreal(const int dim) = 0;
   virtual const unsigned int ncomplex(const int dim) = 0;
 
-  void create_rbuf(cl_mem *buf) {
+  void create_rbuf(cl_mem *buf, const int nreal = 0) {
+    size_t n = (nreal == 0) ? rbuf_size : nreal * realsize;
     cl_int ret;
     *buf = clCreateBuffer(ctx,
 			  CL_MEM_READ_WRITE,
-			  rbuf_size,
+			  n,
 			  NULL,
 			  &ret);
     if(ret != CL_SUCCESS) std::cerr << clErrorString(ret) << std::endl;
     assert(ret == CL_SUCCESS);
   }
 
-  void create_cbuf(cl_mem *buf) {
+  void create_cbuf(cl_mem *buf, const int ncomp = 0) {
+    size_t n = (ncomp == 0) ? cbuf_size : 2 * ncomp * realsize;
+    std::cout << n << std::endl;
     cl_int ret;
     *buf = clCreateBuffer(ctx,
 			  CL_MEM_READ_WRITE,
-			  cbuf_size,
+			  n,
 			  NULL,
 			  &ret);
     if(ret != CL_SUCCESS) std::cerr << clErrorString(ret) << std::endl;
@@ -443,7 +452,7 @@ public:
   }
 
   virtual const size_t complex_buf_size() {
-    return nx * 2 * var_size;
+    return nx * 2 * realsize;
   }
 
 };
@@ -511,7 +520,7 @@ public:
   }
   
   virtual const unsigned int complex_buf_size(const int dim) {
-    return nx * ny * 2 * var_size;
+    return nx * ny * 2 * realsize;
   }
 };
 
@@ -579,7 +588,7 @@ public:
   }
 
   virtual const unsigned int complex_buf_size(const int dim) {
-    return nx * ny * nz * 2 * var_size;
+    return nx * ny * nz * 2 * realsize;
   }
 };
 
@@ -744,11 +753,11 @@ public:
   }
 
   size_t complex_buf_size() {
-    return  (1 + nx / 2) * 2 * var_size;
+    return  (1 + nx / 2) * 2 * realsize;
   }
 
   size_t real_buf_size() {
-    return nx * var_size;
+    return nx * realsize;
   }
 
 };

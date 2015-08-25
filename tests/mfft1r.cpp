@@ -14,14 +14,14 @@
 #include "fftw++.h"
 
 template<class T>
-void initR(T *X, const unsigned int nx, const unsigned int M, 
+void initR(T *X, const unsigned int nx, const unsigned int ny, 
 	   const unsigned int dist = 0)
 {
   int dist0 = dist == 0 ? nx : dist;
-  for(unsigned int m = 0; m < M; ++m) {
-    for(unsigned int i = 0; i < nx; ++i) {
-      int pos = m * dist0 + i;
-      X[pos] = i + 10 * m;
+  for(unsigned int i = 0; i < nx; ++i) {
+    for(unsigned int j = 0; j < ny; ++j) {
+      int pos = j * dist0 + i;
+      X[pos] = i + 10 * j;
     }
   }
 }
@@ -31,6 +31,8 @@ int main(int argc, char *argv[]) {
   int devnum = 0;
   bool inplace = false;
   unsigned int nx = 4;
+  unsigned int ny = 4;
+  unsigned int n = 4;
   unsigned int M = 4;
   int instride = 0;
   int outstride = 0;
@@ -44,7 +46,7 @@ int main(int argc, char *argv[]) {
   optind = 0;
 #endif
   for (;;) {
-    int c = getopt(argc,argv,"P:D:m:x:N:S:hi:M:s:t:d:e:");
+    int c = getopt(argc,argv,"P:D:m:x:y:N:S:hi:n:M:s:t:d:e:");
     if (c == -1) break;
     
     switch (c) {
@@ -57,11 +59,17 @@ int main(int argc, char *argv[]) {
     case 'x':
       nx = atoi(optarg);
       break;
+    case 'y':
+      ny = atoi(optarg);
+      break;
     case 'm':
-      nx = atoi(optarg);
+      nx = ny = atoi(optarg);
       break;
     case 'M':
       M = atoi(optarg);
+      break;
+    case 'n':
+      n = atoi(optarg);
       break;
     case 'N':
       N = atoi(optarg);
@@ -85,12 +93,12 @@ int main(int argc, char *argv[]) {
       outdist = atoi(optarg);
       break;
     case 'h':
-      usage(1, true);
+      usage(2, true);
       exit(0);
       break;
     default:
       std::cout << "Invalid option" << std::endl;
-      usage(1, true);
+      usage(2, true);
       exit(1);
     }
   }
@@ -116,7 +124,7 @@ int main(int argc, char *argv[]) {
   cl_context ctx = create_context(platform, device);
   cl_command_queue queue = create_queue(ctx, device, CL_QUEUE_PROFILING_ENABLE);
   
-  clmfft1r fft(nx, M, instride, outstride, indist, outdist, inplace, 
+  clmfft1r fft(n, M, instride, outstride, indist, outdist, inplace, 
 	       queue, ctx);
 
   std::cout << std::endl;
@@ -133,10 +141,10 @@ int main(int argc, char *argv[]) {
 #pragma OPENCL EXTENSION cl_khr_fp64: enable\n	\
 __kernel void init(__global double *X, const unsigned int nx)	\
 {						\
-  const int m = get_global_id(0);		\
-  const int i = get_global_id(1);		\
-  int pos = m * nx + i;			\
-  X[pos] = i + 10 * m;				\
+  const int i = get_global_id(0);		\
+  const int j = get_global_id(1);		\
+  int pos = j * nx + i;			\
+  X[pos] = i + 10 * j;				\
 }";
   cl_program initprog = create_program(init_source, ctx);
   build_program(initprog, device);
@@ -152,30 +160,23 @@ __kernel void init(__global double *X, const unsigned int nx)	\
   std::cout << "outdist: " << outdist << std::endl;
 
   std::cout << "\nAllocating " 
-  	    << fft.nreal() 
+  	    << nx * ny
   	    << " doubles for real." << std::endl;
-  double *X = new double[fft.nreal()];  
+  double *X = new double[nx * ny];  
+  int ncomplex = 2 * (nx / 2 + 1) * ny; // FIXME: allways correct?
   std::cout << "Allocating " 
-  	    << 2 * fft.ncomplex() 
+  	    << ncomplex
   	    << " doubles for complex." << std::endl;
-  double *FX = new double[2 * fft.ncomplex()];
-
-  std::cout << "\nInput:" << std::endl;
-  initR(X, nx, M);
-  if(nx <= maxout) {
-    //show1R(X, nx, M);
-    show1R(X, nx * M, 1);
-  } else {
-    std::cout << X[0] << std::endl;
-  } 
+  double *FX = new double[ncomplex];
 
   cl_event clv_init = clCreateUserEvent(ctx, NULL);
   cl_event clv_toram = clCreateUserEvent(ctx, NULL);
   cl_event clv_forward = clCreateUserEvent(ctx, NULL);
   cl_event clv_backward = clCreateUserEvent(ctx, NULL);
   if(N == 0) {
+    std::cout << "\nInput:" << std::endl;
     //fft.ram_to_rbuf(X, &inbuf, 0, NULL, &clv_init);
-    size_t global_wsize[] = {M, nx};
+    size_t global_wsize[] = {nx, ny};
     clEnqueueNDRangeKernel(queue,
 			   initkernel,
 			   2, // cl_uint work_dim,
@@ -183,6 +184,16 @@ __kernel void init(__global double *X, const unsigned int nx)	\
 			   global_wsize, // global_work_size, 
 			   NULL, // size_t *local_work_size, 
 			   0, NULL, &clv_init);
+    //initR(X, nx, M);
+    fft.rbuf_to_ram(X, &inbuf, 1, &clv_init, &clv_toram);
+    clWaitForEvents(1, &clv_toram);
+    if(nx <= maxout) {
+      show1R(X, nx, M);
+      //show1R(X, nx * M, 1);
+    } else {
+      std::cout << X[0] << std::endl;
+    } 
+
     fft.forward(&inbuf, inplace ? NULL : &outbuf, 1, &clv_init, &clv_forward);
     fft.cbuf_to_ram(FX, inplace ? &inbuf : &outbuf, 
 		    1, &clv_forward, &clv_toram);
@@ -190,7 +201,8 @@ __kernel void init(__global double *X, const unsigned int nx)	\
 
     std::cout << "\nTransformed:" << std::endl;
     if(nx <= maxout) {
-      show2C(FX, 1, M * (nx / 2 + 1));
+      //show2C(FX, 1, M * (nx / 2 + 1));
+      show2C(FX, M, nx / 2 + 1);
     } else {
       std::cout << FX[0] << std::endl;
     }    
@@ -202,8 +214,8 @@ __kernel void init(__global double *X, const unsigned int nx)	\
 
     std::cout << "\nTransformed back:" << std::endl;
     if(nx <= maxout) {
-      //show1R(X, nx, M);
-      show1R(X, nx * M, 1);
+      show1R(X, nx, M);
+      //show1R(X, nx * M, 1);
     } else {
       std::cout << X[0] << std::endl;
     }
@@ -234,16 +246,23 @@ __kernel void init(__global double *X, const unsigned int nx)	\
     {
       // //fftw::maxthreads=get_max_threads();
       size_t align = sizeof(Complex);
-      Array::array2<double> f(M, nx, align);
-      Array::array2<Complex> g(M, nx / 2 + 1, align);
-      fftwpp::mrcfft1d Forward(nx, M, instride, indist, f, g);
+      Array::array2<double> f(nx, ny, align);
+      Array::array2<Complex> g(nx, ny / 2 + 1, align);
+      fftwpp::mrcfft1d Forward(n, M, instride, indist, f, g);
       //fftwpp::mcrfft1d Backward(nx, M, outstride, outdist, g, f);
       double *df = (double *)f();
       double *dg = (double *)g();
-      initR(df, nx, M);
+      initR(df, nx, ny);
+
+      std::cout << std::endl;
+      std::cout << "fftw++ input:" << std::endl;
+      //show2C(dg, M, nx / 2 + 1);
+      std::cout << f << std::endl;
+
       Forward.fft(f, g);
 
-      show2C(dg, 1, M * (nx / 2 + 1));
+      std::cout << "fftw++ transformed:" << std::endl;
+      //show2C(dg, M, nx / 2 + 1);
       std::cout << g << std::endl;
 
       double L2error = 0.0;
@@ -261,7 +280,6 @@ __kernel void init(__global double *X, const unsigned int nx)	\
       }
       L2error = sqrt(L2error / (double) nx);
 
-      std::cout << std::endl;
       std::cout << "Error with respect to FFTW:"  << std::endl;
       std::cout << "L2 error: " << L2error << std::endl;
       std::cout << "max error: " << maxerror << std::endl;
