@@ -32,18 +32,19 @@ def lineafter(searchstring, output):
 def main(argv):
     usage = '''Usage:
     \ntiming.py
-    -p<string> program name
-    -g<string> regexp match in line before timing output
-    -P<int> OpenCL platform number
-    -D<int> OpenCL device number
-    -A<string> Extra arguments before main call
-    -B<int> Extra arguments after main call
-    -N<int> Number of tests
-    -a<int> log2 of minimum test size
-    -b<int> log2 of maximum test size
-    -o<string> Output filename
-    -d dry run
-    -h display usage
+    -p <string>\tprogram name
+    -g <string>\tregexp match in line before timing output
+    -P <int>\tOpenCL platform number
+    -D <int>\tOpenCL device number
+    -A <string>\tExtra arguments before main call
+    -B <int>\tExtra arguments after main call
+    -N <int>\tNumber of tests
+    -a <int>\tlog2 of minimum test size
+    -b <int>\tlog2 of maximum test size
+    -o <string>\tOutput directory (default: "times")
+    -f <string>\tOutput filename (default: program name)
+    -d\t\tdry run
+    -h\t\tdisplay usage
     '''
     dryrun = False
     progname = ""
@@ -51,16 +52,18 @@ def main(argv):
     devicenum = 0
     a = 1
     b = 3
-    outdir = "timing"
+    outdir = "times"
     N = 100
     gstring = "fft timing"
     usegpu = True
+    outfilename = ""
     
+
     prearg = []
     postarg = []
     
     try:
-        opts, args = getopt.getopt(argv,"p:g:G:P:D:A:B:a:b:N:o:dh")
+        opts, args = getopt.getopt(argv,"p:g:G:P:D:A:B:a:b:N:o:f:dh")
     except getopt.GetoptError:
         print "error in parsing arguments."
         print usage
@@ -88,6 +91,8 @@ def main(argv):
             N = int(arg)
         if opt in ("-o"):
             outdir = arg
+        if opt in ("-f"):
+            outfilename = arg
         elif opt in ("-d"):
             dryrun = True
         elif opt in ("-h"):
@@ -104,7 +109,11 @@ def main(argv):
         
     if not os.path.exists(outdir):
         os.makedirs(outdir)
-    outfile = outdir + "/" + progname
+    if outfilename == "":
+        outfilename = progname
+    outfile = outdir + "/" + outfilename
+    if not os.path.isdir(outdir): 
+        os.mkdir(outdir)
 
     print "Output in", outfile
         
