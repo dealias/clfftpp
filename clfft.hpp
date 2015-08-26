@@ -597,10 +597,8 @@ class clmfft1 : public clfft_base
 private: 
   unsigned int nx;
   unsigned int M;
-  unsigned int istride;
-  unsigned int ostride;
-  unsigned int idist;
-  unsigned int odist;
+  size_t istride, ostride;
+  size_t idist, odist;
 
   void setup() {
     set_buf_size();
@@ -619,9 +617,7 @@ private:
     set_data_layout(plan);
     set_batchsize(plan, M);
     
-    size_t istride_t = {istride};
-    size_t ostride_t = {ostride};
-    set_strides(plan, dim, &istride_t, &ostride_t);
+    set_strides(plan, dim, &istride, &ostride);
 
     set_dists(plan, dim, idist, odist);
     
@@ -967,8 +963,8 @@ class clmfft1r : public clfft_base
 private:
   unsigned int nx;
   unsigned int M;
-  unsigned int istride, ostride;
-  unsigned int idist, odist;
+  size_t istride, ostride;
+  size_t idist, odist;
 
   void setup() {
     realtocomplex = true;

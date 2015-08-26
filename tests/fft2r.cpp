@@ -36,6 +36,8 @@ int main(int argc, char *argv[]) {
 
   unsigned int maxout = 32; // maximum size of array output in entirety
 
+  int error = 0;
+
 #ifdef __GNUC__	
   optind = 0;
 #endif	
@@ -202,7 +204,14 @@ __kernel void init(__global double *X, const unsigned int ny)		\
       std::cout << "Round-trip error:"  << std::endl;
       std::cout << "L2 error: " << L2error << std::endl;
       std::cout << "max error: " << maxerror << std::endl;
-    } 
+
+      if(L2error < 1e-14 && maxerror < 1e-14) 
+	std::cout << "\nResults ok!" << std::endl;
+      else {
+	std::cout << "\nERROR: results diverge!" << std::endl;
+	error += 1;
+      }
+    }
 
     // Compute the error with respect to FFTW
     {
@@ -246,6 +255,13 @@ __kernel void init(__global double *X, const unsigned int ny)		\
       std::cout << "Error with respect to FFTW:"  << std::endl;
       std::cout << "L2 error: " << L2error << std::endl;
       std::cout << "max error: " << maxerror << std::endl;
+
+      if(L2error < 1e-14 && maxerror < 1e-14) 
+	std::cout << "\nResults ok!" << std::endl;
+      else {
+	std::cout << "\nERROR: results diverge!" << std::endl;
+	error += 1;
+      }
     }
 
   } else {
@@ -289,6 +305,6 @@ __kernel void init(__global double *X, const unsigned int ny)		\
   clReleaseCommandQueue(queue);
   clReleaseContext(ctx);
 
-  return 0;
+  return error;
 }
   

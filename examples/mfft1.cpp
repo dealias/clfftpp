@@ -8,12 +8,25 @@ int main() {
   int platnum = 0;
   int devnum = 0;
   bool inplace = true;
+
+  // Input buffer size
   unsigned int nx = 4;
-  unsigned int M = 4;
-  int instride = 1;
-  int outstride = 1;
-  int indist = nx;
-  int outdist = nx;
+  unsigned int ny = 4;
+
+  unsigned int n = 4; // length of transform
+  unsigned int M = 4; // number of transforms in batch
+
+  // transform in second index
+  // size_t istride = 1;
+  // size_t ostride = 1;
+  // size_t idist = nx;
+  // size_t odist = nx;
+
+  // transform in first index
+  size_t istride = nx;
+  size_t ostride = nx;
+  size_t idist = 1;
+  size_t odist = 1;
 
   show_devices();
   std::cout << "Using platform " << platnum
@@ -31,8 +44,7 @@ int main() {
   cl_context ctx = create_context(platform, device);
   cl_command_queue queue = create_queue(ctx, device, CL_QUEUE_PROFILING_ENABLE);
   
-  clmfft1 fft(nx, M, instride, outstride, indist, outdist, inplace,
-	      queue, ctx);
+  clmfft1 fft(n, M, istride, ostride, idist, odist, inplace, queue, ctx);
 
   cl_mem inbuf, outbuf;
   fft.create_cbuf(&inbuf);
@@ -47,11 +59,11 @@ int main() {
 #pragma OPENCL EXTENSION cl_khr_fp64: enable\n	\
 __kernel void init(__global double *X, const unsigned int nx)		\
 {						\
-  const int m = get_global_id(0);		\
+  const int j = get_global_id(0);		\
   const int i = get_global_id(1);		\
-  int pos = m * nx + i;				\
+  int pos = j * nx + i;				\
   X[2 * pos] = i;				\
-  X[2 * pos + 1] = 0.0;				\
+  X[2 * pos + 1] = j;				\
 }";
   cl_program initprog = create_program(init_source, ctx);
   build_program(initprog, device);
@@ -62,8 +74,8 @@ __kernel void init(__global double *X, const unsigned int nx)		\
   std::cout << "Allocating " 
 	    << fft.ncomplex() 
 	    << " doubles." << std::endl;
-  double *X = new double[2 * fft.ncomplex()];
-  double *Xout = new double[2 * fft.ncomplex()];
+  double *Xin = new double[2 * nx * ny];
+  double *Xout = new double[2 * n * M];
 
   cl_event clv_init = clCreateUserEvent(ctx, NULL);
   cl_event clv_toram = clCreateUserEvent(ctx, NULL);
@@ -71,7 +83,7 @@ __kernel void init(__global double *X, const unsigned int nx)		\
   cl_event clv_backward = clCreateUserEvent(ctx, NULL);
 
   std::cout << "\nInput:" << std::endl;
-  size_t global_wsize[] = {nx, M};
+  size_t global_wsize[] = {nx, ny};
   clEnqueueNDRangeKernel(queue,
 			 initkernel,
 			 2, // cl_uint work_dim,
@@ -79,25 +91,28 @@ __kernel void init(__global double *X, const unsigned int nx)		\
 			 global_wsize, // global_work_size, 
 			 NULL, // size_t *local_work_size, 
 			 0, NULL, &clv_init);
-  fft.cbuf_to_ram(X, &inbuf, 1, &clv_init, &clv_toram);
+  fft.buf_to_ram(Xin, &inbuf, 2 * nx * ny * sizeof(double),
+		 1, &clv_init, &clv_toram);
   clWaitForEvents(1, &clv_toram);
-  show2C(X, nx, M);
+  show2C(Xin, nx, M);
 
   std::cout << "\nTransformed:" << std::endl;
   fft.forward(&inbuf, inplace ? NULL : &outbuf, 1, &clv_init, &clv_forward);    
-  fft.cbuf_to_ram(Xout, inplace ? &inbuf : &outbuf, 
-		  1, &clv_forward, &clv_toram);
+  fft.buf_to_ram(Xout,  inplace ? &inbuf : &outbuf, 
+		 2 * n * M * sizeof(double),
+		 1, &clv_init, &clv_toram);
   clWaitForEvents(1, &clv_toram);
-  show2C(Xout, nx, M);
+  show2C(Xout, n, M);
 
   std::cout << "\nTransformed back:" << std::endl;
   fft.backward(inplace ? &inbuf : &outbuf, 
 	       inplace ? NULL : &inbuf, 1, &clv_forward, &clv_backward);
-  fft.cbuf_to_ram(X, &inbuf, 1, &clv_backward, &clv_toram);
+  fft.cbuf_to_ram(Xin, &inbuf, 1, &clv_backward, &clv_toram);
   clWaitForEvents(1, &clv_toram);
-  show2C(X, nx, M);
+  show2C(Xin, nx, M);
   
-  delete X;
+  delete Xin;
+  delete Xout;
 
   /* Release OpenCL working objects. */
   clReleaseCommandQueue(queue);

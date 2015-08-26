@@ -44,6 +44,8 @@ int main(int argc, char *argv[]) {
 
   unsigned int stats = 0; // Type of statistics used in timing test.
 
+  int error = 0;
+
 #ifdef __GNUC__	
   optind=0;
 #endif	
@@ -209,6 +211,13 @@ const unsigned int ny, const unsigned int nz)\n	\
       std::cout << "Round-trip error:"  << std::endl;
       std::cout << "L2 error: " << L2error << std::endl;
       std::cout << "max error: " << maxerror << std::endl;
+
+      if(L2error < 1e-14 && maxerror < 1e-14) 
+	std::cout << "\nResults ok!" << std::endl;
+      else {
+	std::cout << "\nERROR: results diverge!" << std::endl;
+	error += 1;
+      }
     }
 
     // Compute the error with respect to FFTW
@@ -239,6 +248,13 @@ const unsigned int ny, const unsigned int nz)\n	\
       std::cout << "Error with respect to FFTW:"  << std::endl;
       std::cout << "L2 error: " << L2error << std::endl;
       std::cout << "max error: " << maxerror << std::endl;
+
+      if(L2error < 1e-14 && maxerror < 1e-14) 
+	std::cout << "\nResults ok!" << std::endl;
+      else {
+	std::cout << "\nERROR: results diverge!" << std::endl;
+	error += 1;
+      }
     }
 
   } else { // Perform timing tests.
@@ -281,6 +297,6 @@ const unsigned int ny, const unsigned int nz)\n	\
   clReleaseCommandQueue(queue);
   clReleaseContext(ctx);
 
-  return 0;
+  return error;
 }
   

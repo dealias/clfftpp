@@ -41,6 +41,8 @@ int main(int argc, char *argv[]) {
   unsigned int stats = 0; // Type of statistics used in timing test.
   unsigned int maxout = 32; // maximum size of array output in entierety
 
+  int error = 0;
+
 #ifdef __GNUC__	
   optind = 0;
 #endif
@@ -189,7 +191,7 @@ __kernel void init(__global double *X, const unsigned int nx)		\
 			   NULL, // size_t *local_work_size, 
 			   0, NULL, &clv_init);
     fft.forward(&inbuf, inplace ? NULL : &outbuf, 1, &clv_init, &clv_forward);
-    fft.buf_to_ram(FX, inplace ? &inbuf : &outbuf, n * M * sizeof(double), 
+    fft.buf_to_ram(FX, inplace ? &inbuf : &outbuf, 2 * n * M * sizeof(double), 
 		    1, &clv_forward, &clv_toram);
     clWaitForEvents(1, &clv_toram);
 
@@ -230,6 +232,13 @@ __kernel void init(__global double *X, const unsigned int nx)		\
       std::cout << "Round-trip error:"  << std::endl;
       std::cout << "L2 error: " << L2error << std::endl;
       std::cout << "max error: " << maxerror << std::endl;
+
+      if(L2error < 1e-15 && maxerror < 1e-15) 
+	std::cout << "\nResults ok!" << std::endl;
+      else {
+	std::cout << "\nERROR: results diverge!" << std::endl;
+	error += 1;
+      }
     }
     
     // Compute the error with respect to FFTW
@@ -250,8 +259,6 @@ __kernel void init(__global double *X, const unsigned int nx)		\
       std::cout << "fftw++ output:" << std::endl;
       show2C(df, nx, ny);
 
-      // //show1C(df, nx);
-
       double L2error = 0.0;
       double maxerror = 0.0;
       for(unsigned int m = 0; m < M; ++m) {
@@ -271,8 +278,14 @@ __kernel void init(__global double *X, const unsigned int nx)		\
       std::cout << "Error with respect to FFTW:"  << std::endl;
       std::cout << "L2 error: " << L2error << std::endl;
       std::cout << "max error: " << maxerror << std::endl;
-    }
 
+      if(L2error < 1e-15 && maxerror < 1e-15) 
+	std::cout << "\nResults ok!" << std::endl;
+      else {
+	std::cout << "\nERROR: results diverge!" << std::endl;
+	error += 1;
+      }
+    }
   } else {
     double *T = new double[N];
   
@@ -309,6 +322,6 @@ __kernel void init(__global double *X, const unsigned int nx)		\
   clReleaseCommandQueue(queue);
   clReleaseContext(ctx);
 
-  return 0;
+  return error;
 }
   
