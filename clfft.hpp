@@ -265,7 +265,6 @@ public:
 
   void create_cbuf(cl_mem *buf, const int ncomp = 0) {
     size_t n = (ncomp == 0) ? cbuf_size : 2 * ncomp * realsize;
-    std::cout << n << std::endl;
     cl_int ret;
     *buf = clCreateBuffer(ctx,
 			  CL_MEM_READ_WRITE,

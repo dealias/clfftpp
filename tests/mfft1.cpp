@@ -124,8 +124,15 @@ int main(int argc, char *argv[]) {
   cl_command_queue queue = create_queue(ctx, device,
 					CL_QUEUE_PROFILING_ENABLE);
   
-  std::cout << n << std::endl;
-  std::cout << M << std::endl;
+  std::cout << "n: " << n << std::endl;
+  std::cout << "M: " << M << std::endl;
+  std::cout << "nx: " << nx << std::endl;
+  std::cout << "ny: " << ny << std::endl;
+  std::cout << "instride: " << instride << std::endl;
+  std::cout << "indist: " << indist << std::endl;
+  std::cout << "outstride: " << outstride << std::endl;
+  std::cout << "outdist: " << outdist << std::endl;
+  std::cout << "ny: " << ny << std::endl;
   clmfft1 fft(n, M, instride, outstride, indist, outdist, inplace,
 	      queue, ctx);
 

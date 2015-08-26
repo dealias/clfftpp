@@ -163,8 +163,9 @@ __kernel void init(__global double *X, const unsigned int nx)	\
   	    << nx * ny
   	    << " doubles for real." << std::endl;
   double *X = new double[nx * ny];  
-  int ncomplex = 2 * (nx / 2 + 1) * ny; // FIXME: allways correct?
-  std::cout << "Allocating " 
+  int np = (n / 2 + 1);
+  int ncomplex = 2 * np * M;
+  std::cout << "Allocating "
   	    << ncomplex
   	    << " doubles for complex." << std::endl;
   double *FX = new double[ncomplex];
@@ -175,6 +176,7 @@ __kernel void init(__global double *X, const unsigned int nx)	\
   cl_event clv_backward = clCreateUserEvent(ctx, NULL);
   if(N == 0) {
     std::cout << "\nInput:" << std::endl;
+    //initR(X, nx, M);
     //fft.ram_to_rbuf(X, &inbuf, 0, NULL, &clv_init);
     size_t global_wsize[] = {nx, ny};
     clEnqueueNDRangeKernel(queue,
@@ -184,15 +186,12 @@ __kernel void init(__global double *X, const unsigned int nx)	\
 			   global_wsize, // global_work_size, 
 			   NULL, // size_t *local_work_size, 
 			   0, NULL, &clv_init);
-    //initR(X, nx, M);
     fft.rbuf_to_ram(X, &inbuf, 1, &clv_init, &clv_toram);
     clWaitForEvents(1, &clv_toram);
-    if(nx <= maxout) {
-      show1R(X, nx, M);
-      //show1R(X, nx * M, 1);
-    } else {
+    if(nx <= maxout)
+      show1R(X, nx, ny);
+    else
       std::cout << X[0] << std::endl;
-    } 
 
     fft.forward(&inbuf, inplace ? NULL : &outbuf, 1, &clv_init, &clv_forward);
     fft.cbuf_to_ram(FX, inplace ? &inbuf : &outbuf, 
@@ -201,8 +200,13 @@ __kernel void init(__global double *X, const unsigned int nx)	\
 
     std::cout << "\nTransformed:" << std::endl;
     if(nx <= maxout) {
-      //show2C(FX, 1, M * (nx / 2 + 1));
-      show2C(FX, M, nx / 2 + 1);
+      if(instride == 1 && outstride == 1) {
+	show2C(FX, M, np);
+      } else if (instride == (int)nx && outstride == (int)ny) {
+	show2C(FX, np, M);
+      } else {
+	show2C(FX, np * M, 1);
+      }
     } else {
       std::cout << FX[0] << std::endl;
     }    
@@ -214,8 +218,7 @@ __kernel void init(__global double *X, const unsigned int nx)	\
 
     std::cout << "\nTransformed back:" << std::endl;
     if(nx <= maxout) {
-      show1R(X, nx, M);
-      //show1R(X, nx * M, 1);
+      show1R(X, n, M);
     } else {
       std::cout << X[0] << std::endl;
     }
@@ -244,26 +247,30 @@ __kernel void init(__global double *X, const unsigned int nx)	\
     
     // Compute the error with respect to FFTW
     {
-      // //fftw::maxthreads=get_max_threads();
+      // fftw::maxthreads=get_max_threads();
       size_t align = sizeof(Complex);
       Array::array2<double> f(nx, ny, align);
       Array::array2<Complex> g(nx, ny / 2 + 1, align);
       fftwpp::mrcfft1d Forward(n, M, instride, indist, f, g);
-      //fftwpp::mcrfft1d Backward(nx, M, outstride, outdist, g, f);
       double *df = (double *)f();
       double *dg = (double *)g();
       initR(df, nx, ny);
 
       std::cout << std::endl;
       std::cout << "fftw++ input:" << std::endl;
-      //show2C(dg, M, nx / 2 + 1);
       std::cout << f << std::endl;
 
       Forward.fft(f, g);
 
       std::cout << "fftw++ transformed:" << std::endl;
-      //show2C(dg, M, nx / 2 + 1);
-      std::cout << g << std::endl;
+      if(instride == 1 && outstride == 1) {
+	show2C(dg, M, np);
+      } else if (instride == (int)nx && outstride == (int)ny) {
+	show2C(dg, np, M);
+      } else {
+	show2C(dg, np * M, 1);
+      }
+      //std::cout << g << std::endl;
 
       double L2error = 0.0;
       double maxerror = 0.0;
@@ -290,8 +297,8 @@ __kernel void init(__global double *X, const unsigned int nx)	\
   
     cl_ulong time_start, time_end;
     for(unsigned int i = 0; i < N; i++) {
-      //initR(X, nx, M);
-      //fft.ram_to_cbuf(X, &inbuf, 0, NULL, &clv_init);
+      // initR(X, nx, M);
+      // fft.ram_to_cbuf(X, &inbuf, 0, NULL, &clv_init);
       size_t global_wsize[] = {M, nx};
       clEnqueueNDRangeKernel(queue,
 			     initkernel,
