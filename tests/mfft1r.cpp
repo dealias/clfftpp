@@ -32,8 +32,8 @@ int main(int argc, char *argv[]) {
   bool inplace = false;
   unsigned int nx = 4;
   unsigned int ny = 4;
-  unsigned int n = 4;
-  unsigned int M = 4;
+  unsigned int n = 0;
+  unsigned int M = 0;
   int instride = 0;
   int outstride = 0;
   int indist = 0;
@@ -109,6 +109,9 @@ int main(int argc, char *argv[]) {
   if(outstride == 0) outstride = 1;
   if(indist == 0) indist = nx;
   if(outdist == 0) outdist = nx / 2 + 1;
+
+  if(n == 0) n = ny;
+  if(M == 0) M = nx;
 
   show_devices();
   std::cout << "Using platform " << platnum
