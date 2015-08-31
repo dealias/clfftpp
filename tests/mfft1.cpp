@@ -13,18 +13,6 @@
 #include "Complex.h"
 #include "fftw++.h"
 
-template<class T>
-void init(T *X, const unsigned int nx, const unsigned int M)
-{
-  for(unsigned int m = 0; m < M; ++m) {
-    for(unsigned int i = 0; i < nx; ++i) {
-      int pos = m * nx + i; 
-      X[2 * pos] = i;
-      X[2 * pos + 1] = 0.0;
-    }
-  }
-}
-
 int main(int argc, char *argv[]) {
   int platnum = 0;
   int devnum = 0;
@@ -41,13 +29,15 @@ int main(int argc, char *argv[]) {
   unsigned int stats = 0; // Type of statistics used in timing test.
   unsigned int maxout = 32; // maximum size of array output in entierety
 
+  unsigned int direction = 1;
+
   int error = 0;
 
 #ifdef __GNUC__	
   optind = 0;
 #endif
   for (;;) {
-    int c = getopt(argc,argv,"P:D:m:x:y:N:S:hi:M:n:s:t:d:e:");
+    int c = getopt(argc,argv,"P:D:m:x:y:N:S:hi:M:n:s:t:d:e:g:");
     if (c == -1) break;
     
     switch (c) {
@@ -93,6 +83,9 @@ int main(int argc, char *argv[]) {
     case 'e':
       outdist = atoi(optarg);
       break;
+    case 'g':
+      direction = atoi(optarg);
+      break;
     case 'h':
       usage(2, true);
       exit(0);
@@ -109,8 +102,33 @@ int main(int argc, char *argv[]) {
   if(indist == 0) indist = nx;
   if(outdist == 0) outdist = nx;
 
-  if(n == 0) n = ny;
-  if(M == 0) M = nx;
+  if(n == 0 && M == 0) {
+    switch(direction) {
+    case 0:
+      M = ny;
+      n = nx;
+      instride = nx;
+      outstride = nx;
+      indist = 1;
+      outdist = 1;
+      break;
+    case 1:
+      M = nx;
+      n = ny;
+      instride = 1;
+      outstride = 1;
+      indist = ny;
+      outdist = ny;
+      break;
+    default:
+      n = ny;
+      M = nx;
+      instride = 1;
+      outstride = 1;
+      indist = ny;
+      outdist = ny;
+    }
+  }
 
   show_devices();
   std::cout << "Using platform " << platnum
@@ -162,31 +180,42 @@ __kernel void init(__global double *X, const unsigned int nx)		\
 {						\
   const int i = get_global_id(0);		\
   const int j = get_global_id(1);		\
-  int pos = j * nx + i;				\
+  int pos = i * nx + j;				\
   X[2 * pos] = i;				\
-  X[2 * pos + 1] = 0.0;				\
+  X[2 * pos + 1] = j;				\
 }";
+  size_t global_wsize[] = {nx, ny};
   cl_program initprog = create_program(init_source, ctx);
   build_program(initprog, device);
   cl_kernel initkernel = create_kernel(initprog, "init"); 
   set_kernel_arg(initkernel, 0, sizeof(cl_mem), &inbuf);
   set_kernel_arg(initkernel, 1, sizeof(unsigned int), &nx);
 
-  std::cout << "\nInput:" << std::endl;
-  init(X, nx, ny);
-  if(nx <= maxout)
-    show2C(X, nx, ny);
-  else
-    std::cout << X[0] << std::endl;
- 
   cl_event clv_init = clCreateUserEvent(ctx, NULL);
   cl_event clv_toram = clCreateUserEvent(ctx, NULL);
   cl_event clv_forward = clCreateUserEvent(ctx, NULL);
   cl_event clv_backward = clCreateUserEvent(ctx, NULL);
 
+  std::cout << "\nInput:" << std::endl;
+  clEnqueueNDRangeKernel(queue,
+			 initkernel,
+			 2, // cl_uint work_dim,
+			 NULL, // global_work_offset,
+			 global_wsize, // global_work_size, 
+			 NULL, // size_t *local_work_size, 
+			 0, NULL, &clv_init);
+  fft.buf_to_ram(X, &inbuf, 2 * n * M * sizeof(double), 
+		 1, &clv_init, &clv_toram);
+  clWaitForEvents(1, &clv_toram);
+
+  if(nx <= maxout)
+    show2C(X, nx, ny);
+  else
+    std::cout << X[0] << std::endl;
+ 
+
   if(N == 0) {
     //fft.ram_to_cbuf(X, &inbuf, 0, NULL, &clv_init);
-    size_t global_wsize[] = {nx, ny};
     clEnqueueNDRangeKernel(queue,
 			   initkernel,
 			   2, // cl_uint work_dim,
@@ -222,7 +251,17 @@ __kernel void init(__global double *X, const unsigned int nx)		\
     // Compute the round-trip error.
     {
       double *X0 = new double[2 * fft.ncomplex()];
-      init(X0, nx, M);
+      clEnqueueNDRangeKernel(queue,
+			     initkernel,
+			     2, // cl_uint work_dim,
+			     NULL, // global_work_offset,
+			     global_wsize, // global_work_size, 
+			     NULL, // size_t *local_work_size, 
+			     0, NULL, &clv_init);
+      fft.buf_to_ram(X0, &inbuf, 2 * n * M * sizeof(double), 
+		     1, &clv_init, &clv_toram);
+      clWaitForEvents(1, &clv_toram);
+      
       double L2error = 0.0;
       double maxerror = 0.0;
       for(unsigned int i = 0; i < nx; ++i) {
@@ -256,7 +295,18 @@ __kernel void init(__global double *X, const unsigned int nx)		\
       fftwpp::mfft1d Forward(n, -1, M, instride, indist, f);
       fftwpp::mfft1d Backward(n, 1, M, instride, indist, f);
       double *df = (double *)f();
-      init(df, nx, ny);
+
+      clEnqueueNDRangeKernel(queue,
+			     initkernel,
+			     2, // cl_uint work_dim,
+			     NULL, // global_work_offset,
+			     global_wsize, // global_work_size, 
+			     NULL, // size_t *local_work_size, 
+			     0, NULL, &clv_init);
+      fft.buf_to_ram(df, &inbuf, 2 * n * M * sizeof(double), 
+		     1, &clv_init, &clv_toram);
+      clWaitForEvents(1, &clv_toram);
+
       
       std::cout << std::endl;
       std::cout << "fftw++ input:" << std::endl;
@@ -302,7 +352,6 @@ __kernel void init(__global double *X, const unsigned int nx)		\
     for(unsigned int i = 0; i < N; i++) {
       //init(X, nx, M);
       //fft.ram_to_cbuf(X, &inbuf, 0, NULL, &clv_init);
-      size_t global_wsize[] = {nx, ny};
       clEnqueueNDRangeKernel(queue,
 			     initkernel,
 			     2, // cl_uint work_dim,
