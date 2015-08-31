@@ -31,8 +31,8 @@ int main(int argc, char *argv[]) {
   bool inplace = true;
   unsigned int nx = 4;
   unsigned int ny = 4;
-  unsigned int M = 4;
-  unsigned int n = 4;
+  unsigned int M = 0;
+  unsigned int n = 0;
   int instride = 0;
   int outstride = 0;
   int indist = 0;
@@ -109,6 +109,9 @@ int main(int argc, char *argv[]) {
   if(indist == 0) indist = nx;
   if(outdist == 0) outdist = nx;
 
+  if(n == 0) n = ny;
+  if(M == 0) M = nx;
+
   show_devices();
   std::cout << "Using platform " << platnum
 	    << " device " << devnum 
@@ -180,6 +183,7 @@ __kernel void init(__global double *X, const unsigned int nx)		\
   cl_event clv_toram = clCreateUserEvent(ctx, NULL);
   cl_event clv_forward = clCreateUserEvent(ctx, NULL);
   cl_event clv_backward = clCreateUserEvent(ctx, NULL);
+
   if(N == 0) {
     //fft.ram_to_cbuf(X, &inbuf, 0, NULL, &clv_init);
     size_t global_wsize[] = {nx, ny};
@@ -212,6 +216,9 @@ __kernel void init(__global double *X, const unsigned int nx)		\
     else
       std::cout << X[0] << std::endl;
 
+    double errmax = 1e-10 * sqrt(nx);
+    std::cout << "\nmax allowable error: " << errmax << std::endl;
+    
     // Compute the round-trip error.
     {
       double *X0 = new double[2 * fft.ncomplex()];
@@ -233,7 +240,7 @@ __kernel void init(__global double *X, const unsigned int nx)		\
       std::cout << "L2 error: " << L2error << std::endl;
       std::cout << "max error: " << maxerror << std::endl;
 
-      if(L2error < 1e-15 && maxerror < 1e-15) 
+      if(L2error < errmax && maxerror < errmax) 
 	std::cout << "\nResults ok!" << std::endl;
       else {
 	std::cout << "\nERROR: results diverge!" << std::endl;
@@ -253,11 +260,13 @@ __kernel void init(__global double *X, const unsigned int nx)		\
       
       std::cout << std::endl;
       std::cout << "fftw++ input:" << std::endl;
-      show2C(df, nx, ny);
+      if(nx <= maxout)
+	show2C(df, nx, ny);
 
       Forward.fft(f);
       std::cout << "fftw++ output:" << std::endl;
-      show2C(df, nx, ny);
+      if(nx <= maxout)
+	show2C(df, nx, ny);
 
       double L2error = 0.0;
       double maxerror = 0.0;
@@ -279,7 +288,7 @@ __kernel void init(__global double *X, const unsigned int nx)		\
       std::cout << "L2 error: " << L2error << std::endl;
       std::cout << "max error: " << maxerror << std::endl;
 
-      if(L2error < 1e-15 && maxerror < 1e-15) 
+      if(L2error < errmax && maxerror < errmax) 
 	std::cout << "\nResults ok!" << std::endl;
       else {
 	std::cout << "\nERROR: results diverge!" << std::endl;
@@ -293,7 +302,7 @@ __kernel void init(__global double *X, const unsigned int nx)		\
     for(unsigned int i = 0; i < N; i++) {
       //init(X, nx, M);
       //fft.ram_to_cbuf(X, &inbuf, 0, NULL, &clv_init);
-      size_t global_wsize[] = {M, nx};
+      size_t global_wsize[] = {nx, ny};
       clEnqueueNDRangeKernel(queue,
 			     initkernel,
 			     2, // cl_uint work_dim,
