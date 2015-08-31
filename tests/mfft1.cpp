@@ -29,21 +29,15 @@ void direction_params(const unsigned int direction,
     idist = 1;
     odist = 1;
     break;
+  default:
   case 1:
     M = nx;
     n = ny;
     istride = 1;
     ostride = 1;
-    idist = ny;
-    odist = ny;
+    idist = nx;
+    odist = nx;
     break;
-  default:
-    n = ny;
-    M = nx;
-    istride = 1;
-    ostride = 1;
-    idist = ny;
-    odist = ny;
   }
 }
 

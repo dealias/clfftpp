@@ -13,16 +13,31 @@
 #include "Complex.h"
 #include "fftw++.h"
 
-template<class T>
-void initR(T *X, const unsigned int nx, const unsigned int ny, 
-	   const unsigned int dist = 0)
+// Set the mfft parameters for FFTs in direction 0 or 1 in a 2D array
+void direction_params(const unsigned int direction, 
+		      const unsigned int nx, const unsigned int ny, 
+		      unsigned int &M, unsigned int &n,
+		      unsigned int &istride, unsigned int &ostride,
+		      unsigned int &idist, unsigned int &odist) 
 {
-  int dist0 = dist == 0 ? nx : dist;
-  for(unsigned int i = 0; i < nx; ++i) {
-    for(unsigned int j = 0; j < ny; ++j) {
-      int pos = j * dist0 + i;
-      X[pos] = i + 10 * j;
-    }
+  switch(direction) {
+  case 0:
+    n = nx;
+    M = ny;
+    istride = nx;
+    ostride = ny;
+    idist = 1;
+    odist = 1;
+    break;
+  default:
+  case 1:
+    n = ny;
+    M = nx;
+    istride = 1;
+    ostride = 1;
+    idist = ny;
+    odist = ny / 2 + 1;
+    break;
   }
 }
 
@@ -34,13 +49,15 @@ int main(int argc, char *argv[]) {
   unsigned int ny = 4;
   unsigned int n = 0;
   unsigned int M = 0;
-  int instride = 0;
-  int outstride = 0;
-  int indist = 0;
-  int outdist = 0;
+  unsigned int istride = 0;
+  unsigned int ostride = 0;
+  unsigned int idist = 0;
+  unsigned int odist = 0;
   unsigned int N = 0;
   unsigned int stats = 0; // Type of statistics used in timing test.
   unsigned int maxout = 32; // maximum size of array output in entierety
+
+  unsigned int direction = 1;
 
   int error = 0;
 
@@ -48,7 +65,7 @@ int main(int argc, char *argv[]) {
   optind = 0;
 #endif
   for (;;) {
-    int c = getopt(argc,argv,"P:D:m:x:y:N:S:hi:n:M:s:t:d:e:");
+    int c = getopt(argc,argv,"P:D:m:x:y:N:S:hi:n:M:s:t:d:e:g:");
     if (c == -1) break;
     
     switch (c) {
@@ -83,16 +100,20 @@ int main(int argc, char *argv[]) {
       inplace = atoi(optarg);
       break;
     case 's':
-      instride = atoi(optarg);
+      istride = atoi(optarg);
       break;
     case 't':
-      outstride = atoi(optarg);
+      ostride = atoi(optarg);
       break;
     case 'd':
-      indist = atoi(optarg);
+      idist = atoi(optarg);
       break;
     case 'e':
-      outdist = atoi(optarg);
+      odist = atoi(optarg);
+      break;
+    case 'g':
+      direction = atoi(optarg);
+      direction_params(direction, nx, ny, M, n, istride, ostride, idist, odist);
       break;
     case 'h':
       usage(2, true);
@@ -105,14 +126,12 @@ int main(int argc, char *argv[]) {
     }
   }
 
-  if(instride == 0) instride = 1;
-  if(outstride == 0) outstride = 1;
-  if(indist == 0) indist = nx;
-  if(outdist == 0) outdist = nx / 2 + 1;
-
-  if(n == 0) n = ny;
-  if(M == 0) M = nx;
-
+  if(istride == 0) istride = 1;
+  if(ostride == 0) ostride = 1;
+  if(idist == 0) idist = nx;
+  if(odist == 0) odist = nx / 2 + 1;
+  if(n == 0) n = nx;
+  if(M == 0) M = ny;
   show_devices();
   std::cout << "Using platform " << platnum
 	    << " device " << devnum 
@@ -129,7 +148,7 @@ int main(int argc, char *argv[]) {
   cl_context ctx = create_context(platform, device);
   cl_command_queue queue = create_queue(ctx, device, CL_QUEUE_PROFILING_ENABLE);
   
-  clmfft1r fft(n, M, instride, outstride, indist, outdist, inplace, 
+  clmfft1r fft(n, M, istride, ostride, idist, odist, inplace, 
 	       queue, ctx);
 
   std::cout << std::endl;
@@ -143,26 +162,27 @@ int main(int argc, char *argv[]) {
   }
 
    std::string init_source ="\
-#pragma OPENCL EXTENSION cl_khr_fp64: enable\n	\
+#pragma OPENCL EXTENSION cl_khr_fp64: enable\n			\
 __kernel void init(__global double *X, const unsigned int nx)	\
-{						\
-  const int i = get_global_id(0);		\
-  const int j = get_global_id(1);		\
-  int pos = j * nx + i;			\
-  X[pos] = i + 10 * j;				\
+{								\
+  const int i = get_global_id(0);				\
+  const int j = get_global_id(1);				\
+  int pos = j * nx + i;						\
+  X[pos] = i + 10 * j;						\
 }";
   cl_program initprog = create_program(init_source, ctx);
   build_program(initprog, device);
   cl_kernel initkernel = create_kernel(initprog, "init"); 
   set_kernel_arg(initkernel, 0, sizeof(cl_mem), &inbuf);
   set_kernel_arg(initkernel, 1, sizeof(unsigned int), &nx);
- 
+  size_t global_wsize[] = {nx, ny}; 
+
   std::cout << "nx: " << nx << std::endl;
   std::cout << "M: " << M << std::endl;
-  std::cout << "instride: " << instride << std::endl;
-  std::cout << "outstride: " << outstride << std::endl;
-  std::cout << "indist: " << indist << std::endl;
-  std::cout << "outdist: " << outdist << std::endl;
+  std::cout << "istride: " << istride << std::endl;
+  std::cout << "ostride: " << ostride << std::endl;
+  std::cout << "idist: " << idist << std::endl;
+  std::cout << "odist: " << odist << std::endl;
 
   std::cout << "\nAllocating " 
   	    << nx * ny
@@ -183,7 +203,7 @@ __kernel void init(__global double *X, const unsigned int nx)	\
     std::cout << "\nInput:" << std::endl;
     //initR(X, nx, M);
     //fft.ram_to_rbuf(X, &inbuf, 0, NULL, &clv_init);
-    size_t global_wsize[] = {nx, ny};
+
     clEnqueueNDRangeKernel(queue,
 			   initkernel,
 			   2, // cl_uint work_dim,
@@ -205,9 +225,9 @@ __kernel void init(__global double *X, const unsigned int nx)	\
 
     std::cout << "\nTransformed:" << std::endl;
     if(nx <= maxout) {
-      if(instride == 1 && outstride == 1) {
+      if(istride == 1 && ostride == 1) {
 	show2C(FX, M, np);
-      } else if (instride == (int)nx && outstride == (int)ny) {
+      } else if (istride == nx && ostride == ny) {
 	show2C(FX, np, M);
       } else {
 	show2C(FX, np * M, 1);
@@ -231,7 +251,16 @@ __kernel void init(__global double *X, const unsigned int nx)	\
     // Compute the round-trip error.
     {
       double *X0 = new double[fft.nreal()];
-      initR(X0, nx, M);
+      clEnqueueNDRangeKernel(queue,
+			     initkernel,
+			     2, // cl_uint work_dim,
+			     NULL, // global_work_offset,
+			     global_wsize, // global_work_size, 
+			     NULL, // size_t *local_work_size, 
+			     0, NULL, &clv_init);
+      fft.rbuf_to_ram(X0, &inbuf, 1, &clv_init, &clv_toram);
+      clWaitForEvents(1, &clv_toram);
+
       double L2error = 0.0;
       double maxerror = 0.0;
       for(unsigned int i = 0; i < nx; ++i) {
@@ -263,10 +292,20 @@ __kernel void init(__global double *X, const unsigned int nx)	\
       size_t align = sizeof(Complex);
       Array::array2<double> f(nx, ny, align);
       Array::array2<Complex> g(nx, ny / 2 + 1, align);
-      fftwpp::mrcfft1d Forward(n, M, instride, indist, f, g);
+      fftwpp::mrcfft1d Forward(n, M, istride, idist, f, g);
       double *df = (double *)f();
       double *dg = (double *)g();
-      initR(df, nx, ny);
+      clEnqueueNDRangeKernel(queue,
+			     initkernel,
+			     2, // cl_uint work_dim,
+			     NULL, // global_work_offset,
+			     global_wsize, // global_work_size, 
+			     NULL, // size_t *local_work_size, 
+			     0, NULL, &clv_init);
+      fft.rbuf_to_ram(df, &inbuf, 1, &clv_init, &clv_toram);
+      clWaitForEvents(1, &clv_toram);
+
+
 
       std::cout << std::endl;
       std::cout << "fftw++ input:" << std::endl;
@@ -275,9 +314,9 @@ __kernel void init(__global double *X, const unsigned int nx)	\
       Forward.fft(f, g);
 
       std::cout << "fftw++ transformed:" << std::endl;
-      if(instride == 1 && outstride == 1) {
+      if(istride == 1 && ostride == 1) {
 	show2C(dg, M, np);
-      } else if (instride == (int)nx && outstride == (int)ny) {
+      } else if (istride == nx && ostride == ny) {
 	show2C(dg, np, M);
       } else {
 	show2C(dg, np * M, 1);
@@ -316,9 +355,6 @@ __kernel void init(__global double *X, const unsigned int nx)	\
   
     cl_ulong time_start, time_end;
     for(unsigned int i = 0; i < N; i++) {
-      // initR(X, nx, M);
-      // fft.ram_to_cbuf(X, &inbuf, 0, NULL, &clv_init);
-      size_t global_wsize[] = {M, nx};
       clEnqueueNDRangeKernel(queue,
 			     initkernel,
 			     2, // cl_uint work_dim,
