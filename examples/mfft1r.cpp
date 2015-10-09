@@ -18,8 +18,8 @@ int main() {
   
   // transform along the second index
   size_t istride = 1;
-  size_t ostride = 1;
   size_t idist = nx;
+  size_t ostride = 1;
   size_t odist = nx / 2 + 1;
 
   // transform along the first index

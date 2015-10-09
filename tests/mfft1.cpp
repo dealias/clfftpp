@@ -21,10 +21,10 @@ int main(int argc, char *argv[]) {
   unsigned int ny = 4;
   unsigned int M = 0;
   unsigned int n = 0;
-  int instride = 0;
-  int outstride = 0;
-  int indist = 0;
-  int outdist = 0;
+  int istride = 0;
+  int ostride = 0;
+  int idist = 0;
+  int odist = 0;
   unsigned int N = 0;
   unsigned int stats = 0; // Type of statistics used in timing test.
   unsigned int maxout = 32; // maximum size of array output in entierety
@@ -72,16 +72,16 @@ int main(int argc, char *argv[]) {
       inplace = atoi(optarg);
       break;
     case 's':
-      instride = atoi(optarg);
+      istride = atoi(optarg);
       break;
     case 't':
-      outstride = atoi(optarg);
+      ostride = atoi(optarg);
       break;
     case 'd':
-      indist = atoi(optarg);
+      idist = atoi(optarg);
       break;
     case 'e':
-      outdist = atoi(optarg);
+      odist = atoi(optarg);
       break;
     case 'g':
       direction = atoi(optarg);
@@ -97,36 +97,36 @@ int main(int argc, char *argv[]) {
     }
   }
 
-  if(instride == 0) instride = 1;
-  if(outstride == 0) outstride = 1;
-  if(indist == 0) indist = nx;
-  if(outdist == 0) outdist = nx;
+  if(istride == 0) istride = 1;
+  if(ostride == 0) ostride = 1;
+  if(idist == 0) idist = nx;
+  if(odist == 0) odist = nx;
 
   if(n == 0 && M == 0) {
     switch(direction) {
     case 0:
       M = ny;
       n = nx;
-      instride = nx;
-      outstride = nx;
-      indist = 1;
-      outdist = 1;
+      istride = nx;
+      ostride = nx;
+      idist = 1;
+      odist = 1;
       break;
     case 1:
       M = nx;
       n = ny;
-      instride = 1;
-      outstride = 1;
-      indist = ny;
-      outdist = ny;
+      istride = 1;
+      ostride = 1;
+      idist = ny;
+      odist = ny;
       break;
     default:
       n = ny;
       M = nx;
-      instride = 1;
-      outstride = 1;
-      indist = ny;
-      outdist = ny;
+      istride = 1;
+      ostride = 1;
+      idist = ny;
+      odist = ny;
     }
   }
 
@@ -151,13 +151,12 @@ int main(int argc, char *argv[]) {
   std::cout << "M: " << M << std::endl;
   std::cout << "nx: " << nx << std::endl;
   std::cout << "ny: " << ny << std::endl;
-  std::cout << "instride: " << instride << std::endl;
-  std::cout << "indist: " << indist << std::endl;
-  std::cout << "outstride: " << outstride << std::endl;
-  std::cout << "outdist: " << outdist << std::endl;
+  std::cout << "istride: " << istride << std::endl;
+  std::cout << "idist: " << idist << std::endl;
+  std::cout << "ostride: " << ostride << std::endl;
+  std::cout << "odist: " << odist << std::endl;
   std::cout << "ny: " << ny << std::endl;
-  clmfft1 fft(n, M, instride, outstride, indist, outdist, inplace,
-	      queue, ctx);
+  clmfft1 fft(n, M, istride, ostride, idist, odist, inplace, queue, ctx);
 
   std::cout << "Allocating " 
   	    << 2 * nx * ny
@@ -213,7 +212,6 @@ __kernel void init(__global double *X, const unsigned int nx)		\
   else
     std::cout << X[0] << std::endl;
  
-
   if(N == 0) {
     //fft.ram_to_cbuf(X, &inbuf, 0, NULL, &clv_init);
     clEnqueueNDRangeKernel(queue,
@@ -292,8 +290,8 @@ __kernel void init(__global double *X, const unsigned int nx)		\
       // //fftw::maxthreads=get_max_threads();
       size_t align = sizeof(Complex);
       Array::array2<Complex> f(nx, ny, align);
-      fftwpp::mfft1d Forward(n, -1, M, instride, indist, f);
-      fftwpp::mfft1d Backward(n, 1, M, instride, indist, f);
+      fftwpp::mfft1d Forward(n, -1, M, istride, idist, ostride, odist, f);
+      fftwpp::mfft1d Backward(n, 1, M, istride, idist, ostride, odist, f);
       double *df = (double *)f();
 
       clEnqueueNDRangeKernel(queue,

@@ -34,10 +34,10 @@ int main(int argc, char *argv[]) {
   unsigned int ny = 4;
   unsigned int n = 0;
   unsigned int M = 0;
-  int instride = 0;
-  int outstride = 0;
-  int indist = 0;
-  int outdist = 0;
+  int istride = 0;
+  int ostride = 0;
+  int idist = 0;
+  int odist = 0;
   unsigned int N = 0;
   unsigned int stats = 0; // Type of statistics used in timing test.
   unsigned int maxout = 32; // maximum size of array output in entierety
@@ -83,16 +83,16 @@ int main(int argc, char *argv[]) {
       inplace = atoi(optarg);
       break;
     case 's':
-      instride = atoi(optarg);
+      istride = atoi(optarg);
       break;
     case 't':
-      outstride = atoi(optarg);
+      ostride = atoi(optarg);
       break;
     case 'd':
-      indist = atoi(optarg);
+      idist = atoi(optarg);
       break;
     case 'e':
-      outdist = atoi(optarg);
+      odist = atoi(optarg);
       break;
     case 'h':
       usage(2, true);
@@ -105,10 +105,10 @@ int main(int argc, char *argv[]) {
     }
   }
 
-  if(instride == 0) instride = 1;
-  if(outstride == 0) outstride = 1;
-  if(indist == 0) indist = nx;
-  if(outdist == 0) outdist = nx / 2 + 1;
+  if(istride == 0) istride = 1;
+  if(ostride == 0) ostride = 1;
+  if(idist == 0) idist = nx;
+  if(odist == 0) odist = nx / 2 + 1;
 
   if(n == 0) n = ny;
   if(M == 0) M = nx;
@@ -129,7 +129,7 @@ int main(int argc, char *argv[]) {
   cl_context ctx = create_context(platform, device);
   cl_command_queue queue = create_queue(ctx, device, CL_QUEUE_PROFILING_ENABLE);
   
-  clmfft1r fft(n, M, instride, outstride, indist, outdist, inplace, 
+  clmfft1r fft(n, M, istride, ostride, idist, odist, inplace, 
 	       queue, ctx);
 
   std::cout << std::endl;
@@ -159,10 +159,10 @@ __kernel void init(__global double *X, const unsigned int nx)	\
  
   std::cout << "nx: " << nx << std::endl;
   std::cout << "M: " << M << std::endl;
-  std::cout << "instride: " << instride << std::endl;
-  std::cout << "outstride: " << outstride << std::endl;
-  std::cout << "indist: " << indist << std::endl;
-  std::cout << "outdist: " << outdist << std::endl;
+  std::cout << "istride: " << istride << std::endl;
+  std::cout << "ostride: " << ostride << std::endl;
+  std::cout << "idist: " << idist << std::endl;
+  std::cout << "odist: " << odist << std::endl;
 
   std::cout << "\nAllocating " 
   	    << nx * ny
@@ -205,9 +205,9 @@ __kernel void init(__global double *X, const unsigned int nx)	\
 
     std::cout << "\nTransformed:" << std::endl;
     if(nx <= maxout) {
-      if(instride == 1 && outstride == 1) {
+      if(istride == 1 && ostride == 1) {
 	show2C(FX, M, np);
-      } else if (instride == (int)nx && outstride == (int)ny) {
+      } else if (istride == (int)nx && ostride == (int)ny) {
 	show2C(FX, np, M);
       } else {
 	show2C(FX, np * M, 1);
@@ -263,7 +263,7 @@ __kernel void init(__global double *X, const unsigned int nx)	\
       size_t align = sizeof(Complex);
       Array::array2<double> f(nx, ny, align);
       Array::array2<Complex> g(nx, ny / 2 + 1, align);
-      fftwpp::mrcfft1d Forward(n, M, instride, indist, f, g);
+      fftwpp::mrcfft1d Forward(n, M, istride, idist, ostride, odist, f, g);
       double *df = (double *)f();
       double *dg = (double *)g();
       initR(df, nx, ny);
@@ -275,9 +275,9 @@ __kernel void init(__global double *X, const unsigned int nx)	\
       Forward.fft(f, g);
 
       std::cout << "fftw++ transformed:" << std::endl;
-      if(instride == 1 && outstride == 1) {
+      if(istride == 1 && ostride == 1) {
 	show2C(dg, M, np);
-      } else if (instride == (int)nx && outstride == (int)ny) {
+      } else if (istride == (int)nx && ostride == (int)ny) {
 	show2C(dg, np, M);
       } else {
 	show2C(dg, np * M, 1);
