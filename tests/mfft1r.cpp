@@ -292,7 +292,7 @@ __kernel void init(__global double *X, const unsigned int nx)	\
       size_t align = sizeof(Complex);
       Array::array2<double> f(nx, ny, align);
       Array::array2<Complex> g(nx, ny / 2 + 1, align);
-      fftwpp::mrcfft1d Forward(n, M, istride, idist, f, g);
+      fftwpp::mrcfft1d Forward(n, M, istride, ostride, idist, odist, f, g);
       double *df = (double *)f();
       double *dg = (double *)g();
       clEnqueueNDRangeKernel(queue,
@@ -304,8 +304,6 @@ __kernel void init(__global double *X, const unsigned int nx)	\
 			     0, NULL, &clv_init);
       fft.rbuf_to_ram(df, &inbuf, 1, &clv_init, &clv_toram);
       clWaitForEvents(1, &clv_toram);
-
-
 
       std::cout << std::endl;
       std::cout << "fftw++ input:" << std::endl;
