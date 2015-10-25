@@ -34,6 +34,10 @@ int main(int argc, char *argv[])
   unsigned int stats = 0; // Type of statistics used in timing test.
   unsigned int maxout = 32; // maximum size of array output in entierety
 
+
+  // TODO: scale with theoretical error from FFT.
+  double tolerance = 1e-8;
+  
   int error = 0;
 
 #ifdef __GNUC__	
@@ -187,7 +191,7 @@ __kernel void init(__global double *X)\n	\
       cout << "L2 error: " << L2error << endl;
       cout << "max error: " << maxerror << endl;
 
-      if(L2error < 1e-15 && maxerror < 1e-15) 
+      if(L2error < tolerance && maxerror < tolerance) 
 	cout << "\nResults ok!" << endl;
       else {
 	cout << "\nERROR: results diverge!" << endl;
@@ -225,7 +229,7 @@ __kernel void init(__global double *X)\n	\
       cout << "L2 error: " << L2error << endl;
       cout << "max error: " << maxerror << endl;
 
-      if(L2error < 1e-15 && maxerror < 1e-15) 
+      if(L2error < tolerance && maxerror < tolerance) 
 	cout << "\nResults ok!" << endl;
       else {
 	cout << "\nERROR: results diverge!" << endl;

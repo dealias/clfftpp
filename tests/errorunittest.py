@@ -10,6 +10,7 @@ usage = "Usage:\n"\
         "\t-D <int>\tOpenCL device index.\n"
 
 testlist = ["fft1", "fft2", "fft3", "fft1r", "fft2r", "fft3r", "mfft1", "mfft1r"]
+
 def main(argv):
     P = 0
     D = 0
@@ -27,7 +28,6 @@ def main(argv):
         if opt in ("-h"):
             print usage
             sys.exit(0)
-
 
     retval = 0
 
