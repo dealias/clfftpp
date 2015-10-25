@@ -13,6 +13,8 @@
 #include "Complex.h"
 #include "fftw++.h"
 
+using namespace std;
+
 // Set the mfft parameters for FFTs in direction 0 or 1 in a 2D array
 void direction_params(const unsigned int direction, 
 		      const unsigned int nx, const unsigned int ny, 
@@ -120,7 +122,7 @@ int main(int argc, char *argv[]) {
       exit(0);
       break;
     default:
-      std::cout << "Invalid option" << std::endl;
+      cout << "Invalid option" << endl;
       usage(2, true);
       exit(1);
     }
@@ -136,15 +138,15 @@ int main(int argc, char *argv[]) {
   if(M == 0) M = ny;
 
   show_devices();
-  std::cout << "Using platform " << platnum
+  cout << "Using platform " << platnum
 	    << " device " << devnum 
-	    << "." << std::endl;
+	    << "." << endl;
   
-  std::vector<std::vector<cl_device_id> > dev_ids;
+  vector<vector<cl_device_id> > dev_ids;
   create_device_tree(dev_ids);
   cl_device_id device = dev_ids[platnum][devnum];
 
-  std::vector<cl_platform_id> plat_ids;
+  vector<cl_platform_id> plat_ids;
   find_platform_ids(plat_ids);
   cl_platform_id platform = plat_ids[platnum];
 
@@ -152,34 +154,34 @@ int main(int argc, char *argv[]) {
   cl_command_queue queue = create_queue(ctx, device,
 					CL_QUEUE_PROFILING_ENABLE);
   
-  std::cout << "n: " << n << std::endl;
-  std::cout << "M: " << M << std::endl;
-  std::cout << "nx: " << nx << std::endl;
-  std::cout << "ny: " << ny << std::endl;
-  std::cout << "istride: " << istride << std::endl;
-  std::cout << "idist: " << idist << std::endl;
-  std::cout << "ostride: " << ostride << std::endl;
-  std::cout << "odist: " << odist << std::endl;
-  std::cout << "ny: " << ny << std::endl;
+  cout << "n: " << n << endl;
+  cout << "M: " << M << endl;
+  cout << "nx: " << nx << endl;
+  cout << "ny: " << ny << endl;
+  cout << "istride: " << istride << endl;
+  cout << "idist: " << idist << endl;
+  cout << "ostride: " << ostride << endl;
+  cout << "odist: " << odist << endl;
+  cout << "ny: " << ny << endl;
   clmfft1 fft(n, M, istride, ostride, idist, odist, inplace,
 	      queue, ctx);
 
-  std::cout << "Allocating " 
+  cout << "Allocating " 
   	    << 2 * nx * ny
-  	    << " doubles." << std::endl;
+  	    << " doubles." << endl;
   double *X = new double[2 * nx * ny];
   double *FX = new double[2 * nx * ny];
 
   cl_mem inbuf, outbuf;
   fft.create_cbuf(&inbuf, nx * ny);
   if(inplace) {
-    std::cout << "in-place transform" << std::endl;
+    cout << "in-place transform" << endl;
   } else {
-    std::cout << "out-of-place transform" << std::endl;
+    cout << "out-of-place transform" << endl;
     fft.create_cbuf(&outbuf, n * M);
   }
   
-  std::string init_source ="\
+  string init_source ="\
 #pragma OPENCL EXTENSION cl_khr_fp64: enable\n	\
 __kernel void init(__global double *X, const unsigned int nx)		\
 {						\
@@ -201,7 +203,7 @@ __kernel void init(__global double *X, const unsigned int nx)		\
   cl_event clv_forward = clCreateUserEvent(ctx, NULL);
   cl_event clv_backward = clCreateUserEvent(ctx, NULL);
 
-  std::cout << "\nInput:" << std::endl;
+  cout << "\nInput:" << endl;
   clEnqueueNDRangeKernel(queue,
 			 initkernel,
 			 2, // cl_uint work_dim,
@@ -216,7 +218,7 @@ __kernel void init(__global double *X, const unsigned int nx)		\
   if(nx <= maxout)
     show2C(X, nx, ny);
   else
-    std::cout << X[0] << std::endl;
+    cout << X[0] << endl;
  
 
   if(N == 0) {
@@ -233,25 +235,25 @@ __kernel void init(__global double *X, const unsigned int nx)		\
 		    1, &clv_forward, &clv_toram);
     clWaitForEvents(1, &clv_toram);
 
-    std::cout << "\nTransformed:" << std::endl;
+    cout << "\nTransformed:" << endl;
     if(nx <= maxout)
       show1C(FX, nx, ny);
     else
-      std::cout << FX[0] << std::endl;
+      cout << FX[0] << endl;
 
     fft.backward(inplace ? &inbuf : &outbuf,
 		 inplace ? NULL : &inbuf, 1, &clv_forward, &clv_backward);
     fft.cbuf_to_ram(X, &inbuf, 1, &clv_backward, &clv_toram);
     clWaitForEvents(1, &clv_toram);
 
-    std::cout << "\nTransformed back:" << std::endl;
+    cout << "\nTransformed back:" << endl;
     if(nx <= maxout)
       show2C(X, nx, ny);
     else
-      std::cout << X[0] << std::endl;
+      cout << X[0] << endl;
 
     double errmax = 1e-10 * sqrt(nx);
-    std::cout << "\nmax allowable error: " << errmax << std::endl;
+    cout << "\nmax allowable error: " << errmax << endl;
     
     // Compute the round-trip error.
     {
@@ -279,15 +281,15 @@ __kernel void init(__global double *X, const unsigned int nx)		\
       }
       L2error = sqrt(L2error / (double) nx);
 
-      std::cout << std::endl;
-      std::cout << "Round-trip error:"  << std::endl;
-      std::cout << "L2 error: " << L2error << std::endl;
-      std::cout << "max error: " << maxerror << std::endl;
+      cout << endl;
+      cout << "Round-trip error:"  << endl;
+      cout << "L2 error: " << L2error << endl;
+      cout << "max error: " << maxerror << endl;
 
       if(L2error < errmax && maxerror < errmax) 
-	std::cout << "\nResults ok!" << std::endl;
+	cout << "\nResults ok!" << endl;
       else {
-	std::cout << "\nERROR: results diverge!" << std::endl;
+	cout << "\nERROR: results diverge!" << endl;
 	error += 1;
       }
     }
@@ -313,13 +315,13 @@ __kernel void init(__global double *X, const unsigned int nx)		\
       clWaitForEvents(1, &clv_toram);
 
       
-      std::cout << std::endl;
-      std::cout << "fftw++ input:" << std::endl;
+      cout << endl;
+      cout << "fftw++ input:" << endl;
       if(nx <= maxout)
 	show2C(df, nx, ny);
 
       Forward.fft(f);
-      std::cout << "fftw++ output:" << std::endl;
+      cout << "fftw++ output:" << endl;
       if(nx <= maxout)
 	show2C(df, nx, ny);
 
@@ -338,15 +340,15 @@ __kernel void init(__global double *X, const unsigned int nx)		\
       }
       L2error = sqrt(L2error / (double) nx);
 
-      std::cout << std::endl;
-      std::cout << "Error with respect to FFTW:"  << std::endl;
-      std::cout << "L2 error: " << L2error << std::endl;
-      std::cout << "max error: " << maxerror << std::endl;
+      cout << endl;
+      cout << "Error with respect to FFTW:"  << endl;
+      cout << "L2 error: " << L2error << endl;
+      cout << "max error: " << maxerror << endl;
 
       if(L2error < errmax && maxerror < errmax) 
-	std::cout << "\nResults ok!" << std::endl;
+	cout << "\nResults ok!" << endl;
       else {
-	std::cout << "\nERROR: results diverge!" << std::endl;
+	cout << "\nERROR: results diverge!" << endl;
 	error += 1;
       }
     }

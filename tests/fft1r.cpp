@@ -13,6 +13,8 @@
 #include "Complex.h"
 #include "fftw++.h"
 
+using namespace std;
+
 template<class T>
 void initR(T *X, unsigned int n)
 {
@@ -67,22 +69,22 @@ int main(int argc, char *argv[]) {
       inplace = atoi(optarg);
       break;
     default:
-      std::cout << "Invalid option" << std::endl;
+      cout << "Invalid option" << endl;
       usage(1);
       exit(1);
     }
   }
 
   show_devices();
-  std::cout << "Using platform " << platnum
+  cout << "Using platform " << platnum
 	    << " device " << devnum 
-	    << "." << std::endl;
+	    << "." << endl;
 
-  std::vector<std::vector<cl_device_id> > dev_ids;
+  vector<vector<cl_device_id> > dev_ids;
   create_device_tree(dev_ids);
   cl_device_id device = dev_ids[platnum][devnum];
 
-  std::vector<cl_platform_id> plat_ids;
+  vector<cl_platform_id> plat_ids;
   find_platform_ids(plat_ids);
   cl_platform_id platform = plat_ids[platnum];
 
@@ -93,15 +95,15 @@ int main(int argc, char *argv[]) {
   cl_mem inbuf, outbuf;
   if(inplace) {
     fft.create_cbuf(&inbuf);
-    std::cout << "in-place transform" << std::endl;
+    cout << "in-place transform" << endl;
   } else {
-    std::cout << "out-of-place transform" << std::endl;
+    cout << "out-of-place transform" << endl;
     fft.create_rbuf(&inbuf);
     fft.create_cbuf(&outbuf);
   }
 
   // Create OpenCL kernel to initialize OpenCL buffer
-  std::string init_source = "\
+  string init_source = "\
 #pragma OPENCL EXTENSION cl_khr_fp64: enable\n	\
 __kernel void init(__global double *X)\n	\
 {\n						\
@@ -113,13 +115,13 @@ __kernel void init(__global double *X)\n	\
   cl_kernel initkernel = create_kernel(initprog, "init"); 
   set_kernel_arg(initkernel, 0, sizeof(cl_mem), &inbuf);
  
-  std::cout << "Allocating "
+  cout << "Allocating "
 	    << fft.nreal() 
-	    << " doubles for real." << std::endl;
+	    << " doubles for real." << endl;
   double *X = new double[inplace ? 2 * fft.ncomplex() : fft.nreal()];
-  std::cout << "Allocating " 
+  cout << "Allocating " 
 	    << 2 * fft.ncomplex()
-	    << " doubles for complex." << std::endl;
+	    << " doubles for complex." << endl;
   double *FX = new double[2 * fft.ncomplex()];
 
   cl_event clv_init = clCreateUserEvent(ctx, NULL);
@@ -128,14 +130,14 @@ __kernel void init(__global double *X)\n	\
   cl_event clv_backward = clCreateUserEvent(ctx, NULL);
 
   if(N == 0) {
-    std::cout << "\nInput:" << std::endl;
+    cout << "\nInput:" << endl;
     initR(X, nx);
     if(nx <= maxout)
       show1R(X, nx);
     else
-      std::cout << X[0] << std::endl;
+      cout << X[0] << endl;
 
-    std::cout << "\nTransformed:" << std::endl;
+    cout << "\nTransformed:" << endl;
 
     //fft.ram_to_rbuf(X, &inbuf, 0, NULL, &clv_init);
     size_t global_wsize[] = {nx};
@@ -153,9 +155,9 @@ __kernel void init(__global double *X)\n	\
     if(nx <= maxout)
       show1C(FX, fft.ncomplex(0));
     else 
-      std::cout << FX[0] << std::endl;
+      cout << FX[0] << endl;
 
-    std::cout << "\nTransformed back:" << std::endl;
+    cout << "\nTransformed back:" << endl;
     fft.backward(inplace ? &inbuf : &outbuf, 
 		 inplace ? NULL : &inbuf, 1, &clv_forward, &clv_backward);
     fft.rbuf_to_ram(X, &inbuf, 1, &clv_backward, &clv_toram);
@@ -165,7 +167,7 @@ __kernel void init(__global double *X)\n	\
     if(nx <= maxout) 
       show1R(X, nx);
     else 
-      std::cout << X[0] << std::endl;
+      cout << X[0] << endl;
     
     // Compute the round-trip error.
     {
@@ -181,15 +183,15 @@ __kernel void init(__global double *X)\n	\
       }
       L2error = sqrt(L2error / (double) nx);
 
-      std::cout << std::endl;
-      std::cout << "Round-trip error:"  << std::endl;
-      std::cout << "L2 error: " << L2error << std::endl;
-      std::cout << "max error: " << maxerror << std::endl;
+      cout << endl;
+      cout << "Round-trip error:"  << endl;
+      cout << "L2 error: " << L2error << endl;
+      cout << "max error: " << maxerror << endl;
 
       if(L2error < 1e-15 && maxerror < 1e-15) 
-	std::cout << "\nResults ok!" << std::endl;
+	cout << "\nResults ok!" << endl;
       else {
-	std::cout << "\nERROR: results diverge!" << std::endl;
+	cout << "\nERROR: results diverge!" << endl;
 	error += 1;
       }
     }
@@ -221,15 +223,15 @@ __kernel void init(__global double *X)\n	\
       }
       L2error = sqrt(L2error / (double) nx);
 
-      std::cout << std::endl;
-      std::cout << "Error with respect to FFTW:"  << std::endl;
-      std::cout << "L2 error: " << L2error << std::endl;
-      std::cout << "max error: " << maxerror << std::endl;
+      cout << endl;
+      cout << "Error with respect to FFTW:"  << endl;
+      cout << "L2 error: " << L2error << endl;
+      cout << "max error: " << maxerror << endl;
 
       if(L2error < 1e-15 && maxerror < 1e-15) 
-	std::cout << "\nResults ok!" << std::endl;
+	cout << "\nResults ok!" << endl;
       else {
-	std::cout << "\nERROR: results diverge!" << std::endl;
+	cout << "\nERROR: results diverge!" << endl;
 	error += 1;
       }
     }

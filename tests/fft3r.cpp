@@ -13,6 +13,8 @@
 #include "Complex.h"
 #include "fftw++.h"
 
+using namespace std;
+
 template<class T>
 void init3R(T *X, unsigned int nx, unsigned int ny, unsigned int nz)
 {
@@ -82,22 +84,22 @@ int main(int argc, char *argv[]) {
       exit(0);
       break;
     default:
-      std::cout << "Invalid option" << std::endl;
+      cout << "Invalid option" << endl;
       usage(3);
       exit(1);
     }
   }
 
   show_devices();
-  std::cout << "Using platform " << platnum
+  cout << "Using platform " << platnum
 	    << " device " << devnum 
-	    << "." << std::endl;
+	    << "." << endl;
 
-  std::vector<std::vector<cl_device_id> > dev_ids;
+  vector<vector<cl_device_id> > dev_ids;
   create_device_tree(dev_ids);
   cl_device_id device = dev_ids[platnum][devnum];
 
-  std::vector<cl_platform_id> plat_ids;
+  vector<cl_platform_id> plat_ids;
   find_platform_ids(plat_ids);
   cl_platform_id platform = plat_ids[platnum];
 
@@ -108,14 +110,14 @@ int main(int argc, char *argv[]) {
   cl_mem inbuf, outbuf;
   if(inplace) {
     fft.create_cbuf(&inbuf);
-    std::cout << "in-place transform" << std::endl;
+    cout << "in-place transform" << endl;
   } else {
-    std::cout << "out-of-place transform" << std::endl;
+    cout << "out-of-place transform" << endl;
     fft.create_rbuf(&inbuf);
     fft.create_cbuf(&outbuf);
   }
 
-  std::string init_source ="\
+  string init_source ="\
 #pragma OPENCL EXTENSION cl_khr_fp64: enable\n	\
 __kernel void init(__global double *X, \
 const unsigned int ny, const unsigned int nz)	\
@@ -133,13 +135,13 @@ const unsigned int ny, const unsigned int nz)	\
   set_kernel_arg(initkernel, 1, sizeof(unsigned int), &ny);
   set_kernel_arg(initkernel, 2, sizeof(unsigned int), &nz);
 
-  std::cout << "Allocating " 
+  cout << "Allocating " 
 	    << (inplace ? 2 * fft.ncomplex() : fft.nreal())
-	    << " doubles for real." << std::endl;
+	    << " doubles for real." << endl;
   double *X = new double[inplace ? 2 * fft.ncomplex() : fft.nreal()];
-  std::cout << "Allocating "
+  cout << "Allocating "
 	    << 2 * fft.ncomplex() 
-	    << " doubles for complex." << std::endl;
+	    << " doubles for complex." << endl;
   double *FX = new double[2 * fft.ncomplex()];
 
   // Create OpenCL events
@@ -149,12 +151,12 @@ const unsigned int ny, const unsigned int nz)	\
   cl_event clv_backward = clCreateUserEvent(ctx, NULL);
 
   if(N == 0) {
-    std::cout << "\nInput:" << std::endl;
+    cout << "\nInput:" << endl;
     init3R(X, nx, ny, nz);
     if(nx * ny * nz <= maxout)
       show3R(X, nx, ny, nz);
     else
-      std::cout << X[0] << std::endl;
+      cout << X[0] << endl;
     
     //fft.ram_to_rbuf(X, &inbuf, 0, NULL, &clv_init);
     size_t global_wsize[] = {nx, ny, nz};
@@ -170,12 +172,12 @@ const unsigned int ny, const unsigned int nz)	\
     fft.cbuf_to_ram(FX, inplace? &inbuf : &outbuf, 1, &clv_forward, &clv_toram);
     clWaitForEvents(1, &clv_toram);
     
-    std::cout << "\nTransformed:" << std::endl;
+    cout << "\nTransformed:" << endl;
     if(nx * ny * nz <= maxout) {
       show3H(FX, fft.ncomplex(0), fft.ncomplex(1), fft.ncomplex(2), 
 	     inplace ? 1 : 0);
     } else {
-      std::cout << FX[0] << std::endl;
+      cout << FX[0] << endl;
     }
 
     fft.backward(inplace ? &inbuf : &outbuf, 
@@ -186,11 +188,11 @@ const unsigned int ny, const unsigned int nz)	\
       fft.rbuf_to_ram(X, &inbuf, 1, &clv_backward, &clv_toram);
     clWaitForEvents(1, &clv_toram);
 
-    std::cout << "\nTransformed back:" << std::endl;
+    cout << "\nTransformed back:" << endl;
     // if(nx <= maxout)
     //   show3R(X, nx, ny, nz);
     // else 
-    //   std::cout << X[0] << std::endl;
+    //   cout << X[0] << endl;
 
     // compute the round-trip error.
     {
@@ -207,15 +209,15 @@ const unsigned int ny, const unsigned int nz)	\
       }
       L2error = sqrt(L2error / (double) nx);
 
-      std::cout << std::endl;
-      std::cout << "Round-trip error:"  << std::endl;
-      std::cout << "L2 error: " << L2error << std::endl;
-      std::cout << "max error: " << maxerror << std::endl;
+      cout << endl;
+      cout << "Round-trip error:"  << endl;
+      cout << "L2 error: " << L2error << endl;
+      cout << "max error: " << maxerror << endl;
 
       if(L2error < 1e-14 && maxerror < 1e-14) 
-	std::cout << "\nResults ok!" << std::endl;
+	cout << "\nResults ok!" << endl;
       else {
-	std::cout << "\nERROR: results diverge!" << std::endl;
+	cout << "\nERROR: results diverge!" << endl;
 	error += 1;
       }
     }
@@ -237,7 +239,7 @@ const unsigned int ny, const unsigned int nz)	\
       Forward.fft(f, g);
       //show1C(df, nx);
       
-      //std::cout << "g:\n" << g << std::endl;
+      //cout << "g:\n" << g << endl;
       
       unsigned int nzpskip = nzp + inplace;
       double L2error = 0.0;
@@ -247,15 +249,15 @@ const unsigned int ny, const unsigned int nz)	\
 	  for(unsigned int k = 0; k < nzp; ++k) {
 	    int pos = i * ny * nzp + j * nzp + k;
 	    int pos0 = i * ny * nzpskip + j * nzpskip + k;
-	    // std::cout << "pos0:  " << pos0  
+	    // cout << "pos0:  " << pos0  
 	    // 	      << "\t(" << FX[2 * pos0] 
 	    // 	      << " " << FX[2 * pos0 + 1]
-	    // 	      << ")" << std::endl;
-	    // std::cout << "pos:   " << pos  
+	    // 	      << ")" << endl;
+	    // cout << "pos:   " << pos  
 	    // 	      << "\t(" << dg[2 * pos] 
 	    // 	      << " " << dg[2 * pos + 1]
-	    // 	      << ")" << std::endl;
-	    // std::cout << std::endl;
+	    // 	      << ")" << endl;
+	    // cout << endl;
 	    double rdiff = FX[2 * pos0] - dg[2 * pos];
 	    double idiff = FX[2 * pos0 + 1] - dg[2 * pos + 1];
 	    double diff = sqrt(rdiff * rdiff + idiff * idiff);
@@ -263,20 +265,20 @@ const unsigned int ny, const unsigned int nz)	\
 	    if(diff > maxerror)
 	      maxerror = diff;
 	  }
-	  //std::cout << std::endl;
+	  //cout << endl;
 	}
       }
       L2error = sqrt(L2error / (double) (nx * ny * nzp));
 
-      std::cout << std::endl;
-      std::cout << "Error with respect to FFTW:"  << std::endl;
-      std::cout << "L2 error: " << L2error << std::endl;
-      std::cout << "max error: " << maxerror << std::endl;
+      cout << endl;
+      cout << "Error with respect to FFTW:"  << endl;
+      cout << "L2 error: " << L2error << endl;
+      cout << "max error: " << maxerror << endl;
 
       if(L2error < 1e-14 && maxerror < 1e-14) 
-	std::cout << "\nResults ok!" << std::endl;
+	cout << "\nResults ok!" << endl;
       else {
-	std::cout << "\nERROR: results diverge!" << std::endl;
+	cout << "\nERROR: results diverge!" << endl;
 	error += 1;
       }
     }
