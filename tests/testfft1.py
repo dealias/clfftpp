@@ -4,6 +4,7 @@ from subprocess import *
 import sys
 import getopt
 import numpy as np
+from testutils import *
 
 usage = "Usage:\n"\
         "./errorunittest.py\n"\
@@ -32,49 +33,8 @@ def main(argv):
 
     retval = 0
 
-    primes = [2, 3 ,5]
-
-    # TODO: put a reasonable limit for short runs; otherwise use the
-    # max possible
-    xmax = 100000
-    xlist = []
-
-    # 2^h < xmax
-    h = np.int(np.ceil( np.log(xmax) / np.log(min(primes))))
-    p = np.zeros(len(primes) + 1) # TODO: this should be ints.
-    
-    #print "h", h
-    
-    while p[len(p) - 1] == 0:
-        pos = 0
-
-        #print "pos:", pos
-        if p[pos] <= h:
-            p[pos] += 1
-        else:
-            p[pos] = 0
-            pos += 1
-            while pos <= len(primes):
-                p[pos] += 1
-                if(p[pos] > h):
-                    p[pos] = 0
-                    pos += 1
-                else:
-                    break
-                    
-        #print p
-        xval = 1
-        j = 0
-        while j < len(primes):
-            xval *= np.int(primes[j]**p[j])
-            #print primes[j], p[j], "\t"
-            j += 1
-
-        if(xval <= xmax):
-            #print xval
-            xlist.append(xval)
-
-    # TODO: sort.
+    xmax = 10000
+    xlist = sizes(xmax)
     print xlist
             
     print ptest
