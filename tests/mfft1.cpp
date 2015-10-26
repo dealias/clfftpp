@@ -59,6 +59,8 @@ int main(int argc, char *argv[]) {
   unsigned int stats = 0; // Type of statistics used in timing test.
   unsigned int maxout = 32; // maximum size of array output in entierety
 
+  double tolerance = 1e-10;
+  
   unsigned int direction = 1;
 
   int error = 0;
@@ -222,6 +224,9 @@ __kernel void init(__global double *X, const unsigned int nx)		\
  
 
   if(N == 0) {
+    tolerance *= log((double)nx);
+    cout << "Tolerance: " << tolerance << endl;
+
     //fft.ram_to_cbuf(X, &inbuf, 0, NULL, &clv_init);
     clEnqueueNDRangeKernel(queue,
 			   initkernel,
@@ -251,9 +256,6 @@ __kernel void init(__global double *X, const unsigned int nx)		\
       show2C(X, nx, ny);
     else
       cout << X[0] << endl;
-
-    double errmax = 1e-10 * sqrt(nx);
-    cout << "\nmax allowable error: " << errmax << endl;
     
     // Compute the round-trip error.
     {
@@ -286,7 +288,7 @@ __kernel void init(__global double *X, const unsigned int nx)		\
       cout << "L2 error: " << L2error << endl;
       cout << "max error: " << maxerror << endl;
 
-      if(L2error < errmax && maxerror < errmax) 
+      if(L2error < tolerance && maxerror < tolerance) 
 	cout << "\nResults ok!" << endl;
       else {
 	cout << "\nERROR: results diverge!" << endl;
@@ -345,7 +347,7 @@ __kernel void init(__global double *X, const unsigned int nx)		\
       cout << "L2 error: " << L2error << endl;
       cout << "max error: " << maxerror << endl;
 
-      if(L2error < errmax && maxerror < errmax) 
+      if(L2error < tolerance && maxerror < tolerance) 
 	cout << "\nResults ok!" << endl;
       else {
 	cout << "\nERROR: results diverge!" << endl;

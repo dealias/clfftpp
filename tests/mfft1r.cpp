@@ -59,6 +59,8 @@ int main(int argc, char *argv[]) {
   unsigned int stats = 0; // Type of statistics used in timing test.
   unsigned int maxout = 32; // maximum size of array output in entierety
 
+  double tolerance = 1e-10;
+  
   unsigned int direction = 1;
 
   int error = 0;
@@ -202,6 +204,9 @@ __kernel void init(__global double *X, const unsigned int nx)	\
   cl_event clv_forward = clCreateUserEvent(ctx, NULL);
   cl_event clv_backward = clCreateUserEvent(ctx, NULL);
   if(N == 0) {
+    tolerance *= log((double)nx);
+    cout << "Tolerance: " << tolerance << endl;
+
     cout << "\nInput:" << endl;
     //initR(X, nx, M);
     //fft.ram_to_rbuf(X, &inbuf, 0, NULL, &clv_init);
@@ -280,7 +285,7 @@ __kernel void init(__global double *X, const unsigned int nx)	\
       cout << "L2 error: " << L2error << endl;
       cout << "max error: " << maxerror << endl;
 
-      if(L2error < 1e-15 && maxerror < 1e-15) 
+      if(L2error < tolerance && maxerror < tolerance) 
 	cout << "\nResults ok!" << endl;
       else {
 	cout << "\nERROR: results diverge!" << endl;
@@ -342,7 +347,7 @@ __kernel void init(__global double *X, const unsigned int nx)	\
       cout << "L2 error: " << L2error << endl;
       cout << "max error: " << maxerror << endl;
 
-      if(L2error < 1e-15 && maxerror < 1e-15) 
+      if(L2error < tolerance && maxerror < tolerance) 
 	cout << "\nResults ok!" << endl;
       else {
 	cout << "\nERROR: results diverge!" << endl;
