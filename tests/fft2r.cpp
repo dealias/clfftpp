@@ -38,6 +38,8 @@ int main(int argc, char *argv[]) {
 
   unsigned int maxout = 32; // maximum size of array output in entirety
 
+  double tolerance = 1e-10;
+
   int error = 0;
 
 #ifdef __GNUC__	
@@ -142,6 +144,9 @@ __kernel void init(__global double *X, const unsigned int ny)		\
   cl_event clv_backward = clCreateUserEvent(ctx, NULL);
 
   if(N == 0) {
+    tolerance *= log((double) max(nx, ny));
+    cout << "Tolerance: " << tolerance << endl;
+
     cout << "\nInput:" << endl;
     init2R(X, nx, ny);
     if(nx <= maxout)
@@ -207,7 +212,7 @@ __kernel void init(__global double *X, const unsigned int ny)		\
       cout << "L2 error: " << L2error << endl;
       cout << "max error: " << maxerror << endl;
 
-      if(L2error < 1e-14 && maxerror < 1e-14) 
+      if(L2error < tolerance && maxerror < tolerance) 
 	cout << "\nResults ok!" << endl;
       else {
 	cout << "\nERROR: results diverge!" << endl;
@@ -258,7 +263,7 @@ __kernel void init(__global double *X, const unsigned int ny)		\
       cout << "L2 error: " << L2error << endl;
       cout << "max error: " << maxerror << endl;
 
-      if(L2error < 1e-14 && maxerror < 1e-14) 
+      if(L2error < tolerance && maxerror < tolerance) 
 	cout << "\nResults ok!" << endl;
       else {
 	cout << "\nERROR: results diverge!" << endl;
