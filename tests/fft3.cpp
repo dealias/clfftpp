@@ -44,6 +44,8 @@ int main(int argc, char *argv[]) {
 
   unsigned int maxout = 10000;
 
+  double tolerance = 1e-10;
+  
   unsigned int stats = 0; // Type of statistics used in timing test.
 
   int error = 0;
@@ -153,6 +155,9 @@ const unsigned int ny, const unsigned int nz)\n	\
   cl_event clv_forward = clCreateUserEvent(ctx, NULL);
   cl_event clv_backward = clCreateUserEvent(ctx, NULL);
   if(N == 0) { // Transform forwards and back, outputting the buffer.
+    tolerance *= log((double) max(max(nx, ny), nz));
+    cout << "Tolerance: " << tolerance << endl;
+
     init(X, nx, ny, nz);
     
     cout << "\nInput:" << endl;
@@ -214,7 +219,7 @@ const unsigned int ny, const unsigned int nz)\n	\
       cout << "L2 error: " << L2error << endl;
       cout << "max error: " << maxerror << endl;
 
-      if(L2error < 1e-14 && maxerror < 1e-14) 
+      if(L2error < tolerance && maxerror < tolerance) 
 	cout << "\nResults ok!" << endl;
       else {
 	cout << "\nERROR: results diverge!" << endl;
@@ -251,7 +256,7 @@ const unsigned int ny, const unsigned int nz)\n	\
       cout << "L2 error: " << L2error << endl;
       cout << "max error: " << maxerror << endl;
 
-      if(L2error < 1e-14 && maxerror < 1e-14) 
+      if(L2error < tolerance && maxerror < tolerance) 
 	cout << "\nResults ok!" << endl;
       else {
 	cout << "\nERROR: results diverge!" << endl;
