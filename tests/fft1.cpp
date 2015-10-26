@@ -34,9 +34,7 @@ int main(int argc, char *argv[])
   unsigned int stats = 0; // Type of statistics used in timing test.
   unsigned int maxout = 32; // maximum size of array output in entierety
 
-
-  // TODO: scale with theoretical error from FFT.
-  double tolerance = 1e-8;
+  double tolerance = 1e-10;
   
   int error = 0;
 
@@ -139,6 +137,9 @@ __kernel void init(__global double *X)\n	\
   cl_event clv_forward = clCreateUserEvent(ctx, NULL);
   cl_event clv_backward = clCreateUserEvent(ctx, NULL);
   if(N == 0) {
+    tolerance *= log((double)nx);
+    cout << "Tolerance: " << tolerance << endl;
+
     //fft.ram_to_cbuf(X, &inbuf, 0, NULL, &clv_init);
     size_t global_wsize[] = {nx};
     clEnqueueNDRangeKernel(queue,
