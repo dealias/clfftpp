@@ -3,13 +3,15 @@
 from subprocess import *
 import sys
 import getopt
+import numpy as np
+from testutils import *
 
 usage = "Usage:\n"\
         "./errorunittest.py\n"\
         "\t-P <int>\tOpenCL platform index.\n"\
         "\t-D <int>\tOpenCL device index.\n"
 
-testlist = ["fft1", "fft2", "fft3", "fft1r", "fft2r", "fft3r", "mfft1", "mfft1r"]
+ptest = "fft1"
 
 def main(argv):
     P = 0
@@ -31,20 +33,25 @@ def main(argv):
 
     retval = 0
 
-    for ptest in testlist:
-        print ptest
+    xmax = 10000
+    xlist = sizes(xmax)
+    print xlist
+            
+    print ptest
+    for x in xlist:
         cmd = ["./" + ptest]
         cmd.append("-P" + str(P))
         cmd.append("-D" + str(D))
+        cmd.append("-x" + str(x))
         print "\t", " ".join(cmd)
         p = Popen(cmd, stdout=PIPE, stderr=PIPE)
         p.wait() # sets the return code
         out, err = p.communicate() # capture output
         if not (p.returncode == 0):
             retval += 1
-            print out
+            #print out
             print
-            print err
+            #print err
             print
             print "\t" + ptest + " FAILED!"
 
@@ -55,5 +62,7 @@ def main(argv):
     else:
         print "Error unit test FAILED!"
 
+    # TODO: return retval
+        
 if __name__ == "__main__":
     main(sys.argv[1:])
