@@ -39,7 +39,7 @@ int main(int argc, char *argv[]) {
   unsigned int stats = 0; // Type of statistics used in timing test.
   bool inplace = false;
 
-  double tolerance = 1e-10;
+  double tolerance = 1e-9;
   
   unsigned int maxout = 32; // maximum size of array output in entirety
 
@@ -153,7 +153,7 @@ const unsigned int ny, const unsigned int nz)	\
   cl_event clv_backward = clCreateUserEvent(ctx, NULL);
 
   if(N == 0) {
-    tolerance *= log((double) max(max(nx, ny), nz));
+    tolerance *= log((double) max(max(nx, ny), nz) + 1);
     cout << "Tolerance: " << tolerance << endl;
 
     cout << "\nInput:" << endl;

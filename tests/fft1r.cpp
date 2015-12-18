@@ -33,7 +33,7 @@ int main(int argc, char *argv[]) {
 
   unsigned int maxout = 32; // maximum size of array output in entirety
 
-  double tolerance = 1e-10;
+  double tolerance = 1e-9;
   
   int error = 0;
 
@@ -132,7 +132,7 @@ __kernel void init(__global double *X)\n	\
   cl_event clv_backward = clCreateUserEvent(ctx, NULL);
 
   if(N == 0) {
-    tolerance *= log((double)nx);
+    tolerance *= log((double)nx + 1);
     cout << "Tolerance: " << tolerance << endl;
 
     cout << "\nInput:" << endl;
