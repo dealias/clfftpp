@@ -7,18 +7,20 @@ import numpy as np
 from testutils import *
 
 usage = "Usage:\n"\
-        "./errorunittest.py\n"\
-        "\t-P <int>\tOpenCL platform index.\n"\
-        "\t-D <int>\tOpenCL device index.\n"
+        "./testfft2.py\n"\
+        "\t-P <int>\tOpenCL platform index.\n" \
+        "\t-D <int>\tOpenCL device index.\n"   \
+        "\t-m <int>\tMaximum problem size.\n"
 
 ptest = "fft2"
 
 def main(argv):
     P = 0
     D = 0
-
+    m = 128
+    
     try:
-        opts, args = getopt.getopt(argv,"P:D:h")
+        opts, args = getopt.getopt(argv,"P:D:m:h")
     except getopt.GetoptError:
         print usage
         sys.exit(2)
@@ -27,16 +29,16 @@ def main(argv):
             P = int(arg)
         if opt in ("-D"):
             D = int(arg)
+        if opt in ("-m"):
+            m = int(arg)
         if opt in ("-h"):
             print usage
             sys.exit(0)
 
     retval = 0
 
-    xmax = 100
-    ymax = 100
-    xlist = sizes(xmax)
-    ylist = sizes(ymax)
+    xlist = sizes(m)
+    ylist = sizes(m)
             
     print ptest
     for x in xlist:

@@ -35,7 +35,7 @@ int main(int argc, char *argv[]) {
   unsigned int ny = 4;
   unsigned int N = 0;
 
-  unsigned int maxout = 10000;
+  unsigned int maxout = 1000;
   unsigned int stats = 0; // Type of statistics used in timing test.
 
   double tolerance = 1e-10;
@@ -139,7 +139,7 @@ __kernel void init(__global double *X, const unsigned int ny)		\
   cl_event clv_backward = clCreateUserEvent(ctx, NULL);
 
   if (N == 0) { // Transform forwards and back, outputting the buffer.
-    tolerance *= log((double) max(nx, ny));
+    tolerance *= 1.0 + log((double) max(nx, ny));
     cout << "Tolerance: " << tolerance << endl;
 
     init(X, nx, ny);
