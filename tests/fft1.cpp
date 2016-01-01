@@ -137,7 +137,7 @@ __kernel void init(__global double *X)\n	\
   cl_event clv_forward = clCreateUserEvent(ctx, NULL);
   cl_event clv_backward = clCreateUserEvent(ctx, NULL);
   if(N == 0) {
-    tolerance *= log((double)nx);
+    tolerance *= 1.0 + log((double)nx);
     cout << "Tolerance: " << tolerance << endl;
 
     //fft.ram_to_cbuf(X, &inbuf, 0, NULL, &clv_init);

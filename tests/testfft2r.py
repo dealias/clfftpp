@@ -7,18 +7,20 @@ import numpy as np
 from testutils import *
 
 usage = "Usage:\n"\
-        "./errorunittest.py\n"\
+        "./testfft2r.py\n"\
         "\t-P <int>\tOpenCL platform index.\n"\
-        "\t-D <int>\tOpenCL device index.\n"
+        "\t-D <int>\tOpenCL device index.\n" \
+        "\t-m <int>\tMax problem size.\n" 
 
 ptest = "fft2r"
 
 def main(argv):
     P = 0
     D = 0
-
+    m = 64
+    
     try:
-        opts, args = getopt.getopt(argv,"P:D:h")
+        opts, args = getopt.getopt(argv,"P:D:m:h")
     except getopt.GetoptError:
         print usage
         sys.exit(2)
@@ -27,36 +29,37 @@ def main(argv):
             P = int(arg)
         if opt in ("-D"):
             D = int(arg)
+        if opt in ("-m"):
+            m = int(arg)
         if opt in ("-h"):
             print usage
             sys.exit(0)
 
     retval = 0
 
-    xmax = 100
-    ymax = 100
-    xlist = sizes(xmax)
-    ylist = sizes(ymax)
+    xlist = sizes(m)
+    ylist = sizes(m)
             
     print ptest
     for x in xlist:
         for y in ylist:
-            cmd = ["./" + ptest]
-            cmd.append("-P" + str(P))
-            cmd.append("-D" + str(D))
-            cmd.append("-x" + str(x))
-            cmd.append("-y" + str(y))
-            print "\t", " ".join(cmd)
-            p = Popen(cmd, stdout=PIPE, stderr=PIPE)
-            p.wait() # sets the return code
-            out, err = p.communicate() # capture output
-            if not (p.returncode == 0):
-                retval += 1
-                #print out
-                print
-                #print err
-                print
-                print "\t" + ptest + " FAILED!"
+            if y > 1:
+                cmd = ["./" + ptest]
+                cmd.append("-P" + str(P))
+                cmd.append("-D" + str(D))
+                cmd.append("-x" + str(x))
+                cmd.append("-y" + str(y))
+                print "\t", " ".join(cmd)
+                p = Popen(cmd, stdout=PIPE, stderr=PIPE)
+                p.wait() # sets the return code
+                out, err = p.communicate() # capture output
+                if not (p.returncode == 0):
+                    retval += 1
+                    #print out
+                    print
+                    #print err
+                    print
+                    print "\t" + ptest + " FAILED!"
 
     print
 

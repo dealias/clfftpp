@@ -144,7 +144,7 @@ __kernel void init(__global double *X, const unsigned int ny)		\
   cl_event clv_backward = clCreateUserEvent(ctx, NULL);
 
   if(N == 0) {
-    tolerance *= log((double) max(nx, ny));
+    tolerance *= 1.0 + log((double) max(nx, ny));
     cout << "Tolerance: " << tolerance << endl;
 
     cout << "\nInput:" << endl;

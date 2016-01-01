@@ -155,7 +155,7 @@ const unsigned int ny, const unsigned int nz)\n	\
   cl_event clv_forward = clCreateUserEvent(ctx, NULL);
   cl_event clv_backward = clCreateUserEvent(ctx, NULL);
   if(N == 0) { // Transform forwards and back, outputting the buffer.
-    tolerance *= log((double) max(max(nx, ny), nz));
+    tolerance *= 1.0 + log((double) max(max(nx, ny), nz));
     cout << "Tolerance: " << tolerance << endl;
 
     init(X, nx, ny, nz);

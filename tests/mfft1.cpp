@@ -222,9 +222,8 @@ __kernel void init(__global double *X, const unsigned int nx)		\
   else
     cout << X[0] << endl;
  
-
   if(N == 0) {
-    tolerance *= log((double)nx);
+    tolerance *= 1.0 + log((double)nx);
     cout << "Tolerance: " << tolerance << endl;
 
     //fft.ram_to_cbuf(X, &inbuf, 0, NULL, &clv_init);

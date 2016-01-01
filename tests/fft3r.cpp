@@ -153,7 +153,7 @@ const unsigned int ny, const unsigned int nz)	\
   cl_event clv_backward = clCreateUserEvent(ctx, NULL);
 
   if(N == 0) {
-    tolerance *= log((double) max(max(nx, ny), nz));
+    tolerance *= 1.0 + log((double) max(max(nx, ny), nz));
     cout << "Tolerance: " << tolerance << endl;
 
     cout << "\nInput:" << endl;
