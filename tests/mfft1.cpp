@@ -26,8 +26,8 @@ void direction_params(const unsigned int direction,
   case 0:
     M = ny;
     n = nx;
-    istride = nx;
-    ostride = nx;
+    istride = ny;
+    ostride = ny;
     idist = 1;
     odist = 1;
     break;
@@ -37,8 +37,8 @@ void direction_params(const unsigned int direction,
     n = ny;
     istride = 1;
     ostride = 1;
-    idist = nx;
-    odist = nx;
+    idist = ny;
+    odist = ny;
     break;
   }
 }
@@ -130,14 +130,20 @@ int main(int argc, char *argv[]) {
     }
   }
 
-  if(istride == 0) istride = 1;
-  if(ostride == 0) ostride = 1;
+  if(istride == 0)
+    istride = 1;
+  if(ostride == 0)
+    ostride = 1;
 
-  if(idist == 0) idist = nx;
-  if(odist == 0) odist = nx;
+  if(idist == 0)
+    idist = nx;
+  if(odist == 0)
+    odist = nx;
 
-  if(n == 0) n = nx;
-  if(M == 0) M = ny;
+  if(n == 0)
+    n = nx;
+  if(M == 0)
+    M = ny;
 
   show_devices();
   cout << "Using platform " << platnum
@@ -171,39 +177,43 @@ int main(int argc, char *argv[]) {
   cout << "Allocating " 
   	    << 2 * nx * ny
   	    << " doubles." << endl;
-  double *X = new double[2 * nx * ny];
-  double *FX = new double[2 * nx * ny];
+  const unsigned int ndouble = 2 * nx * ny;
+  
+  double *X = new double[ndouble];
+  double *FX = new double[ndouble];
 
   cl_mem inbuf, outbuf;
-  fft.create_cbuf(&inbuf, nx * ny);
+  fft.create_cbuf(&inbuf, ndouble);
   if(inplace) {
     cout << "in-place transform" << endl;
   } else {
     cout << "out-of-place transform" << endl;
-    fft.create_cbuf(&outbuf, n * M);
+    fft.create_cbuf(&outbuf, ndouble);
   }
   
-  string init_source ="\
+  string init_source = "\
 #pragma OPENCL EXTENSION cl_khr_fp64: enable\n	\
-__kernel void init(__global double *X, const unsigned int nx)		\
+__kernel void init(__global double *X)	\
 {						\
   const int i = get_global_id(0);		\
   const int j = get_global_id(1);		\
-  int pos = i * nx + j;				\
+  const int ny = get_global_size(1);		\
+  int pos = i * ny + j;				\
   X[2 * pos] = i;				\
   X[2 * pos + 1] = j;				\
 }";
+//printf(\"i: \%d \t j: \%d,\\tny:\%d\\t\%d  \\n\", i, j, ny, pos);	
+  
   size_t global_wsize[] = {nx, ny};
   cl_program initprog = create_program(init_source, ctx);
   build_program(initprog, device);
   cl_kernel initkernel = create_kernel(initprog, "init"); 
   set_kernel_arg(initkernel, 0, sizeof(cl_mem), &inbuf);
-  set_kernel_arg(initkernel, 1, sizeof(unsigned int), &nx);
 
-  cl_event clv_init = clCreateUserEvent(ctx, NULL);
-  cl_event clv_toram = clCreateUserEvent(ctx, NULL);
-  cl_event clv_forward = clCreateUserEvent(ctx, NULL);
-  cl_event clv_backward = clCreateUserEvent(ctx, NULL);
+  cl_event clv_init;
+  cl_event clv_toram;
+  cl_event clv_forward;
+  cl_event clv_backward;
 
   cout << "\nInput:" << endl;
   clEnqueueNDRangeKernel(queue,
@@ -213,7 +223,7 @@ __kernel void init(__global double *X, const unsigned int nx)		\
 			 global_wsize, // global_work_size, 
 			 NULL, // size_t *local_work_size, 
 			 0, NULL, &clv_init);
-  fft.buf_to_ram(X, &inbuf, 2 * n * M * sizeof(double), 
+  fft.buf_to_ram(X, &inbuf, ndouble * sizeof(double), 
 		 1, &clv_init, &clv_toram);
   clWaitForEvents(1, &clv_toram);
 
@@ -235,13 +245,13 @@ __kernel void init(__global double *X, const unsigned int nx)		\
 			   NULL, // size_t *local_work_size, 
 			   0, NULL, &clv_init);
     fft.forward(&inbuf, inplace ? NULL : &outbuf, 1, &clv_init, &clv_forward);
-    fft.buf_to_ram(FX, inplace ? &inbuf : &outbuf, 2 * n * M * sizeof(double), 
+    fft.buf_to_ram(FX, inplace ? &inbuf : &outbuf, ndouble * sizeof(double), 
 		    1, &clv_forward, &clv_toram);
     clWaitForEvents(1, &clv_toram);
 
     cout << "\nTransformed:" << endl;
     if(nx <= maxout)
-      show1C(FX, nx, ny);
+      show1C(FX, n, M);
     else
       cout << FX[0] << endl;
 
@@ -266,7 +276,7 @@ __kernel void init(__global double *X, const unsigned int nx)		\
 			     global_wsize, // global_work_size, 
 			     NULL, // size_t *local_work_size, 
 			     0, NULL, &clv_init);
-      fft.buf_to_ram(X0, &inbuf, 2 * n * M * sizeof(double), 
+      fft.buf_to_ram(X0, &inbuf, ndouble * sizeof(double), 
 		     1, &clv_init, &clv_toram);
       clWaitForEvents(1, &clv_toram);
       
@@ -311,7 +321,7 @@ __kernel void init(__global double *X, const unsigned int nx)		\
 			     global_wsize, // global_work_size, 
 			     NULL, // size_t *local_work_size, 
 			     0, NULL, &clv_init);
-      fft.buf_to_ram(df, &inbuf, 2 * n * M * sizeof(double), 
+      fft.buf_to_ram(df, &inbuf, ndouble * sizeof(double), 
 		     1, &clv_init, &clv_toram);
       clWaitForEvents(1, &clv_toram);
 
@@ -328,11 +338,11 @@ __kernel void init(__global double *X, const unsigned int nx)		\
 
       double L2error = 0.0;
       double maxerror = 0.0;
-      for(unsigned int m = 0; m < M; ++m) {
-	for(unsigned int i = 0; i < nx; ++i) {
-	  int pos = m * nx + i; 
-	  double rdiff = FX[2 * pos] - f[m][i].re;
-	  double idiff = FX[2 * pos + 1] - f[m][i].im;
+      for(unsigned int i = 0; i < nx; ++i) {
+	for(unsigned int j = 0; j < ny; ++j) {
+	  int pos = i * ny + j;
+	  double rdiff = FX[2 * pos] - f[i][j].re;
+	  double idiff = FX[2 * pos + 1] - f[i][j].im;
 	  double diff = sqrt(rdiff * rdiff + idiff * idiff);
 	  L2error += diff * diff;
 	  if(diff > maxerror)
