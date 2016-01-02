@@ -44,7 +44,7 @@ int main(int argc, char *argv[]) {
 
   unsigned int maxout = 10000;
 
-  double tolerance = 1e-10;
+  double tolerance = 1e-9;
   
   unsigned int stats = 0; // Type of statistics used in timing test.
 

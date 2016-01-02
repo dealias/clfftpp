@@ -33,7 +33,7 @@ int main(int argc, char *argv[]) {
 
   unsigned int maxout = 32; // maximum size of array output in entirety
 
-  double tolerance = 1e-10;
+  double tolerance = 1e-9;
   
   int error = 0;
 

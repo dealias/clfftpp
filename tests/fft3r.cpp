@@ -39,7 +39,7 @@ int main(int argc, char *argv[]) {
   unsigned int stats = 0; // Type of statistics used in timing test.
   bool inplace = false;
 
-  double tolerance = 1e-10;
+  double tolerance = 1e-9;
   
   unsigned int maxout = 32; // maximum size of array output in entirety
 
