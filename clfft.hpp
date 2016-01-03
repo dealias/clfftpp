@@ -990,7 +990,7 @@ private:
     set_inout_place(plan);
 
     set_batchsize(plan, M);
-
+    
     size_t istride_t = istride;
     size_t ostride_t = ostride;
     if(forward)

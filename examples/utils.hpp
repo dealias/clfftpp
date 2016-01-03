@@ -114,11 +114,14 @@ void show1R(const T *X, const unsigned int nx, const unsigned int M,
 }
 
 template<class T>
-void show2R(const T *X, unsigned int nx, unsigned int ny)
+void show2R(const T *X, unsigned int nx, unsigned int ny,
+	    unsigned int stride = 0)
 {
+  if(stride == 0)
+    stride = ny;
   for(unsigned int i = 0; i < nx; ++i) {
     for(unsigned int j = 0; j < ny; ++j) {
-      unsigned pos = i * ny + j;
+      unsigned pos = i * stride + j;
       std::cout << X[pos] << " ";
     }
     std::cout << std::endl;

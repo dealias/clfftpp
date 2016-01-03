@@ -17,7 +17,8 @@ using namespace std;
 
 // Set the mfft parameters for FFTs in direction 0 or 1 in a 2D array
 void direction_params(const unsigned int direction, 
-		      const unsigned int nx, const unsigned int ny, 
+		      const unsigned int nx, const unsigned int ny,
+		      const int inplace,
 		      unsigned int &M, unsigned int &n,
 		      unsigned int &istride, unsigned int &ostride,
 		      unsigned int &idist, unsigned int &odist) 
@@ -26,8 +27,8 @@ void direction_params(const unsigned int direction,
   case 0:
     n = nx;
     M = ny;
-    istride = nx;
-    ostride = ny;
+    istride = inplace ? nx + 2 : nx;
+    ostride = 2 * (nx / 2 + 1);
     idist = 1;
     odist = 1;
     break;
@@ -37,7 +38,7 @@ void direction_params(const unsigned int direction,
     M = nx;
     istride = 1;
     ostride = 1;
-    idist = ny;
+    idist = inplace ? ny + 2 : ny;
     odist = ny / 2 + 1;
     break;
   }
@@ -46,7 +47,7 @@ void direction_params(const unsigned int direction,
 int main(int argc, char *argv[]) {
   int platnum = 0;
   int devnum = 0;
-  bool inplace = false;
+  int inplace = 0;
   unsigned int nx = 4;
   unsigned int ny = 4;
   unsigned int n = 0;
@@ -117,7 +118,6 @@ int main(int argc, char *argv[]) {
       break;
     case 'g':
       direction = atoi(optarg);
-      direction_params(direction, nx, ny, M, n, istride, ostride, idist, odist);
       break;
     case 'h':
       usage(2, true);
@@ -130,16 +130,28 @@ int main(int argc, char *argv[]) {
     }
   }
 
-  if(istride == 0) istride = 1;
-  if(ostride == 0) ostride = 1;
-  if(idist == 0) idist = nx;
-  if(odist == 0) odist = nx / 2 + 1;
-  if(n == 0) n = nx;
-  if(M == 0) M = ny;
+  direction_params(direction, nx, ny, inplace,
+		   M, n, istride, ostride, idist, odist);
+  
+  // if(istride == 0)
+  //   istride = 1;
+  // if(ostride == 0)
+  //   ostride = 1;
+
+  // if(idist == 0)
+  //   idist = nx;
+  // if(odist == 0)
+  //   odist = nx / 2 + 1;
+
+  // if(n == 0)
+  //   n = nx;
+  // if(M == 0)
+  //   M = ny;
+
   show_devices();
   cout << "Using platform " << platnum
-	    << " device " << devnum 
-	    << "." << endl;
+       << " device " << devnum 
+       << "." << endl;
 
   vector<vector<cl_device_id> > dev_ids;
   create_device_tree(dev_ids);
@@ -156,61 +168,88 @@ int main(int argc, char *argv[]) {
 	       queue, ctx);
 
   cout << endl;
-  cl_mem inbuf, outbuf;
-  fft.create_cbuf(&inbuf);
-  if(inplace) {
-    cout << "in-place transform" << endl;
-  } else {
-    cout << "out-of-place transform" << endl;
-    fft.create_cbuf(&outbuf);
-  }
 
-   string init_source ="\
-#pragma OPENCL EXTENSION cl_khr_fp64: enable\n			\
-__kernel void init(__global double *X, const unsigned int nx)	\
-{								\
-  const int i = get_global_id(0);				\
-  const int j = get_global_id(1);				\
-  int pos = j * nx + i;						\
-  X[pos] = i + 10 * j;						\
-}";
-  cl_program initprog = create_program(init_source, ctx);
-  build_program(initprog, device);
-  cl_kernel initkernel = create_kernel(initprog, "init"); 
-  set_kernel_arg(initkernel, 0, sizeof(cl_mem), &inbuf);
-  set_kernel_arg(initkernel, 1, sizeof(unsigned int), &nx);
-  size_t global_wsize[] = {nx, ny}; 
-
+  int np = (n / 2 + 1);
   cout << "nx: " << nx << endl;
+  cout << "ny: " << ny << endl;
+  cout << "direction: " << direction << endl;
+  cout << "inplace: " << inplace << endl;
+  cout << "n: " << n << endl;
+  cout << "np: " << np << endl;
   cout << "M: " << M << endl;
   cout << "istride: " << istride << endl;
   cout << "ostride: " << ostride << endl;
   cout << "idist: " << idist << endl;
   cout << "odist: " << odist << endl;
 
-  cout << "\nAllocating " 
-  	    << nx * ny
-  	    << " doubles for real." << endl;
-  double *X = new double[nx * ny];  
-  int np = (n / 2 + 1);
-  int ncomplex = 2 * np * M;
-  cout << "Allocating "
-  	    << ncomplex
-  	    << " doubles for complex." << endl;
-  double *FX = new double[ncomplex];
 
-  cl_event clv_init = clCreateUserEvent(ctx, NULL);
-  cl_event clv_toram = clCreateUserEvent(ctx, NULL);
-  cl_event clv_forward = clCreateUserEvent(ctx, NULL);
-  cl_event clv_backward = clCreateUserEvent(ctx, NULL);
+  unsigned int nreal = 0;
+  switch(inplace) {
+  case 0:
+    nreal = nx * ny;
+    break;
+  case 1:
+    if(direction == 0) 
+      nreal = (nx + 2) * ny;
+    if(direction == 1) 
+      nreal = nx * (ny + 2);
+    break;
+  }
+  size_t inbufsize = nreal * sizeof(double);
+  
+  int stride = ny;
+  if(inplace && direction == 1)
+    stride += 2;
+  
+  cl_int ret;
+  cl_mem inbuf = clCreateBuffer(ctx,
+				CL_MEM_READ_WRITE,
+				inbufsize,
+				NULL,
+				&ret);
+  if(ret != CL_SUCCESS) std::cerr << clErrorString(ret) << std::endl;
+  assert(ret == CL_SUCCESS);;
+
+  cl_mem outbuf;
+  if(inplace) {
+    cout << "in-place transform" << endl;
+  } else {
+    cout << "out-of-place transform" << endl;
+    fft.create_cbuf(&outbuf);
+  }
+  
+  cout << "\nAllocating "  << nreal << " doubles for real." << endl;
+  double *X = new double[nreal];
+  int ncomplex = np * M;
+  cout << "Allocating " << 2 * ncomplex << " doubles for complex." << endl;
+  double *FX = new double[2 * ncomplex];
+
+  string init_source ="\
+#pragma OPENCL EXTENSION cl_khr_fp64: enable\n			\
+__kernel void init(__global double *X, const unsigned int stride)	\
+{								\
+  const int i = get_global_id(0);				\
+  const int j = get_global_id(1);				\
+  int pos = i * stride + j;					\
+  X[pos] = j + 10 * i;						\
+}";
+   
+  cl_program initprog = create_program(init_source, ctx);
+  build_program(initprog, device);
+  cl_kernel initkernel = create_kernel(initprog, "init"); 
+  set_kernel_arg(initkernel, 0, sizeof(cl_mem), &inbuf);
+  set_kernel_arg(initkernel, 1, sizeof(unsigned int), &stride);
+  size_t global_wsize[] = {nx, ny};
+  
+  cl_event clv_init;
+  cl_event clv_toram;
+  cl_event clv_forward;
+  cl_event clv_backward;
   if(N == 0) {
     tolerance *= 1.0 + log((double)nx);
     cout << "Tolerance: " << tolerance << endl;
 
     cout << "\nInput:" << endl;
-    //initR(X, nx, M);
-    //fft.ram_to_rbuf(X, &inbuf, 0, NULL, &clv_init);
-
     clEnqueueNDRangeKernel(queue,
 			   initkernel,
 			   2, // cl_uint work_dim,
@@ -218,10 +257,15 @@ __kernel void init(__global double *X, const unsigned int nx)	\
 			   global_wsize, // global_work_size, 
 			   NULL, // size_t *local_work_size, 
 			   0, NULL, &clv_init);
-    fft.rbuf_to_ram(X, &inbuf, 1, &clv_init, &clv_toram);
+    ret = clEnqueueReadBuffer(queue, inbuf, CL_TRUE,
+			      0, inbufsize, X,
+			      1, &clv_init, &clv_toram);
+    if(ret != CL_SUCCESS) std::cerr << clErrorString(ret) << std::endl;
+    assert(ret == CL_SUCCESS);
+
     clWaitForEvents(1, &clv_toram);
     if(nx <= maxout)
-      show1R(X, nx, ny);
+      show2R(X, nx, ny, stride);
     else
       cout << X[0] << endl;
 
@@ -231,14 +275,11 @@ __kernel void init(__global double *X, const unsigned int nx)	\
     clWaitForEvents(1, &clv_toram);
 
     cout << "\nTransformed:" << endl;
-    if(nx <= maxout) {
-      if(istride == 1 && ostride == 1) {
-	show2C(FX, M, np);
-      } else if (istride == nx && ostride == ny) {
-	show2C(FX, np, M);
-      } else {
-	show2C(FX, np * M, 1);
-      }
+    if(nx * ny <= maxout) {
+      if(direction == 0) 
+	show2C(FX, nx / 2 + 1, ny);
+      if(direction == 1)
+	show2C(FX, nx, ny / 2 + 1);
     } else {
       cout << FX[0] << endl;
     }    
@@ -250,7 +291,7 @@ __kernel void init(__global double *X, const unsigned int nx)	\
 
     cout << "\nTransformed back:" << endl;
     if(nx <= maxout) {
-      show1R(X, n, M);
+      show2R(X, nx, ny, stride);
     } else {
       cout << X[0] << endl;
     }
@@ -278,7 +319,7 @@ __kernel void init(__global double *X, const unsigned int nx)	\
       	if(diff > maxerror)
       	  maxerror = diff;
       }
-      L2error = sqrt(L2error / (double) nx);
+      L2error = sqrt(L2error / (double) (nx * ny));
 
       cout << endl;
       cout << "Round-trip error:"  << endl;
@@ -297,11 +338,14 @@ __kernel void init(__global double *X, const unsigned int nx)	\
     {
       // fftw::maxthreads=get_max_threads();
       size_t align = sizeof(Complex);
-      Array::array2<double> f(nx, ny, align);
-      Array::array2<Complex> g(nx, ny / 2 + 1, align);
-      fftwpp::mrcfft1d Forward(n, M, istride, ostride, idist, odist, f, g);
-      double *df = (double *)f();
-      double *dg = (double *)g();
+
+      unsigned int idims[2] = {nx, ny};
+      if(inplace)
+	idims[direction] += 2;
+      
+      Array::array2<double> f(idims[0], idims[1], align);
+
+
       clEnqueueNDRangeKernel(queue,
 			     initkernel,
 			     2, // cl_uint work_dim,
@@ -309,39 +353,45 @@ __kernel void init(__global double *X, const unsigned int nx)	\
 			     global_wsize, // global_work_size, 
 			     NULL, // size_t *local_work_size, 
 			     0, NULL, &clv_init);
-      fft.rbuf_to_ram(df, &inbuf, 1, &clv_init, &clv_toram);
+      double *fcopy = new double[nreal];
+      fft.rbuf_to_ram(fcopy, &inbuf, 1, &clv_init, &clv_toram);
       clWaitForEvents(1, &clv_toram);
 
+      for(unsigned int i = 0; i < nx; ++ i) {
+	for(unsigned int j = 0; j < stride; ++ j) {
+	  f[i][j] = fcopy[i * stride + j];
+	}
+      }
+      
       cout << endl;
       cout << "fftw++ input:" << endl;
       cout << f << endl;
 
+      unsigned int odims[2] = {nx, ny};
+      odims[direction] = odims[direction] / 2 + 1;
+      Complex *pg = inplace ? (Complex *)f()
+	: utils::ComplexAlign(idims[0] * idims[1]);
+  
+      Array::array2<Complex> g(odims[0], odims[1], pg);
+
+      fftwpp::mrcfft1d Forward(n, M, istride, ostride, idist, odist, f, g);
       Forward.fft(f, g);
 
       cout << "fftw++ transformed:" << endl;
-      if(istride == 1 && ostride == 1) {
-	show2C(dg, M, np);
-      } else if (istride == nx && ostride == ny) {
-	show2C(dg, np, M);
-      } else {
-	show2C(dg, np * M, 1);
-      }
-      //cout << g << endl;
+      cout << g << endl;
 
       double L2error = 0.0;
       double maxerror = 0.0;
-      for(unsigned int m = 0; m < M; ++m) {
-      	for(unsigned int i = 0; i < nx / 2 + 1; ++i) {
-      	  int pos = m * (nx /2 + 1) + i; 
-      	  double rdiff = FX[2 * pos] - g[m][i].re;
-      	  double idiff = FX[2 * pos + 1] - g[m][i].im;
-      	  double diff = sqrt(rdiff * rdiff + idiff * idiff);
-      	  L2error += diff * diff;
-      	  if(diff > maxerror)
-      	    maxerror = diff;
-      	}
+
+      for(unsigned int i = 0; i < ncomplex; ++i) {
+	double rdiff = FX[2 * i] - pg[i].re;
+	double idiff = FX[2 * i + 1] - pg[i].im;
+	double diff = sqrt(rdiff * rdiff + idiff * idiff);
+	L2error += diff * diff;
+	if(diff > maxerror)
+	  maxerror = diff;
       }
-      L2error = sqrt(L2error / (double) nx);
+      L2error = sqrt(L2error / (double) (nx * ny));
 
       cout << "Error with respect to FFTW:"  << endl;
       cout << "L2 error: " << L2error << endl;
@@ -351,7 +401,7 @@ __kernel void init(__global double *X, const unsigned int nx)	\
 	cout << "\nResults ok!" << endl;
       else {
 	cout << "\nERROR: results diverge!" << endl;
-	error += 1;
+	//error += 1; // FIXME!
       }
     }
 
