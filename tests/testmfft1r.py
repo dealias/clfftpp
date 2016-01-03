@@ -44,8 +44,7 @@ def main(argv):
     for x in xlist:
         for y in ylist:
             if x > 1 and y > 1:
-#                for g in [0, 1]:
-                for g in [1]:
+                for g in [0, 1]:
                     for i in [0, 1]:
                         cmd = ["./" + ptest]
                         cmd.append("-P" + str(P))

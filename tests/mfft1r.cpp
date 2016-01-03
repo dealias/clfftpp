@@ -27,8 +27,8 @@ void direction_params(const unsigned int direction,
   case 0:
     n = nx;
     M = ny;
-    istride = inplace ? nx + 2 : nx;
-    ostride = 2 * (nx / 2 + 1);
+    istride = ny;
+    ostride = ny;
     idist = 1;
     odist = 1;
     break;
@@ -132,21 +132,6 @@ int main(int argc, char *argv[]) {
 
   direction_params(direction, nx, ny, inplace,
 		   M, n, istride, ostride, idist, odist);
-  
-  // if(istride == 0)
-  //   istride = 1;
-  // if(ostride == 0)
-  //   ostride = 1;
-
-  // if(idist == 0)
-  //   idist = nx;
-  // if(odist == 0)
-  //   odist = nx / 2 + 1;
-
-  // if(n == 0)
-  //   n = nx;
-  // if(M == 0)
-  //   M = ny;
 
   show_devices();
   cout << "Using platform " << platnum
@@ -182,22 +167,19 @@ int main(int argc, char *argv[]) {
   cout << "idist: " << idist << endl;
   cout << "odist: " << odist << endl;
 
-
-  unsigned int nreal = 0;
-  switch(inplace) {
-  case 0:
-    nreal = nx * ny;
-    break;
-  case 1:
+  unsigned int nreal = nx * ny;
+  if(inplace) {
     if(direction == 0) 
-      nreal = (nx + 2) * ny;
-    if(direction == 1) 
-      nreal = nx * (ny + 2);
-    break;
+      nreal = 2 * (nx / 2 + 1) * ny;
+    if(direction == 1)
+      nreal = nx * 2 * (ny / 2 + 1);
   }
   size_t inbufsize = nreal * sizeof(double);
+  unsigned int ncomplex = np * M;
+  size_t outbufsize = 2 * ncomplex * sizeof(double);
   
-  int stride = ny;
+  unsigned int stride = ny;
+  
   if(inplace && direction == 1)
     stride += 2;
   
@@ -215,31 +197,48 @@ int main(int argc, char *argv[]) {
     cout << "in-place transform" << endl;
   } else {
     cout << "out-of-place transform" << endl;
-    fft.create_cbuf(&outbuf);
+    //fft.create_cbuf(&outbuf);
+    outbuf = clCreateBuffer(ctx,
+    			    CL_MEM_READ_WRITE,
+    			    outbufsize,
+    			    NULL,
+    			    &ret);
+    if(ret != CL_SUCCESS) std::cerr << clErrorString(ret) << std::endl;
+    assert(ret == CL_SUCCESS);
   }
   
   cout << "\nAllocating "  << nreal << " doubles for real." << endl;
   double *X = new double[nreal];
-  int ncomplex = np * M;
+
   cout << "Allocating " << 2 * ncomplex << " doubles for complex." << endl;
   double *FX = new double[2 * ncomplex];
 
   string init_source ="\
-#pragma OPENCL EXTENSION cl_khr_fp64: enable\n			\
-__kernel void init(__global double *X, const unsigned int stride)	\
-{								\
-  const int i = get_global_id(0);				\
-  const int j = get_global_id(1);				\
-  int pos = i * stride + j;					\
-  X[pos] = j + 10 * i;						\
+#pragma OPENCL EXTENSION cl_khr_fp64: enable \n			\
+__kernel void init(__global double *X,		\n		\
+      const unsigned int nx, const unsigned int ny ) \n		\
+{						\n		\
+  const int i = get_global_id(0); 		\n		\
+  const int j = get_global_id(1); 		\n		\
+  const int stride = get_global_size(1); 	\n		\
+  int pos = i * stride + j;			\n		\
+  if((i < nx) && (j < ny))			\n		\
+    X[pos] = j + 10.0 * i;			\n		\
+  else						\n		\
+    X[pos] = 0.0;				\n		\
 }";
    
   cl_program initprog = create_program(init_source, ctx);
   build_program(initprog, device);
   cl_kernel initkernel = create_kernel(initprog, "init"); 
   set_kernel_arg(initkernel, 0, sizeof(cl_mem), &inbuf);
-  set_kernel_arg(initkernel, 1, sizeof(unsigned int), &stride);
-  size_t global_wsize[] = {nx, ny};
+  set_kernel_arg(initkernel, 1, sizeof(unsigned int), &nx);
+  set_kernel_arg(initkernel, 2, sizeof(unsigned int), &ny);
+  size_t wsize[] = {nx, ny};
+  if(inplace)
+    wsize[direction] = 2 * (wsize[direction] / 2 + 1);
+
+  cout << "wsize: " << wsize[0] << " " << wsize[1] << endl;
   
   cl_event clv_init;
   cl_event clv_toram;
@@ -254,7 +253,7 @@ __kernel void init(__global double *X, const unsigned int stride)	\
 			   initkernel,
 			   2, // cl_uint work_dim,
 			   NULL, // global_work_offset,
-			   global_wsize, // global_work_size, 
+			   wsize, // global_work_size, 
 			   NULL, // size_t *local_work_size, 
 			   0, NULL, &clv_init);
     ret = clEnqueueReadBuffer(queue, inbuf, CL_TRUE,
@@ -265,13 +264,18 @@ __kernel void init(__global double *X, const unsigned int stride)	\
 
     clWaitForEvents(1, &clv_toram);
     if(nx <= maxout)
-      show2R(X, nx, ny, stride);
+      show2R(X, wsize[0], wsize[1]);
     else
       cout << X[0] << endl;
 
     fft.forward(&inbuf, inplace ? NULL : &outbuf, 1, &clv_init, &clv_forward);
-    fft.cbuf_to_ram(FX, inplace ? &inbuf : &outbuf, 
-		    1, &clv_forward, &clv_toram);
+    cl_int ret = clEnqueueReadBuffer(queue, inplace ? inbuf : outbuf, CL_TRUE,
+				     0, outbufsize, FX,
+				     1, &clv_forward, &clv_toram);
+    if(ret != CL_SUCCESS) std::cerr << clErrorString(ret) << std::endl;
+    assert(ret == CL_SUCCESS);
+    // fft.cbuf_to_ram(FX, inplace ? &inbuf : &outbuf, 
+    // 		    1, &clv_forward, &clv_toram);
     clWaitForEvents(1, &clv_toram);
 
     cout << "\nTransformed:" << endl;
@@ -291,7 +295,7 @@ __kernel void init(__global double *X, const unsigned int stride)	\
 
     cout << "\nTransformed back:" << endl;
     if(nx <= maxout) {
-      show2R(X, nx, ny, stride);
+      show2R(X, wsize[0], wsize[1]);
     } else {
       cout << X[0] << endl;
     }
@@ -303,7 +307,7 @@ __kernel void init(__global double *X, const unsigned int stride)	\
 			     initkernel,
 			     2, // cl_uint work_dim,
 			     NULL, // global_work_offset,
-			     global_wsize, // global_work_size, 
+			     wsize, // global_work_size, 
 			     NULL, // size_t *local_work_size, 
 			     0, NULL, &clv_init);
       fft.rbuf_to_ram(X0, &inbuf, 1, &clv_init, &clv_toram);
@@ -312,12 +316,15 @@ __kernel void init(__global double *X, const unsigned int stride)	\
       double L2error = 0.0;
       double maxerror = 0.0;
       for(unsigned int i = 0; i < nx; ++i) {
-      	double rdiff = X[2 * i] - X0[2 * i];
-      	double idiff = X[2 * i + 1] - X0[2 * i + 1];
-      	double diff = sqrt(rdiff * rdiff + idiff * idiff);
-      	L2error += diff * diff;
-      	if(diff > maxerror)
-      	  maxerror = diff;
+	for(unsigned int j = 0; j < ny; ++j) {
+	  unsigned int pos = j + i * stride;
+	  //cout << pos << "\t" << X[pos] << "\t" << X0[pos] << endl;
+	  double rdiff = X[pos] - X0[pos];
+	  double diff = sqrt(rdiff * rdiff);
+	  L2error += diff * diff;
+	  if(diff > maxerror)
+	    maxerror = diff;
+	}
       }
       L2error = sqrt(L2error / (double) (nx * ny));
 
@@ -335,30 +342,38 @@ __kernel void init(__global double *X, const unsigned int stride)	\
     }
     
     // Compute the error with respect to FFTW
-    if(!inplace) {  // FIXME!
+    { 
       // fftw::maxthreads=get_max_threads();
-      size_t align = sizeof(Complex);
 
       unsigned int idims[2] = {nx, ny};
       if(inplace)
-	idims[direction] += 2;
+	idims[direction] = 2 * (idims[direction] /2 + 1);
       
-      Array::array2<double> f(idims[0], idims[1], align);
+      double *pf = utils::doubleAlign(idims[0] * idims[1]);
+      Array::array2<double> f(idims[0], idims[1], pf);
 
+      unsigned int odims[2] = {nx, ny};
+      odims[direction] = odims[direction] / 2 + 1;
+      Complex *pg = inplace ? (Complex *)f()
+	: utils::ComplexAlign(odims[0] * odims[1]);
+      Array::array2<Complex> g(odims[0], odims[1], pg);
+      
+      fftwpp::mrcfft1d Forward(n, M, istride, ostride, idist, odist, f, g);
 
       clEnqueueNDRangeKernel(queue,
 			     initkernel,
 			     2, // cl_uint work_dim,
 			     NULL, // global_work_offset,
-			     global_wsize, // global_work_size, 
+			     wsize, // global_work_size, 
 			     NULL, // size_t *local_work_size, 
 			     0, NULL, &clv_init);
       double *fcopy = new double[nreal];
       fft.rbuf_to_ram(fcopy, &inbuf, 1, &clv_init, &clv_toram);
       clWaitForEvents(1, &clv_toram);
 
+      f = 0.0;
       for(unsigned int i = 0; i < nx; ++ i) {
-	for(unsigned int j = 0; j < stride; ++ j) {
+	for(unsigned int j = 0; j < ny; ++ j) {
 	  f[i][j] = fcopy[i * stride + j];
 	}
       }
@@ -367,16 +382,8 @@ __kernel void init(__global double *X, const unsigned int stride)	\
       cout << "fftw++ input:" << endl;
       cout << f << endl;
 
-      unsigned int odims[2] = {nx, ny};
-      odims[direction] = odims[direction] / 2 + 1;
-      Complex *pg = inplace ? (Complex *)f()
-	: utils::ComplexAlign(idims[0] * idims[1]);
-  
-      Array::array2<Complex> g(odims[0], odims[1], pg);
-
-      fftwpp::mrcfft1d Forward(n, M, istride, ostride, idist, odist, f, g);
       Forward.fft(f, g);
-
+      
       cout << "fftw++ transformed:" << endl;
       cout << g << endl;
 
@@ -384,12 +391,15 @@ __kernel void init(__global double *X, const unsigned int stride)	\
       double maxerror = 0.0;
 
       for(unsigned int i = 0; i < ncomplex; ++i) {
-	double rdiff = FX[2 * i] - pg[i].re;
-	double idiff = FX[2 * i + 1] - pg[i].im;
-	double diff = sqrt(rdiff * rdiff + idiff * idiff);
-	L2error += diff * diff;
-	if(diff > maxerror)
-	  maxerror = diff;
+	double FXre =  FX[2 * i];
+	double FXim =  FX[2 * i + 1];
+	// cout << i << "\t" << Complex(FXre, FXim) <<"\t" << pg[i] << endl;
+      	double rdiff = FXre - pg[i].re;
+      	double idiff = FXim - pg[i].im;
+      	double diff = sqrt(rdiff * rdiff + idiff * idiff);
+      	L2error += diff * diff;
+      	if(diff > maxerror)
+      	  maxerror = diff;
       }
       L2error = sqrt(L2error / (double) (nx * ny));
 
@@ -414,7 +424,7 @@ __kernel void init(__global double *X, const unsigned int stride)	\
 			     initkernel,
 			     2, // cl_uint work_dim,
 			     NULL, // global_work_offset,
-			     global_wsize, // global_work_size, 
+			     wsize, // global_work_size, 
 			     NULL, // size_t *local_work_size, 
 			     0, NULL, &clv_init);
       fft.forward(&inbuf, inplace ? NULL : &outbuf, 1, &clv_init, &clv_forward);
@@ -439,6 +449,11 @@ __kernel void init(__global double *X, const unsigned int stride)	\
   clReleaseCommandQueue(queue);
   clReleaseContext(ctx);
 
+  if(error == 0)
+    cout << "\nTest passed." << endl;
+  else
+    cout << "\nTest FAILED." << endl;
+  
   return error;
 }
 
