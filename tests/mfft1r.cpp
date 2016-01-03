@@ -335,7 +335,7 @@ __kernel void init(__global double *X, const unsigned int stride)	\
     }
     
     // Compute the error with respect to FFTW
-    {
+    if(!inplace) {  // FIXME!
       // fftw::maxthreads=get_max_threads();
       size_t align = sizeof(Complex);
 
@@ -401,7 +401,7 @@ __kernel void init(__global double *X, const unsigned int stride)	\
 	cout << "\nResults ok!" << endl;
       else {
 	cout << "\nERROR: results diverge!" << endl;
-	//error += 1; // FIXME!
+	error += 1;
       }
     }
 
