@@ -44,22 +44,24 @@ def main(argv):
     for x in xlist:
         for y in ylist:
             if y > 1:
-                cmd = ["./" + ptest]
-                cmd.append("-P" + str(P))
-                cmd.append("-D" + str(D))
-                cmd.append("-x" + str(x))
-                cmd.append("-y" + str(y))
-                print "\t", " ".join(cmd)
-                p = Popen(cmd, stdout=PIPE, stderr=PIPE)
-                p.wait() # sets the return code
-                out, err = p.communicate() # capture output
-                if not (p.returncode == 0):
-                    retval += 1
-                    #print out
-                    print
-                    #print err
-                    print
-                    print "\t" + ptest + " FAILED!"
+                for i in [0, 1]:
+                    cmd = ["./" + ptest]
+                    cmd.append("-P" + str(P))
+                    cmd.append("-D" + str(D))
+                    cmd.append("-x" + str(x))
+                    cmd.append("-y" + str(y))
+                    cmd.append("-i" + str(i))
+                    print "\t", " ".join(cmd)
+                    p = Popen(cmd, stdout=PIPE, stderr=PIPE)
+                    p.wait() # sets the return code
+                    out, err = p.communicate() # capture output
+                    if not (p.returncode == 0):
+                        retval += 1
+                        #print out
+                        print
+                        #print err
+                        print
+                        print "\t" + ptest + " FAILED!"
 
     print
 
