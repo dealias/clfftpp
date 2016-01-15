@@ -164,6 +164,7 @@ protected:
   }
 
   void set_buf_size() {
+    // FIXME: remove
     cbuf_size = ncomplex(-1) * 2 * realsize;
     if(realtocomplex) {
       rbuf_size = inplace ? cbuf_size : nreal(-1) * realsize;
@@ -784,7 +785,7 @@ private:
     set_precision(plan, precision);
 
     size_t nyp = ny / 2 + 1;
-    
+
     if(forward) {
       size_t istride[2] = {1, inplace ? 2 * nyp : ny};
       size_t ostride[2] = {1, nyp};
@@ -807,7 +808,6 @@ private:
 
 public:
   clfft2r() : clfft_base(), nx(0), ny(0) {
-    set_buf_size();
   }
 
   clfft2r(unsigned int nx, unsigned int ny, bool inplace, 
@@ -818,42 +818,16 @@ public:
   }
 
   ~clfft2r() {
+    // FIXME: make sur things are all freed
   }
 
   const unsigned int ncomplex(const int dim = -1) {
-    switch(dim) {
-    case -1:
-      return nx * (1 + ny / 2 + inplace);
-    case 0:
-      return nx;
-    case 1:      
-      return 1 + ny / 2;
-    default:
-      std::cerr << dim 
-		<< " is an invalid dimension for clfft2r::ncomplex"
-		<< std::endl;
-      exit(1);
-    }
+    // FIXME: remove
     return 0;
   }
 
   const unsigned int nreal(const int dim = -1) {
-    switch(dim) {
-    case -1:
-      if(inplace)
-	return ncomplex(-1);
-      else
-	return nx * ny;
-    case 0:
-      return nx;
-    case 1:
-      return ny;
-    default:
-      std::cerr << dim 
-		<< " is an invalid dimension for clfft2r::ncomplex"
-		<< std::endl;
-      exit(1);
-    }
+    // FIXME: remove
     return 0;
   }
 };

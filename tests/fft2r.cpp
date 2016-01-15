@@ -106,7 +106,6 @@ int main(int argc, char *argv[]) {
     cout << "in-place transform" << endl;
   } else {
     cout << "out-of-place transform" << endl;
-    fft.create_rbuf(&inbuf);
     outbuf = clCreateBuffer(ctx, CL_MEM_READ_WRITE,
 			    2 * sizeof(double) * nx * nyp, NULL, &status);
   }
