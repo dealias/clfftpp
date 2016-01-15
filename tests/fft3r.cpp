@@ -137,7 +137,7 @@ const unsigned int skip)				\
   cout << "Allocating "  << nx * ny * skip << " doubles for real." << endl;
   double *X = new double[nx * ny * skip];
   cout << "Allocating "  << nx * ny * nzp << " doubles for complex." << endl;
-  double *FX = new double[2 * fft.ncomplex()];
+  double *FX = new double[2 * nx * ny * nzp];
 
   if(N == 0) {
     tolerance *= 1.0 + log((double) max(max(nx, ny), nz));
@@ -179,7 +179,7 @@ const unsigned int skip)				\
 
     // compute the round-trip error.
     {
-      double *X0 = new double[inplace ? 2 * fft.ncomplex() : fft.nreal()];
+      double *X0 = new double[nx * ny * skip];
       clEnqueueNDRangeKernel(queue, initkernel, 3, NULL,  global_wsize, NULL,
 			     0, 0, 0);
       clFinish(queue);
@@ -232,9 +232,9 @@ const unsigned int skip)				\
 			  sizeof(double) * nx * ny * skip, f(), 0, 0, 0);
       clFinish(queue);
 
-      cout << "f" << endl << f << endl;
+      //cout << "f" << endl << f << endl;
       Forward.fft(f, g);
-      cout << "g" << endl << g << endl;
+      //cout << "g" << endl << g << endl;
 
       double *dg = (double*) pg;
       

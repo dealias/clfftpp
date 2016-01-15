@@ -250,8 +250,8 @@ public:
   }
 
   // FIXME: remove
-  virtual const unsigned int nreal(const int dim) = 0;
-  virtual const unsigned int ncomplex(const int dim) = 0;
+  virtual const unsigned int nreal(const int dim) {return 0;};
+  virtual const unsigned int ncomplex(const int dim){return 0;};
 
   void create_rbuf(cl_mem *buf, const int nreal = 0) {
     // FIXME: remove
@@ -847,8 +847,6 @@ private:
   void setup() {
     realtocomplex = true;
 
-    set_buf_size(); // FIXME: remove
-
     setup_plan(forward_plan, CLFFT_FORWARD);
     setup_plan(backward_plan, CLFFT_BACKWARD);
     // FIXME: delete backplan
@@ -888,7 +886,6 @@ private:
 
 public:
   clfft3r() : clfft_base(), nx(0), ny(0), nz(0) {
-    set_buf_size(); // FIXME: remove
   }
 
   clfft3r(unsigned int nx, unsigned int ny, unsigned int nz, bool inplace, 
@@ -899,49 +896,6 @@ public:
   }
 
   ~clfft3r() {
-  }
-
- // FIXME: remove
-  const unsigned int ncomplex(const int dim = -1) {
-    switch(dim) {
-    case -1:
-      return nx * ny * (1 + nz / 2 + inplace);
-    case 0:
-      return nx;
-    case 1:
-      return ny;
-    case 2:
-      return 1 + nz / 2;
-    default:
-      std::cerr << dim 
-		<< " is an invalid dimension for clfft3r::ncomplex"
-		<< std::endl;
-      exit(1);
-    }
-    return 0;
-  }
-
-   // FIXME: remove
-  const unsigned int nreal(const int dim = -1) {
-    switch(dim) {
-    case -1:
-      if(inplace)
-	return ncomplex(-1);
-      else
-	return nx * ny * nz;
-    case 0:
-      return nx;
-    case 1:
-      return ny;
-    case 2:
-      return nz;
-    default:
-      std::cerr << dim 
-		<< " is an invalid dimension for clfft3r::nreal"
-		<< std::endl;
-      exit(1);
-    }
-    return 0;
   }
 };
 
