@@ -269,37 +269,36 @@ const unsigned int skip)				\
       }
     }
 
-  // } else {
-  //   double *T = new double[N];
+  } else {
+    double *T = new double[N];
   
-  //   cl_ulong time_start, time_end;
-  //   for(unsigned int i = 0; i < N; i++) {
-  //     //init3R(X, nx, ny, nz);
-  //     //fft.ram_to_rbuf(X, &inbuf, 0, NULL, &clv_init);
-  //     size_t global_wsize[] = {nx, ny, nz};
-  //     clEnqueueNDRangeKernel(queue,
-  // 			     initkernel,
-  // 			     3, // cl_uint work_dim,
-  // 			     NULL, // global_work_offset,
-  // 			     global_wsize, // global_work_size, 
-  // 			     NULL, // size_t *local_work_size, 
-  // 			     0, NULL, &clv_init);
+    cl_ulong time_start, time_end;
+    for(unsigned int i = 0; i < N; i++) {
+      cl_event clv_forward;
+      
+      size_t global_wsize[] = {nx, ny, nz};
+      clEnqueueNDRangeKernel(queue, initkernel, 3, NULL,  global_wsize, NULL,
+			     0, 0, 0);
+      clFinish(queue);
+      clEnqueueReadBuffer(queue, inbuf, CL_TRUE, 0,
+			  sizeof(double) * nx * ny * skip, X, 0, 0, 0);
+      clFinish(queue);
 
-  //     fft.forward(&inbuf, inplace ? NULL : &outbuf, 1, &clv_init, &clv_forward);
-  //     clWaitForEvents(1, &clv_forward);
+      fft.forward(&inbuf, inplace ? NULL : &outbuf, 0, 0, &clv_forward);
+      clWaitForEvents(1, &clv_forward);
     
-  //     clGetEventProfilingInfo(clv_forward,
-  //   			      CL_PROFILING_COMMAND_START,
-  //   			      sizeof(time_start),
-  //   			      &time_start, NULL);
-  //     clGetEventProfilingInfo(clv_forward,
-  //   			      CL_PROFILING_COMMAND_END,
-  //   			      sizeof(time_end), 
-  //   			      &time_end, NULL);
-  //     T[i] = 1e-9 * (time_end - time_start);
-  //   }
-  //   timings("fft timing", nx, T, N,stats);
-  //   delete[] T;
+      clGetEventProfilingInfo(clv_forward,
+    			      CL_PROFILING_COMMAND_START,
+    			      sizeof(time_start),
+    			      &time_start, NULL);
+      clGetEventProfilingInfo(clv_forward,
+    			      CL_PROFILING_COMMAND_END,
+    			      sizeof(time_end), 
+    			      &time_end, NULL);
+      T[i] = 1e-9 * (time_end - time_start);
+    }
+    timings("fft timing", nx, T, N,stats);
+    delete[] T;
   }
   delete[] FX;
   delete[] X;
