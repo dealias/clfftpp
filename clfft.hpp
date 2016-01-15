@@ -795,22 +795,20 @@ private:
 
     size_t nyp = ny / 2 + 1;
 
-    if(forward) {
-      size_t istride[2] = {1, inplace ? 2 * nyp : ny};
-      size_t ostride[2] = {1, nyp};
-      set_strides(plan, dim, istride, ostride);
-    } else {
-      size_t istride[2] = {1, nyp};
-      size_t ostride[2] = {1, inplace ? 2 * nyp : ny};
-      set_strides(plan, dim, istride, ostride);
-    }
-
+    size_t rstride[2] = {1, inplace ? 2 * nyp : ny};
+    size_t cstride[2] = {1, nyp};
+    if(forward)
+      set_strides(plan, dim, rstride, cstride);
+    else
+      set_strides(plan, dim, cstride, rstride);
+    
     size_t rdist = inplace ? 2 * nx * nyp : nx * ny;
     size_t cdist = nx * nyp;
     if(forward)
       set_dists(plan, dim, rdist, cdist);
     else
       set_dists(plan, dim, cdist, rdist);
+
     bake_plan(plan);
     set_workmem(plan);
   }
