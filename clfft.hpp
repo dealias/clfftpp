@@ -775,8 +775,7 @@ private:
   void setup_plan(clfftPlanHandle &plan, clfftDirection direction) {
     bool forward = direction == CLFFT_FORWARD; 
     clfftDim dim = CLFFT_2D;
-    //size_t clLengths[2] = {nx, ny};
-    size_t clLengths[2] = {ny, nx}; // They lied when they said it was row-major
+    size_t clLengths[2] = {ny, nx};
 
     create_default_plan(plan, dim, clLengths);
     set_precision(plan, precision);
@@ -784,20 +783,24 @@ private:
     set_inout_place(plan);
     set_precision(plan, precision);
 
+    size_t nyp = ny / 2 + 1;
+    
     if(forward) {
-      size_t istride[2] = {1, nreal(1)};
-      size_t ostride[2] = {1, ncomplex(1) + inplace};
+      size_t istride[2] = {1, inplace ? 2 * nyp : ny};
+      size_t ostride[2] = {1, nyp};
       set_strides(plan, dim, istride, ostride);
     } else {
-      size_t istride[2] = {1, ncomplex(1) + inplace};
-      size_t ostride[2] = {1, nreal(1)};
+      size_t istride[2] = {1, nyp};
+      size_t ostride[2] = {1, inplace ? 2 * nyp : ny};
       set_strides(plan, dim, istride, ostride);
     }
 
-    size_t idist = forward ? 2 * nreal(-1) : ncomplex(-1);
-    size_t odist = forward ? ncomplex(-1) : 2 * nreal(-1);
-    set_dists(plan, dim, idist, odist);
-    
+    size_t rdist = inplace ? 2 * nx * nyp : nx * ny;
+    size_t cdist = nx * nyp;
+    if(forward)
+      set_dists(plan, dim, rdist, cdist);
+    else
+      set_dists(plan, dim, cdist, rdist);
     bake_plan(plan);
     set_workmem(plan);
   }
