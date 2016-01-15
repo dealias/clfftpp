@@ -249,10 +249,12 @@ public:
     assert(ret == CL_SUCCESS);
   }
 
+  // FIXME: remove
   virtual const unsigned int nreal(const int dim) = 0;
   virtual const unsigned int ncomplex(const int dim) = 0;
 
   void create_rbuf(cl_mem *buf, const int nreal = 0) {
+    // FIXME: remove
     size_t n = (nreal == 0) ? rbuf_size : nreal * realsize;
     cl_int ret;
     *buf = clCreateBuffer(ctx,
@@ -265,6 +267,7 @@ public:
   }
 
   void create_cbuf(cl_mem *buf, const int ncomp = 0) {
+    // FIXME: remove
     size_t n = (ncomp == 0) ? cbuf_size : 2 * ncomp * realsize;
     cl_int ret;
     *buf = clCreateBuffer(ctx,
@@ -279,7 +282,7 @@ public:
   void ram_to_buf(const double *X, cl_mem *buf, const size_t buf_size,
 		  const cl_uint nwait,
 		  const cl_event *wait, cl_event *event) {
-
+    // FIXME: remove
     cl_int ret;
     ret = clEnqueueWriteBuffer(queue,
 			       *buf, // cl_mem buffer, 
@@ -297,18 +300,21 @@ public:
   void ram_to_cbuf(const double *X, cl_mem *buf, 
 		   const cl_uint nwait,
 		   const cl_event *wait, cl_event *event) {
+    // FIXME: remove
     ram_to_buf(X, buf, cbuf_size, nwait, wait, event);
   }
 
   void ram_to_rbuf(const double *X, cl_mem *buf, 
 		   const cl_uint nwait,
 		   const cl_event *wait, cl_event *event) {
+    // FIXME: remove
     ram_to_buf(X, buf, rbuf_size, nwait, wait, event);
   }
 
   void buf_to_ram(double *X, cl_mem *buf, const size_t buf_size,
 		  const cl_uint nwait,
 		  const cl_event *wait, cl_event *event) {
+    // FIXME: remove
     cl_int ret;
     ret = clEnqueueReadBuffer(queue,
 			      *buf,
@@ -326,19 +332,20 @@ public:
   void cbuf_to_ram(double *X, cl_mem *buf,
 		   const cl_uint nwait,
 		   const cl_event *wait, cl_event *event) {
+    // FIXME: remove
     buf_to_ram(X, buf, cbuf_size, nwait, wait, event);
   }
-
-  // FIXME: add overloaded operators to deal with events or no.
 
   void rbuf_to_ram(double *X, cl_mem *buf,
 		   const cl_uint nwait,
 		   const cl_event *wait, cl_event *event) {
+    // FIXME: remove
     buf_to_ram(X, buf, rbuf_size, nwait, wait, event);
     //std::cout << "rbuf_size/sizeof(double): " << rbuf_size/sizeof(double) << std::endl;
   }
 
   void finish() {
+    // FIXME: remove
     cl_int ret = clFinish(queue);
     if(ret != CL_SUCCESS) std::cerr << clErrorString(ret) << std::endl;
     assert(ret == CL_SUCCESS);
@@ -373,24 +380,11 @@ public:
     transform(CLFFT_FORWARD, inbuf, outbuf, nwait, wait, done);
   }
 
-  // void forward(cl_mem *inbuf, cl_uint nwait, cl_event *wait, cl_event *done) {
-  //   forward(NULL, NULL, nwait, wait, done);
-  // }
-  
   void backward(cl_mem *inbuf0, cl_mem *outbuf0,
   		cl_uint nwait = 0, cl_event *wait = NULL, 
   		cl_event *done = NULL) {
     transform(CLFFT_BACKWARD, inbuf0, outbuf0, nwait, wait, done);
   }
-  
-  // void backward(cl_uint nwait, cl_event *wait, cl_event *done) {
-  //   backward(NULL, NULL, nwait, wait, done);
-  // }
-
-  // void backward(cl_event *done) {
-  //   backward(NULL, NULL, 0, NULL, done);
-  // }
-  
 };
 
 class clfft1 : public clfft_base
@@ -400,6 +394,8 @@ private:
 
   void setup() {
     realtocomplex = false;
+
+    // FIXME: remove
     set_buf_size();
 
     setup_plan(forward_plan);
@@ -433,8 +429,10 @@ public:
   ~clfft1() {
   }
 
+  // FIXME: remove
   const unsigned int nreal(const int dim = -1) {return 0;}
   const unsigned int ncomplex(const int dim = -1) {
+    // FIXME: remove
     switch(dim) {
     case -1:
       return nx;
@@ -452,9 +450,9 @@ public:
   }
 
   virtual const size_t complex_buf_size() {
+    // FIXME: remove
     return nx * 2 * realsize;
   }
-
 };
 
 class clfft2 : public clfft_base
@@ -464,6 +462,8 @@ private:
 
   void setup() {
     realtocomplex = false;
+
+    // FIXME: remove
     set_buf_size();
 
     setup_plan(forward_plan);
@@ -489,6 +489,8 @@ private:
 public:
   clfft2() :
     clfft_base(), nx(0), ny(0) {
+
+    // FIXME: remove
     set_buf_size();
   }
 
@@ -501,6 +503,7 @@ public:
   ~clfft2() {
   }
 
+  // FIXME: remove
   const unsigned int nreal(const int dim = -1) {return 0;}
   const unsigned int ncomplex(const int dim = -1) {
     switch(dim) {
@@ -518,7 +521,8 @@ public:
     }
     return 0;
   }
-  
+
+  // FIXME: remove
   virtual const unsigned int complex_buf_size(const int dim) {
     return nx * ny * 2 * realsize;
   }
@@ -555,6 +559,8 @@ private:
 
 public:
   clfft3(): clfft_base(), nx(0), ny(0), nz(0) {
+
+    // FIXME: remove
     set_buf_size();
   }
 
@@ -567,6 +573,7 @@ public:
   ~clfft3() {
   }
 
+  // FIXME: remove
   const unsigned int nreal(const int dim = -1) {return 0;}
   const unsigned int ncomplex(const int dim = -1) {
     switch(dim) {
@@ -602,6 +609,8 @@ private:
   size_t idist, odist;
 
   void setup() {
+
+    // FIXME: remove
     set_buf_size();
 
     setup_plan(forward_plan);
@@ -630,7 +639,7 @@ public:
   clmfft1() : clfft_base(), nx(0), M(0), istride(0), ostride(0), idist(0),
 	      odist(0) {
     realtocomplex = false;
-    set_buf_size();
+    set_buf_size();     // FIXME: remove
   }
 
   clmfft1(unsigned int nx, unsigned int M, 
@@ -644,6 +653,7 @@ public:
     setup();
   }
   
+    // FIXME: remove
   const unsigned int ncomplex(const int dim = -1) {
     switch(dim) {
     case -1:
@@ -674,7 +684,7 @@ private:
 
   void setup() {
     realtocomplex = true;
-    set_buf_size();
+    set_buf_size();     // FIXME: remove
     
     setup_plan(forward_plan, CLFFT_FORWARD);
     setup_plan(backward_plan, CLFFT_BACKWARD);
@@ -706,7 +716,7 @@ private:
 
 public:
   clfft1r() : clfft_base(), nx(0) {
-    set_buf_size();
+    set_buf_size();     // FIXME: remove
   }
 
   clfft1r(unsigned int nx, bool inplace, 
@@ -748,10 +758,12 @@ public:
     return 0;
   }
 
+      // FIXME: remove
   size_t complex_buf_size() {
     return  (1 + nx / 2) * 2 * realsize;
   }
 
+      // FIXME: remove
   size_t real_buf_size() {
     return nx * realsize;
   }
@@ -765,9 +777,6 @@ private:
 
   void setup() {
     realtocomplex = true;
-
-    set_buf_size();
-
     setup_plan(forward_plan, CLFFT_FORWARD);
     setup_plan(backward_plan, CLFFT_BACKWARD);
     // FIXME: delete backplan
@@ -840,7 +849,7 @@ private:
   void setup() {
     realtocomplex = true;
 
-    set_buf_size();
+    set_buf_size(); // FIXME: remove
 
     setup_plan(forward_plan, CLFFT_FORWARD);
     setup_plan(backward_plan, CLFFT_BACKWARD);
@@ -880,7 +889,7 @@ private:
 
 public:
   clfft3r() : clfft_base(), nx(0), ny(0), nz(0) {
-    set_buf_size();
+    set_buf_size(); // FIXME: remove
   }
 
   clfft3r(unsigned int nx, unsigned int ny, unsigned int nz, bool inplace, 
@@ -893,6 +902,7 @@ public:
   ~clfft3r() {
   }
 
+ // FIXME: remove
   const unsigned int ncomplex(const int dim = -1) {
     switch(dim) {
     case -1:
@@ -912,6 +922,7 @@ public:
     return 0;
   }
 
+   // FIXME: remove
   const unsigned int nreal(const int dim = -1) {
     switch(dim) {
     case -1:
@@ -945,7 +956,7 @@ private:
 
   void setup() {
     realtocomplex = true;
-    set_buf_size();
+    set_buf_size(); // FIXME: remove
     
     setup_plan(forward_plan, CLFFT_FORWARD);
     setup_plan(backward_plan, CLFFT_BACKWARD);
@@ -998,7 +1009,7 @@ private:
 
 public:
   clmfft1r() : clfft_base(), nx(0), M(0) {
-    set_buf_size();
+    set_buf_size(); // FIXME: remove
   }
 
   clmfft1r(unsigned int nx, unsigned int M, int istride, int ostride,
@@ -1011,6 +1022,7 @@ public:
     setup();
   }
 
+   // FIXME: remove
   const unsigned int ncomplex(const int dim = -1) {
     switch(dim) {
     case -1:
@@ -1026,6 +1038,7 @@ public:
     return 0;
   }
 
+   // FIXME: remove
   const unsigned int nreal(const int dim = -1) {
     switch(dim) {
     case -1:
