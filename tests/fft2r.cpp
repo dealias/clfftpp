@@ -150,6 +150,7 @@ __kernel void init(__global double *X, const unsigned int skip)	\
       cout << X[0] << endl;
     
     fft.forward(&inbuf, inplace ? NULL : &outbuf, 0, 0, 0);
+    clFinish(queue);
     clEnqueueReadBuffer(queue, inplace ? inbuf : outbuf, CL_TRUE, 0,
 			2 * sizeof(double) * nx * nyp, FX, 0, 0, 0);
     clFinish(queue);
@@ -217,8 +218,8 @@ __kernel void init(__global double *X, const unsigned int skip)	\
       size_t align = sizeof(Complex);
       Array::array2<double> f(nx, inplace ? 2 * nyp : ny, align);
       Complex *pg = inplace ? (Complex*)f() : utils::ComplexAlign(nx * nyp);
-      
-      Array::array2<Complex> g(nx, nyp, pg);
+      Array::array2<Complex> g(nx, nyp, pg); 
+     
       fftwpp::rcfft2d Forward(nx, ny, f, g);
       fftwpp::crfft2d Backward(nx, ny, g, f);
     

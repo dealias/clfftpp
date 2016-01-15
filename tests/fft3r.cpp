@@ -12,21 +12,9 @@
 #include "Array.h"
 #include "Complex.h"
 #include "fftw++.h"
+#include "align.h"
 
 using namespace std;
-
-template<class T>
-void init3R(T *X, unsigned int nx, unsigned int ny, unsigned int nz)
-{
-  for(unsigned int i = 0; i < nx; ++i) {
-    for(unsigned int j = 0; j < ny; ++j) {
-      for(unsigned int k = 0; k < nz; ++k) {
-	unsigned int pos = i * ny * nz + j * nz + k;
-	X[pos] = i * i + j + 10 * k;
-      }
-    }
-  }
-}
 
 int main(int argc, char *argv[]) {
 
@@ -108,109 +96,108 @@ int main(int argc, char *argv[]) {
   cl_context ctx = create_context(platform, device);
   cl_command_queue queue = create_queue(ctx, device, CL_QUEUE_PROFILING_ENABLE);
 
+  unsigned int nzp = nz / 2 + 1;
+  unsigned int skip = inplace ? 2 * nzp : nz;
+  
   clfft3r fft(nx, ny, nz, inplace, queue, ctx);
-  cl_mem inbuf, outbuf;
+
+  cl_int status;
+  cl_mem inbuf = clCreateBuffer(ctx, CL_MEM_READ_WRITE,
+				sizeof(double) * nx * ny * skip, NULL,
+				&status);
+  cl_mem outbuf;
   if(inplace) {
-    fft.create_cbuf(&inbuf);
     cout << "in-place transform" << endl;
   } else {
     cout << "out-of-place transform" << endl;
-    fft.create_rbuf(&inbuf);
-    fft.create_cbuf(&outbuf);
+    outbuf = clCreateBuffer(ctx, CL_MEM_READ_WRITE,
+			    2 * sizeof(double) * nx * ny * nzp, NULL, &status);
   }
 
   string init_source ="\
-#pragma OPENCL EXTENSION cl_khr_fp64: enable\n	\
-__kernel void init(__global double *X, \
-const unsigned int ny, const unsigned int nz)	\
-{						\
-  const int i = get_global_id(0);		\
-  const int j = get_global_id(1);		\
-  const int k = get_global_id(2);		\
-  unsigned int pos = i * ny * nz + j * nz + k;	\
-  X[pos] = i * i + j + 10 * k;			\
+#pragma OPENCL EXTENSION cl_khr_fp64: enable\n		\
+__kernel void init(__global double *X,			\
+const unsigned int skip)				\
+{							\
+  const int i = get_global_id(0);			\
+  const int j = get_global_id(1);			\
+  const int k = get_global_id(2);			\
+  const int nx = get_global_size(0);			\
+  const int ny = get_global_size(1);			\
+  unsigned int pos = i * ny * skip + j * skip +  + k;	\
+  X[pos] = i * i + j + 10 * k;				\
 }";
   cl_program initprog = create_program(init_source, ctx);
   build_program(initprog, device);
   cl_kernel initkernel = create_kernel(initprog, "init"); 
   set_kernel_arg(initkernel, 0, sizeof(cl_mem), &inbuf);
-  set_kernel_arg(initkernel, 1, sizeof(unsigned int), &ny);
-  set_kernel_arg(initkernel, 2, sizeof(unsigned int), &nz);
-
-  cout << "Allocating " 
-	    << (inplace ? 2 * fft.ncomplex() : fft.nreal())
-	    << " doubles for real." << endl;
-  double *X = new double[inplace ? 2 * fft.ncomplex() : fft.nreal()];
-  cout << "Allocating "
-	    << 2 * fft.ncomplex() 
-	    << " doubles for complex." << endl;
+  set_kernel_arg(initkernel, 1, sizeof(unsigned int), &skip);
+  size_t global_wsize[] = {nx, ny, nz};
+    
+  cout << "Allocating "  << nx * ny * skip << " doubles for real." << endl;
+  double *X = new double[nx * ny * skip];
+  cout << "Allocating "  << nx * ny * nzp << " doubles for complex." << endl;
   double *FX = new double[2 * fft.ncomplex()];
-
-  // Create OpenCL events
-  cl_event clv_init = clCreateUserEvent(ctx, NULL);
-  cl_event clv_toram = clCreateUserEvent(ctx, NULL);
-  cl_event clv_forward = clCreateUserEvent(ctx, NULL);
-  cl_event clv_backward = clCreateUserEvent(ctx, NULL);
 
   if(N == 0) {
     tolerance *= 1.0 + log((double) max(max(nx, ny), nz));
     cout << "Tolerance: " << tolerance << endl;
 
     cout << "\nInput:" << endl;
-    init3R(X, nx, ny, nz);
+    clEnqueueNDRangeKernel(queue, initkernel, 3, NULL,  global_wsize, NULL,
+			   0, 0, 0);
+    clFinish(queue);
+    clEnqueueReadBuffer(queue, inbuf, CL_TRUE, 0,
+			sizeof(double) * nx * ny * skip, X, 0, 0, 0);
+    clFinish(queue);
     if(nx * ny * nz <= maxout)
-      show3R(X, nx, ny, nz);
+      show3R(X, nx, ny, nz, skip);
     else
       cout << X[0] << endl;
     
-    //fft.ram_to_rbuf(X, &inbuf, 0, NULL, &clv_init);
-    size_t global_wsize[] = {nx, ny, nz};
-    clEnqueueNDRangeKernel(queue,
-			   initkernel,
-			   3, // cl_uint work_dim,
-			   NULL, // global_work_offset,
-			   global_wsize, // global_work_size, 
-			   NULL, // size_t *local_work_size, 
-			   0, NULL, &clv_init);
-
-    fft.forward(&inbuf, inplace ? NULL : &outbuf, 1, &clv_init, &clv_forward);
-    fft.cbuf_to_ram(FX, inplace? &inbuf : &outbuf, 1, &clv_forward, &clv_toram);
-    clWaitForEvents(1, &clv_toram);
+    fft.forward(&inbuf, inplace ? NULL : &outbuf, 0, 0, 0);
+    clFinish(queue);
+    clEnqueueReadBuffer(queue, inplace ? inbuf : outbuf, CL_TRUE, 0,
+			2 * sizeof(double) * nx * ny *nzp, FX, 0, 0, 0);
+    clFinish(queue);
     
     cout << "\nTransformed:" << endl;
     if(nx * ny * nz <= maxout) {
-      show3H(FX, fft.ncomplex(0), fft.ncomplex(1), fft.ncomplex(2), 
-	     inplace ? 1 : 0);
+      show3C(FX, nx, ny, nzp);
     } else {
       cout << FX[0] << endl;
     }
 
-    fft.backward(inplace ? &inbuf : &outbuf, 
-		 inplace? NULL : &inbuf, 1, &clv_forward, &clv_backward);
-    if(inplace)
-      fft.cbuf_to_ram(X, &inbuf, 1, &clv_backward, &clv_toram);
-    else
-      fft.rbuf_to_ram(X, &inbuf, 1, &clv_backward, &clv_toram);
-    clWaitForEvents(1, &clv_toram);
-
+    fft.backward(inplace ? &inbuf : &outbuf, inplace? NULL : &inbuf, 0, 0, 0);
+    clFinish(queue);
+    
     cout << "\nTransformed back:" << endl;
-    // if(nx <= maxout)
-    //   show3R(X, nx, ny, nz);
-    // else 
-    //   cout << X[0] << endl;
+    if(nx <= maxout)
+      show3R(X, nx, ny, nz, skip);
+    else 
+      cout << X[0] << endl;
 
     // compute the round-trip error.
     {
       double *X0 = new double[inplace ? 2 * fft.ncomplex() : fft.nreal()];
-      init3R(X0, nx, ny, nz);
-      //show3R(X0, nx, ny, nz);
+      clEnqueueNDRangeKernel(queue, initkernel, 3, NULL,  global_wsize, NULL,
+			     0, 0, 0);
+      clFinish(queue);
+      clEnqueueReadBuffer(queue, inbuf, CL_TRUE, 0,
+			  sizeof(double) * nx * ny * skip, X0, 0, 0, 0);
+      clFinish(queue);
       double L2error = 0.0;
       double maxerror = 0.0;
-      for(unsigned int i = 0; i < fft.nreal(); ++i) {
-    	double diff = fabs(X[i] - X0[i]);
-    	L2error += diff * diff;
-    	if(diff > maxerror)
-    	  maxerror = diff;
+      for(unsigned int i = 0; i < nx; ++i) {
+	for(unsigned int j = 0; j < ny; ++j) {
+	  for(unsigned int k = 0; k < nz; ++k) {
+	    unsigned int pos = i * ny * skip + j * skip +  + k;
+	    double diff = fabs(X[pos] - X0[pos]);
+	    L2error += diff * diff;
+	    if(diff > maxerror)
+	      maxerror = diff;
+	  }
+	}
       }
       L2error = sqrt(L2error / (double) nx);
 
@@ -220,10 +207,10 @@ const unsigned int ny, const unsigned int nz)	\
       cout << "max error: " << maxerror << endl;
 
       if(L2error < tolerance && maxerror < tolerance) 
-	cout << "\nResults ok!" << endl;
+  	cout << "\nResults ok!" << endl;
       else {
-	cout << "\nERROR: results diverge!" << endl;
-	error += 1;
+  	cout << "\nERROR: results diverge!" << endl;
+  	error += 1;
       }
     }
 
@@ -231,47 +218,41 @@ const unsigned int ny, const unsigned int nz)	\
     {
       fftwpp::fftw::maxthreads = get_max_threads();
       size_t align = sizeof(Complex);
-      unsigned int nzp = nz / 2 + 1;
-      Array::array3<double> f(nx, ny, nz, align);
-      Array::array3<Complex> g(nx, ny, nzp, align);
+      Array::array3<double> f(nx, ny, inplace ? 2 * nzp : nz, align);
+      Complex *pg = inplace ? (Complex*)f() : utils::ComplexAlign(nx * ny *nzp);
+      Array::array3<Complex> g(nx, ny, nzp, pg);
+      
       fftwpp::rcfft3d Forward(nx, ny, nz, f, g);
       fftwpp::crfft3d Backward(nx, ny, nz, g, f);
-    
-      double *df = (double *)f();
-      double *dg = (double *)g();
-      init3R(df, nx, ny, nz);
-      //show1C(df, nx);
+
+      clEnqueueNDRangeKernel(queue, initkernel, 3, NULL,  global_wsize, NULL,
+			     0, 0, 0);
+      clFinish(queue);
+      clEnqueueReadBuffer(queue, inbuf, CL_TRUE, 0,
+			  sizeof(double) * nx * ny * skip, f(), 0, 0, 0);
+      clFinish(queue);
+
+      cout << "f" << endl << f << endl;
       Forward.fft(f, g);
-      //show1C(df, nx);
+      cout << "g" << endl << g << endl;
+
+      double *dg = (double*) pg;
       
-      //cout << "g:\n" << g << endl;
-      
-      unsigned int nzpskip = nzp + inplace;
       double L2error = 0.0;
       double maxerror = 0.0;
       for(unsigned int i = 0; i < nx; ++i) {
       	for(unsigned int j = 0; j < ny; ++j) {
-	  for(unsigned int k = 0; k < nzp; ++k) {
-	    int pos = i * ny * nzp + j * nzp + k;
-	    int pos0 = i * ny * nzpskip + j * nzpskip + k;
-	    // cout << "pos0:  " << pos0  
-	    // 	      << "\t(" << FX[2 * pos0] 
-	    // 	      << " " << FX[2 * pos0 + 1]
-	    // 	      << ")" << endl;
-	    // cout << "pos:   " << pos  
-	    // 	      << "\t(" << dg[2 * pos] 
-	    // 	      << " " << dg[2 * pos + 1]
-	    // 	      << ")" << endl;
-	    // cout << endl;
-	    double rdiff = FX[2 * pos0] - dg[2 * pos];
-	    double idiff = FX[2 * pos0 + 1] - dg[2 * pos + 1];
-	    double diff = sqrt(rdiff * rdiff + idiff * idiff);
-	    L2error += diff * diff;
-	    if(diff > maxerror)
-	      maxerror = diff;
-	  }
-	  //cout << endl;
-	}
+  	  for(unsigned int k = 0; k < nzp; ++k) {
+	    unsigned int pos = i * ny * nzp + j * nzp +  + k;
+  	    double rdiff = FX[2 * pos] - dg[2 * pos];
+  	    double idiff = FX[2 * pos + 1] - dg[2 * pos + 1];
+  	    double diff = sqrt(rdiff * rdiff + idiff * idiff);
+  	    L2error += diff * diff;
+  	    if(diff > maxerror)
+  	      maxerror = diff;
+  	  }
+  	  //cout << endl;
+  	}
       }
       L2error = sqrt(L2error / (double) (nx * ny * nzp));
 
@@ -281,44 +262,44 @@ const unsigned int ny, const unsigned int nz)	\
       cout << "max error: " << maxerror << endl;
 
       if(L2error < tolerance && maxerror < tolerance) 
-	cout << "\nResults ok!" << endl;
+  	cout << "\nResults ok!" << endl;
       else {
-	cout << "\nERROR: results diverge!" << endl;
-	error += 1;
+  	cout << "\nERROR: results diverge!" << endl;
+  	error += 1;
       }
     }
 
-  } else {
-    double *T = new double[N];
+  // } else {
+  //   double *T = new double[N];
   
-    cl_ulong time_start, time_end;
-    for(unsigned int i = 0; i < N; i++) {
-      //init3R(X, nx, ny, nz);
-      //fft.ram_to_rbuf(X, &inbuf, 0, NULL, &clv_init);
-      size_t global_wsize[] = {nx, ny, nz};
-      clEnqueueNDRangeKernel(queue,
-			     initkernel,
-			     3, // cl_uint work_dim,
-			     NULL, // global_work_offset,
-			     global_wsize, // global_work_size, 
-			     NULL, // size_t *local_work_size, 
-			     0, NULL, &clv_init);
+  //   cl_ulong time_start, time_end;
+  //   for(unsigned int i = 0; i < N; i++) {
+  //     //init3R(X, nx, ny, nz);
+  //     //fft.ram_to_rbuf(X, &inbuf, 0, NULL, &clv_init);
+  //     size_t global_wsize[] = {nx, ny, nz};
+  //     clEnqueueNDRangeKernel(queue,
+  // 			     initkernel,
+  // 			     3, // cl_uint work_dim,
+  // 			     NULL, // global_work_offset,
+  // 			     global_wsize, // global_work_size, 
+  // 			     NULL, // size_t *local_work_size, 
+  // 			     0, NULL, &clv_init);
 
-      fft.forward(&inbuf, inplace ? NULL : &outbuf, 1, &clv_init, &clv_forward);
-      clWaitForEvents(1, &clv_forward);
+  //     fft.forward(&inbuf, inplace ? NULL : &outbuf, 1, &clv_init, &clv_forward);
+  //     clWaitForEvents(1, &clv_forward);
     
-      clGetEventProfilingInfo(clv_forward,
-    			      CL_PROFILING_COMMAND_START,
-    			      sizeof(time_start),
-    			      &time_start, NULL);
-      clGetEventProfilingInfo(clv_forward,
-    			      CL_PROFILING_COMMAND_END,
-    			      sizeof(time_end), 
-    			      &time_end, NULL);
-      T[i] = 1e-9 * (time_end - time_start);
-    }
-    timings("fft timing", nx, T, N,stats);
-    delete[] T;
+  //     clGetEventProfilingInfo(clv_forward,
+  //   			      CL_PROFILING_COMMAND_START,
+  //   			      sizeof(time_start),
+  //   			      &time_start, NULL);
+  //     clGetEventProfilingInfo(clv_forward,
+  //   			      CL_PROFILING_COMMAND_END,
+  //   			      sizeof(time_end), 
+  //   			      &time_end, NULL);
+  //     T[i] = 1e-9 * (time_end - time_start);
+  //   }
+  //   timings("fft timing", nx, T, N,stats);
+  //   delete[] T;
   }
   delete[] FX;
   delete[] X;

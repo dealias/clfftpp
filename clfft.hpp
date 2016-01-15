@@ -865,21 +865,22 @@ private:
     set_inout_place(plan);
     set_precision(plan, precision);
 
-    // size_t istride[3] = {1, nreal(2), nreal(1) * nreal(2)};
-    // size_t ostride[3] = {1, ncomplex(2), ncomplex(1) * (ncomplex(2) + inplace)};
-    size_t istride[3] = {1, nreal(2), nreal(1) * nreal(2)};
-    size_t ostride[3] = {1, 
-			 ncomplex(2) + inplace, 
-			 ncomplex(1) * (ncomplex(2) + inplace)};
+    size_t nzp = nz / 2 + 1;
+    size_t rstride[3] = {1, inplace ? 2 * nzp : nz,
+			 ny * (inplace ? 2 * nzp : nz)};
+    size_t cstride[3] = {1, nzp, ny * nzp};
     if(forward) {
-      set_strides(plan, dim, istride, ostride);
+      set_strides(plan, dim, rstride, cstride);
     } else {
-      set_strides(plan, dim, ostride, istride);
+      set_strides(plan, dim, cstride, rstride);
     }
 
-    size_t idist = forward ? 2 * nreal(-1) : ncomplex(-1);
-    size_t odist = forward ? ncomplex(-1) : 2 * nreal(-1);
-    set_dists(plan, dim, idist, odist);
+    size_t rdist = nx * ny * inplace ? 2 * nzp : nz;
+    size_t cdist = nx * ny * nzp;
+    if(forward)
+      set_dists(plan, dim, rdist, cdist);
+    else
+      set_dists(plan, dim, cdist, rdist);
     
     bake_plan(plan);
     set_workmem(plan);

@@ -143,12 +143,15 @@ void show2H(const T *X, unsigned int nx, unsigned int ny, int skip)
 }
 
 template<class T>
-void show3R(const T *X, unsigned int nx, unsigned int ny, unsigned int nz)
+void show3R(const T *X, const unsigned int nx, const unsigned int ny,
+	    const unsigned int nz, unsigned int skip=0)
 {
+  if(skip == 0)
+    skip = ny;
   for(unsigned int i = 0; i < nx; ++i) {
     for(unsigned int j = 0; j < ny; ++j) {
       for(unsigned int k = 0; k < nz; ++k) {
-	unsigned int pos = i * ny * nz + j * nz + k;
+	unsigned int pos = i * ny * skip + j * skip + k;
 	std::cout << X[pos] << " ";
       }
       std::cout << std::endl;
