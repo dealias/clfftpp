@@ -12,22 +12,11 @@
 #include "Array.h"
 #include "Complex.h"
 #include "fftw++.h"
+#include "align.h"
 
 using namespace std;
 
-template<class T>
-void init2R(T *X, unsigned int nx, unsigned int ny)
-{
-  for(unsigned int i = 0; i < nx; ++i) {
-    for(unsigned int j = 0; j < ny; ++j) {
-      unsigned int pos = i * ny + j; 
-      X[pos] = i * i + j;
-    }
-  }
-}
-
 int main(int argc, char *argv[]) {
-
   int platnum = 0;
   int devnum = 0;
   unsigned int nx = 4;
@@ -102,108 +91,111 @@ int main(int argc, char *argv[]) {
   cl_context ctx = create_context(platform, device);
   cl_command_queue queue = create_queue(ctx, device, CL_QUEUE_PROFILING_ENABLE);
 
+  unsigned int nyp = ny / 2 + 1;
+  int skip = inplace ? 2 * nyp : ny;
+  
   clfft2r fft(nx, ny, inplace, queue, ctx);
-  cl_mem inbuf, outbuf;
+
+  cl_int status;
+
+  cl_mem inbuf = clCreateBuffer(ctx, CL_MEM_READ_WRITE,
+				sizeof(double) * nx * skip, NULL,
+				&status);
+  cl_mem outbuf;
   if(inplace) {
-    fft.create_cbuf(&inbuf);
     cout << "in-place transform" << endl;
   } else {
     cout << "out-of-place transform" << endl;
     fft.create_rbuf(&inbuf);
-    fft.create_cbuf(&outbuf);
+    outbuf = clCreateBuffer(ctx, CL_MEM_READ_WRITE,
+			    2 * sizeof(double) * nx * nyp, NULL, &status);
   }
 
   string init_source ="\
 #pragma OPENCL EXTENSION cl_khr_fp64: enable\n	\
-__kernel void init(__global double *X, const unsigned int ny)		\
+__kernel void init(__global double *X, const unsigned int skip)	\
 {						\
   const int i = get_global_id(0);		\
   const int j = get_global_id(1);		\
-  unsigned pos = i * ny + j;			\
-  X[pos] = i * i + j;				\
+  unsigned pos = i * skip + j;			\
+  X[pos] = i + j;			\
 }";
+  
+  size_t global_wsize[] = {nx, ny};
   cl_program initprog = create_program(init_source, ctx);
   build_program(initprog, device);
   cl_kernel initkernel = create_kernel(initprog, "init"); 
   set_kernel_arg(initkernel, 0, sizeof(cl_mem), &inbuf);
-  set_kernel_arg(initkernel, 1, sizeof(unsigned int), &ny);
+  set_kernel_arg(initkernel, 1, sizeof(unsigned int), &skip);
 
-  cout << "Allocating " 
-	    << (inplace ? 2 * fft.ncomplex() : fft.nreal())
-	    << " doubles for real." << endl;
-  double *X = new double[inplace ? 2 * fft.ncomplex() : fft.nreal()];
-  cout << "Allocating "
-	    << 2 * fft.ncomplex() 
-	    << " doubles for complex." << endl;
-  double *FX = new double[2 * fft.ncomplex()];
-
-  // Create OpenCL events
-  cl_event clv_init = clCreateUserEvent(ctx, NULL);
-  cl_event clv_toram = clCreateUserEvent(ctx, NULL);
-  cl_event clv_forward = clCreateUserEvent(ctx, NULL);
-  cl_event clv_backward = clCreateUserEvent(ctx, NULL);
+  cout << "Allocating " << nx * skip  << " doubles for real." << endl;
+  double *X = new double[nx * skip];
+  cout << "Allocating "  << 2 * nx * nyp << " doubles for complex." << endl;
+  double *FX = new double[2 * nx * nyp];
 
   if(N == 0) {
     tolerance *= 1.0 + log((double) max(nx, ny));
     cout << "Tolerance: " << tolerance << endl;
 
     cout << "\nInput:" << endl;
-    init2R(X, nx, ny);
+    clEnqueueNDRangeKernel(queue, initkernel, 2, NULL,  global_wsize, NULL,
+			   0, 0, 0);
+    clFinish(queue);
+    clEnqueueReadBuffer(queue, inbuf, CL_TRUE, 0,
+			sizeof(double) * nx * skip, X, 0, 0, 0);
+    clFinish(queue);
+    
     if(nx <= maxout)
-      show2R(X, nx, ny);
+      show2R(X, nx, ny, skip);
     else
       cout << X[0] << endl;
     
-    //fft.ram_to_rbuf(X, &inbuf, 0, NULL, &clv_init);
-    size_t global_wsize[] = {nx, ny};
-    clEnqueueNDRangeKernel(queue,
-			   initkernel,
-			   2, // cl_uint work_dim,
-			   NULL, // global_work_offset,
-			   global_wsize, // global_work_size, 
-			   NULL, // size_t *local_work_size, 
-			   0, NULL, &clv_init);
-
-
-    fft.forward(&inbuf, inplace ? NULL : &outbuf, 1, &clv_init, &clv_forward);
-    if(inplace)
-      fft.cbuf_to_ram(FX, &inbuf, 1, &clv_forward, &clv_toram);
-    else
-      fft.cbuf_to_ram(FX, &outbuf, 1, &clv_forward, &clv_toram);
-    clWaitForEvents(1, &clv_toram);
+    fft.forward(&inbuf, inplace ? NULL : &outbuf, 0, 0, 0);
+    clEnqueueReadBuffer(queue, inplace ? inbuf : outbuf, CL_TRUE, 0,
+			2 * sizeof(double) * nx * nyp, FX, 0, 0, 0);
+    clFinish(queue);
     
     cout << "\nTransformed:" << endl;
     if(nx <= maxout) {
-      show2H(FX, fft.ncomplex(0), fft.ncomplex(1), inplace ? 1 : 0);
+      show2C(FX, nx, nyp);
     } else {
       cout << FX[0] << endl;
     }
-
+    
     fft.backward(inplace ? &inbuf : &outbuf, 
-		 inplace ? NULL : &inbuf, 1, &clv_forward, &clv_backward);
-    if(inplace)
-      fft.cbuf_to_ram(X, &inbuf, 1, &clv_backward, &clv_toram);
-    else
-      fft.rbuf_to_ram(X, &inbuf, 1, &clv_backward, &clv_toram);
-    clWaitForEvents(1, &clv_toram);
+		 inplace ? NULL : &inbuf, 0, 0, 0);
+    clFinish(queue);
+    clEnqueueReadBuffer(queue, inbuf, CL_TRUE, 0,
+			sizeof(double) * nx * skip, X, 0, 0, 0);
+    clFinish(queue);
 
     cout << "\nTransformed back:" << endl;
     if(nx <= maxout)
-      show2R(X, nx, ny);
+      show2R(X, nx, ny, skip);
     else 
       cout << X[0] << endl;
 
     // compute the round-trip error.
     {
-      double *X0 = new double[inplace ? 2 * fft.ncomplex() : fft.nreal()];
-      init2R(X0, nx, ny);
+      double *X0 = new double[nx * skip];
+     
+      clEnqueueNDRangeKernel(queue, initkernel, 2, NULL,  global_wsize, NULL,
+			     0, 0, 0);
+      clFinish(queue);
+      clEnqueueReadBuffer(queue, inbuf, CL_TRUE, 0,
+			  sizeof(double) * nx * skip, X0, 0, 0, 0);
+      clFinish(queue);
+
       double L2error = 0.0;
       double maxerror = 0.0;
-      for(unsigned int i = 0; i < fft.nreal(); ++i) {
-    	double diff = fabs(X[i] - X0[i]);
-    	L2error += diff * diff;
-    	if(diff > maxerror)
+      for(unsigned int i = 0; i < nx; ++i) {
+	for(unsigned int j = 0; j < ny; ++j) {
+	  unsigned pos = i * skip + j;
+	  double diff = fabs(X[pos] - X0[pos]);
+	  L2error += diff * diff;
+	  if(diff > maxerror)
     	  maxerror = diff;
+	}
       }
       L2error = sqrt(L2error / (double) nx);
 
@@ -224,37 +216,38 @@ __kernel void init(__global double *X, const unsigned int ny)		\
     {
       fftwpp::fftw::maxthreads = get_max_threads();
       size_t align = sizeof(Complex);
-      Array::array2<double> f(nx, ny, align);
-      Array::array2<Complex> g(nx, ny / 2 + 1, align);
+      Array::array2<double> f(nx, inplace ? 2 * nyp : ny, align);
+      Complex *pg = inplace ? (Complex*)f() : utils::ComplexAlign(nx * nyp);
+      
+      Array::array2<Complex> g(nx, nyp, pg);
       fftwpp::rcfft2d Forward(nx, ny, f, g);
       fftwpp::crfft2d Backward(nx, ny, g, f);
     
-      double *df = (double *)f();
-      double *dg = (double *)g();
-      init2R(df, nx, ny);
-      //show1C(df, nx);
+      clEnqueueNDRangeKernel(queue, initkernel, 2, NULL,  global_wsize, NULL,
+			     0, 0, 0);
+      clFinish(queue);
+      clEnqueueReadBuffer(queue, inbuf, CL_TRUE, 0,
+			  sizeof(double) * nx * skip, (double *)f(), 0, 0, 0);
+      clFinish(queue);
+
+      cout << f << endl;
       Forward.fft(f, g);
-      //show1C(df, nx);
+      cout << g << endl;
 
-      //cout << g << endl;
-
+      double *dg = (double*) pg;
+      
       double L2error = 0.0;
       double maxerror = 0.0;
-      for(unsigned int i = 0; i < nx; ++i) {
-	for(unsigned int j = 0; j < ny / 2 + 1; ++j) {
-	  int pos = i * (ny / 2 + 1 + inplace) + j;
-	  int pos0 = i * (ny / 2 + 1) + j;
-	  // cout << "(" << FX[2 * pos] 
-	  // 	    << " " << FX[2 * pos + 1]
-	  // 	    << ")";
-	  double rdiff = FX[2 * pos] - dg[2 * pos0];
-	  double idiff = FX[2 * pos + 1] - dg[2 * pos0 + 1];
-	  double diff = sqrt(rdiff * rdiff + idiff * idiff);
-	  L2error += diff * diff;
-	  if(diff > maxerror)
-	    maxerror = diff;
-	}
-	//cout << endl;
+      unsigned int ndcomplex = nx * nyp;
+      for(unsigned int i = 0; i < ndcomplex; i += 2) {
+	double rdiff = FX[i] - dg[i];
+	double idiff = FX[i + 1] - dg[i + 1];
+	cout << Complex(FX[i],FX[i + 1]) << "\t"
+	     << Complex(dg[i],dg[i + 1]) << endl;
+	double diff = sqrt(rdiff * rdiff + idiff * idiff);
+	L2error += diff * diff;
+	if(diff > maxerror)
+	  maxerror = diff;
       }
       L2error = sqrt(L2error / (double) nx);
 
@@ -276,9 +269,8 @@ __kernel void init(__global double *X, const unsigned int ny)		\
   
     cl_ulong time_start, time_end;
     for(unsigned int i = 0; i < N; i++) {
-      //init2R(X, nx, ny);
-      //fft.ram_to_rbuf(X, &inbuf, 0, NULL, &clv_init);
-
+      cl_event clv_forward;
+      
       size_t global_wsize[] = {nx, ny};
       clEnqueueNDRangeKernel(queue,
 			     initkernel,
@@ -286,10 +278,10 @@ __kernel void init(__global double *X, const unsigned int ny)		\
 			     NULL, // global_work_offset,
 			     global_wsize, // global_work_size, 
 			     NULL, // size_t *local_work_size, 
-			     0, NULL, &clv_init);
-
-
-      fft.forward(&inbuf, inplace ? NULL : &outbuf, 1, &clv_init, &clv_forward);
+			     0, 0, 0);
+      clFinish(queue);
+      
+      fft.forward(&inbuf, inplace ? NULL : &outbuf, 0, 0, &clv_forward);
       clWaitForEvents(1, &clv_forward);
     
       clGetEventProfilingInfo(clv_forward,
