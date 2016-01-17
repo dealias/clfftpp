@@ -7,7 +7,7 @@
 #include "utils.hpp"
 
 int main() {
-  int platnum = 0;
+  int platnum = 1;
   int devnum = 0;
   bool inplace = true;
   unsigned int nx = 4;
@@ -30,13 +30,17 @@ int main() {
   
   clfft1 fft(nx, inplace, queue, ctx);
 
-  cl_mem inbuf, outbuf;
-  fft.create_cbuf(&inbuf);
+  cl_int status;
+  cl_mem inbuf = clCreateBuffer(ctx, CL_MEM_READ_WRITE,
+				sizeof(double) * 2 * nx, NULL, &status);
+  cl_mem outbuf;
   if(inplace) {
     std::cout << "in-place transform" << std::endl;
   } else {
     std::cout << "out-of-place transform" << std::endl;
-    fft.create_cbuf(&outbuf);
+    outbuf = clCreateBuffer(ctx, CL_MEM_READ_WRITE,
+			    sizeof(double) * 2 * nx, NULL,
+			    &status);
   }
   
   // Create OpenCL kernel to initialize OpenCL buffer
@@ -58,25 +62,22 @@ __kernel void init(__global double *X)\n	\
 	    << " doubles." << std::endl;
   double *X = new double[2 * fft.ncomplex()];
 
-  cl_event clv_init = clCreateUserEvent(ctx, NULL);
-  cl_event clv_toram = clCreateUserEvent(ctx, NULL);
-  cl_event clv_forward = clCreateUserEvent(ctx, NULL);
-  cl_event clv_backward = clCreateUserEvent(ctx, NULL);
+  cl_event clv_init;
+  cl_event clv_toram;
+  cl_event clv_forward;
+  cl_event clv_backward;
 
   std::cout << "\nInput:" << std::endl;
   size_t global_wsize[] = {nx};
-  clEnqueueNDRangeKernel(queue,
-			 initkernel,
-			 1, // cl_uint work_dim,
-			 NULL, // global_work_offset,
-			 global_wsize, // global_work_size, 
-			 NULL, // size_t *local_work_size, 
+  clEnqueueNDRangeKernel(queue, initkernel, 1, NULL, global_wsize, NULL,
 			 0, NULL, &clv_init);
-  fft.cbuf_to_ram(X, &inbuf, 1, &clv_init, &clv_toram);
+  clEnqueueReadBuffer(queue, inbuf, CL_TRUE, 0, sizeof(double) * 2 * nx, X,
+		      1, &clv_init, &clv_toram);
   show1C(X, nx);
 
   fft.forward(&inbuf, inplace ? NULL : &outbuf, 1, &clv_init, &clv_forward);
-  fft.cbuf_to_ram(X, inplace ? &inbuf : &outbuf, 1, &clv_forward, &clv_toram);
+  clEnqueueReadBuffer(queue, inbuf, CL_TRUE, 0, sizeof(double) * 2 * nx, X,
+		      1, &clv_forward, &clv_toram);
   clWaitForEvents(1, &clv_toram);
 
   std::cout << "\nTransformed:" << std::endl;
@@ -84,7 +85,8 @@ __kernel void init(__global double *X)\n	\
 
   fft.backward(inplace ? &inbuf : &outbuf, 
 	       inplace ? NULL : &inbuf, 1, &clv_forward, &clv_backward);    
-  fft.cbuf_to_ram(X, &inbuf, 1, &clv_backward, &clv_toram);
+  clEnqueueReadBuffer(queue, inbuf, CL_TRUE, 0, sizeof(double) * 2 * nx, X,
+		      1, &clv_backward, &clv_toram);
   clWaitForEvents(1, &clv_toram);
 
   std::cout << "\nTransformed back:" << std::endl;

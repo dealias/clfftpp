@@ -185,7 +185,7 @@ const unsigned int ny, const unsigned int nz)\n	\
 
       double L2error = 0.0;
       double maxerror = 0.0;
-      for(unsigned int i = 0; i < fft.ncomplex(); ++i) {
+      for(unsigned int i = 0; i < nx * ny; ++i) {
 	double rdiff = X[2 * i] - X0[2 * i];
 	double idiff = X[2 * i + 1] - X0[2 * i + 1];
 	double diff = sqrt(rdiff * rdiff + idiff * idiff);

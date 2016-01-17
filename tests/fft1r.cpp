@@ -164,7 +164,7 @@ __kernel void init(__global double *X)\n	\
     
     // Compute the round-trip error.
     {
-      double *X0 = new double[fft.nreal()];
+      double *X0 = new double[nreal];
       clEnqueueNDRangeKernel(queue, initkernel, 1, NULL, global_wsize,
 			     0, 0, 0, 0);
       clFinish(queue);
@@ -174,7 +174,7 @@ __kernel void init(__global double *X)\n	\
 
       double L2error = 0.0;
       double maxerror = 0.0;
-      for(unsigned int i = 0; i < fft.nreal(); ++i) {
+      for(unsigned int i = 0; i < nreal; ++i) {
   	double diff = X[i] - X0[i];
   	L2error += diff * diff;
   	if(diff > maxerror)

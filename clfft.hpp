@@ -283,6 +283,7 @@ public:
 		  const cl_uint nwait,
 		  const cl_event *wait, cl_event *event) {
     // FIXME: remove
+    std::cout << "FIXME:REMOVE" << std::endl;
     cl_int ret;
     ret = clEnqueueWriteBuffer(queue,
 			       *buf, // cl_mem buffer, 
@@ -301,6 +302,7 @@ public:
 		   const cl_uint nwait,
 		   const cl_event *wait, cl_event *event) {
     // FIXME: remove
+    std::cout << "FIXME:REMOVE" << std::endl;
     ram_to_buf(X, buf, cbuf_size, nwait, wait, event);
   }
 
@@ -308,12 +310,14 @@ public:
 		   const cl_uint nwait,
 		   const cl_event *wait, cl_event *event) {
     // FIXME: remove
+    std::cout << "FIXME:REMOVE" << std::endl;
     ram_to_buf(X, buf, rbuf_size, nwait, wait, event);
   }
 
   void buf_to_ram(double *X, cl_mem *buf, const size_t buf_size,
 		  const cl_uint nwait,
 		  const cl_event *wait, cl_event *event) {
+    std::cout << "FIXME:REMOVE" << std::endl;
     // FIXME: remove
     cl_int ret;
     ret = clEnqueueReadBuffer(queue,
@@ -333,6 +337,7 @@ public:
 		   const cl_uint nwait,
 		   const cl_event *wait, cl_event *event) {
     // FIXME: remove
+    std::cout << "FIXME:REMOVE" << std::endl;
     buf_to_ram(X, buf, cbuf_size, nwait, wait, event);
   }
 
@@ -340,12 +345,14 @@ public:
 		   const cl_uint nwait,
 		   const cl_event *wait, cl_event *event) {
     // FIXME: remove
+        std::cout << "FIXME:REMOVE" << std::endl;
     buf_to_ram(X, buf, rbuf_size, nwait, wait, event);
     //std::cout << "rbuf_size/sizeof(double): " << rbuf_size/sizeof(double) << std::endl;
   }
 
   void finish() {
     // FIXME: remove
+    std::cout << "FIXME:REMOVE" << std::endl;
     cl_int ret = clFinish(queue);
     if(ret != CL_SUCCESS) std::cerr << clErrorString(ret) << std::endl;
     assert(ret == CL_SUCCESS);
@@ -394,9 +401,6 @@ private:
 
   void setup() {
     realtocomplex = false;
-
-    // FIXME: remove
-    set_buf_size();
 
     setup_plan(forward_plan);
     setup_plan(backward_plan);
@@ -448,11 +452,6 @@ public:
       return 0;
     }
   }
-
-  virtual const size_t complex_buf_size() {
-    // FIXME: remove
-    return nx * 2 * realsize;
-  }
 };
 
 class clfft2 : public clfft_base
@@ -462,9 +461,6 @@ private:
 
   void setup() {
     realtocomplex = false;
-
-    // FIXME: remove
-    set_buf_size();
 
     setup_plan(forward_plan);
     setup_plan(backward_plan);
@@ -489,9 +485,6 @@ private:
 public:
   clfft2() :
     clfft_base(), nx(0), ny(0) {
-
-    // FIXME: remove
-    set_buf_size();
   }
 
   clfft2(unsigned int nx, unsigned int ny, bool inplace,
@@ -520,11 +513,6 @@ public:
       exit(1);
     }
     return 0;
-  }
-
-  // FIXME: remove
-  virtual const unsigned int complex_buf_size(const int dim) {
-    return nx * ny * 2 * realsize;
   }
 };
 
@@ -559,9 +547,6 @@ private:
 
 public:
   clfft3(): clfft_base(), nx(0), ny(0), nz(0) {
-
-    // FIXME: remove
-    set_buf_size();
   }
 
   clfft3(unsigned int nx, unsigned int ny, unsigned int nz, bool inplace,
@@ -571,31 +556,6 @@ public:
   }
 
   ~clfft3() {
-  }
-
-  // FIXME: remove
-  const unsigned int nreal(const int dim = -1) {return 0;}
-  const unsigned int ncomplex(const int dim = -1) {
-    switch(dim) {
-    case -1:
-      return nx * ny * nz;
-    case 0:
-      return nx;
-    case 1:
-      return ny;
-    case 2:
-      return nz;
-    default:
-      std::cerr << dim 
-		<< " is an invalid dimension for clfft2::ncomplex"
-		<< std::endl;
-      exit(1);
-    }
-    return 0;
-  }
-
-  virtual const unsigned int complex_buf_size(const int dim) {
-    return nx * ny * nz * 2 * realsize;
   }
 };
 
@@ -609,10 +569,6 @@ private:
   size_t idist, odist;
 
   void setup() {
-
-    // FIXME: remove
-    set_buf_size();
-
     setup_plan(forward_plan);
     setup_plan(backward_plan);
   }
@@ -652,29 +608,6 @@ public:
     realtocomplex = false;
     setup();
   }
-  
-    // FIXME: remove
-  const unsigned int ncomplex(const int dim = -1) {
-    switch(dim) {
-    case -1:
-      return nx * M;
-      break;
-    case 0:
-      return nx;
-      break;
-    default:
-      std::cerr << dim
-		<< " is an invalid dimension for clmfft1::ncomplex"
-		<< std::endl;
-      exit(1);
-      return 0;
-    }
-    return 0;
-  }
-
-  const unsigned int nreal(const int dim = -1) {
-    return 0;
-  }
 };
 
 class clfft1r : public clfft_base
@@ -684,7 +617,6 @@ private:
 
   void setup() {
     realtocomplex = true;
-    set_buf_size();     // FIXME: remove
     
     setup_plan(forward_plan, CLFFT_FORWARD);
     setup_plan(backward_plan, CLFFT_BACKWARD);
@@ -716,7 +648,6 @@ private:
 
 public:
   clfft1r() : clfft_base(), nx(0) {
-    set_buf_size();     // FIXME: remove
   }
 
   clfft1r(unsigned int nx, bool inplace, 
@@ -727,47 +658,6 @@ public:
 
   ~clfft1r() {
   }
-
-  const unsigned int ncomplex(const int dim = -1) {
-    switch(dim) {
-    case -1:
-      return 1 + nx / 2;
-    case 0:
-      return 1 + nx / 2;
-    default:
-      std::cerr << dim 
-		<< " is an invalid dimension for clfft1r::ncomplex"
-		<< std::endl;
-      exit(1);
-    }
-    return 0;
-  }
-
-  virtual const unsigned int nreal(const int dim = -1) {
-    switch(dim) {
-    case -1:
-      return nx;
-    case 0:
-      return nx;
-    default:
-      std::cerr << dim 
-		<< " is an invalid dimension for clfft1r::nreal"
-		<< std::endl;
-      exit(1);
-    }
-    return 0;
-  }
-
-      // FIXME: remove
-  size_t complex_buf_size() {
-    return  (1 + nx / 2) * 2 * realsize;
-  }
-
-      // FIXME: remove
-  size_t real_buf_size() {
-    return nx * realsize;
-  }
-
 };
 
 class clfft2r : public clfft_base
@@ -825,17 +715,6 @@ public:
   }
 
   ~clfft2r() {
-    // FIXME: make sur things are all freed
-  }
-
-  const unsigned int ncomplex(const int dim = -1) {
-    // FIXME: remove
-    return 0;
-  }
-
-  const unsigned int nreal(const int dim = -1) {
-    // FIXME: remove
-    return 0;
   }
 };
 
@@ -909,7 +788,6 @@ private:
 
   void setup() {
     realtocomplex = true;
-    set_buf_size(); // FIXME: remove
     
     setup_plan(forward_plan, CLFFT_FORWARD);
     setup_plan(backward_plan, CLFFT_BACKWARD);
@@ -962,7 +840,6 @@ private:
 
 public:
   clmfft1r() : clfft_base(), nx(0), M(0) {
-    set_buf_size(); // FIXME: remove
   }
 
   clmfft1r(unsigned int nx, unsigned int M, int istride, int ostride,
@@ -973,41 +850,5 @@ public:
     nx(nx), M(M), 
     istride(istride), ostride(ostride), idist(idist), odist(odist) {
     setup();
-  }
-
-   // FIXME: remove
-  const unsigned int ncomplex(const int dim = -1) {
-    switch(dim) {
-    case -1:
-      return (1 + nx / 2) * M;
-    case 0:
-      return (1 + nx / 2);
-    default:
-      std::cerr << dim 
-		<< " is an invalid dimension for clmfft1r::ncomplex"
-		<< std::endl;
-      exit(1);
-    }
-    return 0;
-  }
-
-   // FIXME: remove
-  const unsigned int nreal(const int dim = -1) {
-    switch(dim) {
-    case -1:
-      if(inplace)
-	return ncomplex(-1) * 2;
-      else 
-	return nx * M;
-    case 0:
-      return nx;
-    default:
-      std::cerr << dim 
-		<< " is an invalid dimension for clmfft1r::nreal"
-		<< std::endl;
-      exit(1);
-    }
-
-    return 0;
   }
 };

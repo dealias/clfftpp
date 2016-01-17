@@ -91,9 +91,7 @@ int main(int argc, char *argv[])
   cl_int status;
 
   cl_mem inbuf = clCreateBuffer(ctx, CL_MEM_READ_WRITE,
-				sizeof(double) * 2 * nx, NULL,
-				&status);
-
+				sizeof(double) * 2 * nx, NULL, &status);
   cl_mem outbuf;
   if(inplace) {
     cout << "in-place transform" << endl;

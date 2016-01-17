@@ -248,7 +248,7 @@ __kernel void init(__global double *X)		\
     
     // Compute the round-trip error.
     {
-      double *X0 = new double[2 * fft.ncomplex()];
+      double *X0 = new double[2 * nx * ny];
       clEnqueueNDRangeKernel(queue, initkernel, 2, NULL, global_wsize, 0,
 			     0, 0, 0);
       clFinish(queue);
