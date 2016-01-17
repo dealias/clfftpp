@@ -37,10 +37,8 @@ def main(argv):
 
     retval = 0
 
-    xmax = 10
-    ymax = 10
-    xlist = sizes(xmax)
-    ylist = sizes(ymax)
+    xlist = sizes(m)
+    ylist = sizes(m)
             
     print ptest
     for x in xlist:

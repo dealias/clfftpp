@@ -99,7 +99,7 @@ int main(int argc, char *argv[])
     cout << "in-place transform" << endl;
   } else {
     cout << "out-of-place transform" << endl;
-    cl_mem inbuf = clCreateBuffer(ctx, CL_MEM_READ_WRITE,
+    outbuf = clCreateBuffer(ctx, CL_MEM_READ_WRITE,
 				  sizeof(double) * 2 * nx, NULL,
 				  &status);
   }
