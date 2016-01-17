@@ -124,13 +124,3 @@ cl_program create_program(const std::string source, cl_context context)
   assert(ret == CL_SUCCESS);
   return prog;
 }
-
-cl_kernel create_kernel(cl_program program, const char *kernelname) 
-{
-  // FIXME: remove
-  cl_int ret;
-  cl_kernel kernel = clCreateKernel(program, kernelname, &ret);
-  //check_cl_ret(ret,"create kernel");
-  assert(ret == CL_SUCCESS);
-  return kernel;
-}

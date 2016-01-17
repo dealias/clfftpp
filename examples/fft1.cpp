@@ -54,7 +54,7 @@ __kernel void init(__global double *X)\n	\
 }\n";
   cl_program initprog = create_program(init_source, ctx);
   clBuildProgram(initprog, 1, &device, NULL, NULL, NULL);
-  cl_kernel initkernel = create_kernel(initprog, "init"); 
+  cl_kernel initkernel = clCreateKernel(initprog, "init", &status);
   clSetKernelArg(initkernel, 0, sizeof(cl_mem), &inbuf);
 
   std::cout << "Allocating " << 2 * nx << " doubles." << std::endl;
