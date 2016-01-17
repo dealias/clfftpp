@@ -60,8 +60,8 @@ __kernel void init(__global double *X, const unsigned int skip)		\
   cl_program initprog = create_program(init_source, ctx);
   build_program(initprog, device);
   cl_kernel initkernel = create_kernel(initprog, "init"); 
-  set_kernel_arg(initkernel, 0, sizeof(cl_mem), &inbuf);
-  set_kernel_arg(initkernel, 1, sizeof(unsigned int), &skip);
+  clSetKernelArg(initkernel, 0, sizeof(cl_mem), &inbuf);
+  clSetKernelArg(initkernel, 1, sizeof(unsigned int), &skip);
 
   std::cout << "Allocating " << nreal  << " doubles for real." << std::endl;
   double *X = new double[nreal];

@@ -1,25 +1,25 @@
 #include <vector>
 #include <iostream>
-//#include <stdio.h>
 #include <CL/cl.h>
 #include "platform.hpp"
-//using namespace opencl;
 
 void find_platform_ids(std::vector<cl_platform_id > &A)
 {
-  const cl_uint max_plats=100;
+  // FIXME: get num of plats
+  const cl_uint max_plats = 100;
   cl_uint ret_num_platforms;
   cl_platform_id platform_id[max_plats];
   clGetPlatformIDs(max_plats, platform_id, &ret_num_platforms);
   
-  for(unsigned int i=0; i < ret_num_platforms; ++i) 
+  for(unsigned int i = 0; i < ret_num_platforms; ++i) 
     A.push_back(platform_id[i]);
 }
 
 void find_device_ids(const cl_platform_id plat_id, 
 		     std::vector<cl_device_id > &A)
 {
-  const cl_uint max_dev=100;
+  // FIXME: get number of devices
+  const cl_uint max_dev = 100;
   cl_device_id device_ids[max_dev];
 
   cl_uint ret_num_devices;
@@ -31,7 +31,7 @@ void find_device_ids(const cl_platform_id plat_id,
 		       &ret_num_devices);
   if(ret > 0) 
     std::cerr << "Error in find_device_ids: " << ret << std::endl;
-  for(unsigned int i=0; i < ret_num_devices; ++i) 
+  for(unsigned int i = 0; i < ret_num_devices; ++i) 
      A.push_back(device_ids[i]);
 }
 
@@ -41,7 +41,7 @@ void create_device_tree(std::vector<std::vector<cl_device_id> > &D)
   find_platform_ids(P);
 
   D.resize(P.size());
-  for(unsigned int i=0; i < P.size(); ++i) {
+  for(unsigned int i = 0; i < P.size(); ++i) {
     std::vector<cl_device_id> temp;
     find_device_ids(P[i],temp);
     D[i].resize(temp.size());
@@ -58,21 +58,17 @@ void show_devices()
   create_device_tree(D);  
   cl_uint ret;
 
+  // FIXME: get buffer size instead of making it static
   char buffer[1024];
   for(unsigned int i=0; i < P.size(); ++i) {
     ret = clGetPlatformInfo(P[i],
-			    CL_PLATFORM_NAME, //cl_device_info param_name,
+			    CL_PLATFORM_NAME,
 			    sizeof(buffer), buffer, NULL);
     std::cout << "platform "<< i <<": " << buffer << std::endl;
     
     for(unsigned int j=0; j < D[i].size(); ++j) {
-      /*ret = clGetDeviceInfo(D[i][0],
-			    CL_DEVICE_NAME, //cl_device_info param_name,
-			    sizeof(buffer), 
-			    buffer, 
-			    NULL);*/
       ret = clGetDeviceInfo(D[i][j],
-                            CL_DEVICE_NAME, //cl_device_info param_name,
+                            CL_DEVICE_NAME,
                             sizeof(buffer), 
                             buffer, 
                             NULL);
@@ -80,7 +76,7 @@ void show_devices()
 
       cl_device_type dtype;
       ret = clGetDeviceInfo(D[i][j],
-                            CL_DEVICE_TYPE, //cl_device_info param_name,
+                            CL_DEVICE_TYPE,
                             sizeof(dtype), 
                             &dtype, 
                             NULL);
@@ -95,6 +91,7 @@ void show_devices()
 cl_context create_context(const cl_platform_id platform,
 			  const cl_device_id device)
 {
+  // FIXME: remove
   cl_int err;
   cl_context_properties props[3] = {CL_CONTEXT_PLATFORM, 0, 0};
   props[1] = (cl_context_properties) platform;
@@ -105,6 +102,7 @@ cl_command_queue create_queue(const cl_context ctx,
 			      const cl_device_id device,
 			      cl_command_queue_properties properties)
 {
+  // FIXME: remove
   cl_int err;
   return clCreateCommandQueue(ctx, 
 			      device, 
@@ -114,6 +112,7 @@ cl_command_queue create_queue(const cl_context ctx,
 
 cl_program create_program(const std::string source, cl_context context)
 {
+  // FIXME: remove
   cl_int ret;
   size_t size = source.size();
   cl_program prog = clCreateProgramWithSource(context, 
@@ -129,6 +128,7 @@ cl_program create_program(const std::string source, cl_context context)
 void build_program(cl_program program, cl_device_id device,
 		   const char *options)
 {
+  // FIXME: remove
   cl_int ret;
   ret = clBuildProgram(program, 
 		       1,
@@ -144,6 +144,7 @@ void build_program(cl_program program, cl_device_id device,
 
 cl_kernel create_kernel(cl_program program, const char *kernelname) 
 {
+  // FIXME: remove
   cl_int ret;
   cl_kernel kernel = clCreateKernel(program, kernelname, &ret);
   //check_cl_ret(ret,"create kernel");

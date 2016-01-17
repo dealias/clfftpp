@@ -207,7 +207,7 @@ __kernel void init(__global double *X)		\
   cl_program initprog = create_program(init_source, ctx);
   build_program(initprog, device);
   cl_kernel initkernel = create_kernel(initprog, "init"); 
-  set_kernel_arg(initkernel, 0, sizeof(cl_mem), &inbuf);
+  clSetKernelArg(initkernel, 0, sizeof(cl_mem), &inbuf);
 
   if(N == 0) {
     tolerance *= 1.0 + log((double)nx);

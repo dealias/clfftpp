@@ -111,6 +111,7 @@ __kernel void init(__global double *X, const unsigned int ny)		\
 {									\
   const int i = get_global_id(0);					\
   const int j = get_global_id(1);					\
+  const int ny = get_global_size(1);					\
   unsigned pos = 2 * (i * ny + j);					\
   X[pos] = i;								\
   X[pos + 1] = j;							\
@@ -119,8 +120,7 @@ __kernel void init(__global double *X, const unsigned int ny)		\
   cl_program initprog = create_program(init_source, ctx);
   build_program(initprog, device);
   cl_kernel initkernel = create_kernel(initprog, "init"); 
-  set_kernel_arg(initkernel, 0, sizeof(cl_mem), &inbuf);
-  set_kernel_arg(initkernel, 1, sizeof(unsigned int), &ny);
+  clSetKernelArg(initkernel, 0, sizeof(cl_mem), &inbuf);
 
   cout << "Allocating " << 2 * nx * ny << " doubles." << endl;
   double *X = new double[ 2 * nx * ny];

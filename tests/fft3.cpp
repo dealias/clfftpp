@@ -118,23 +118,22 @@ int main(int argc, char *argv[]) {
   // Create OpenCL kernel to initialize OpenCL buffer
   string init_source = "\
 #pragma OPENCL EXTENSION cl_khr_fp64: enable\n	\
-__kernel void init(__global double *X,		\
-const unsigned int ny, const unsigned int nz)\n	\
-{\n						\
-  const int i = get_global_id(0);\n		\
-  const int j = get_global_id(1);\n		\
-  const int k = get_global_id(2);\n		\
+__kernel void init(__global double *X)		\
+{						\
+  const int i = get_global_id(0);		\
+  const int j = get_global_id(1);		\
+  const int k = get_global_id(2);		\
+  const int ny = get_global_size(1);		\
+  const int nz = get_global_size(2);		\
   const int pos = i * nz * ny + j * nz + k;	\
   X[2 * pos] = i;				\
   X[2 * pos + 1] = j + k * k;			\
-}\n";
+}";
   size_t global_wsize[] = {nx, ny, nz};
   cl_program initprog = create_program(init_source, ctx);
   build_program(initprog, device);
   cl_kernel initkernel = create_kernel(initprog, "init"); 
-  set_kernel_arg(initkernel, 0, sizeof(cl_mem), &inbuf);
-  set_kernel_arg(initkernel, 1, sizeof(unsigned int), &ny);
-  set_kernel_arg(initkernel, 2, sizeof(unsigned int), &nz);
+  clSetKernelArg(initkernel, 0, sizeof(cl_mem), &inbuf);
 
   cout << "Allocating " << 2 * nx * ny * nz << " doubles." << endl;
   double *X = new double[2 * nx * ny * nz];

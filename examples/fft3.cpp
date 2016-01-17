@@ -50,26 +50,25 @@ int main() {
 
   std::string init_source = "\
 #pragma OPENCL EXTENSION cl_khr_fp64: enable\n	\
-__kernel void init(__global double *X,		\
-const unsigned int ny, const unsigned int nz)\n	\
-{\n						\
-  const int i = get_global_id(0);\n		\
-  const int j = get_global_id(1);\n		\
-  const int k = get_global_id(2);\n		\
+__kernel void init(__global double *X)		\
+{						\
+  const int i = get_global_id(0);		\
+  const int j = get_global_id(1);		\
+  const int k = get_global_id(2);		\
+  const int ny = get_global_size(1);		\
+  const int nz = get_global_size(2);		\
   const int pos = i * nz * ny + j * nz + k;	\
   X[2 * pos] = i;				\
   X[2 * pos + 1] = j + k * k;			\
-}\n";
+}";
   cl_program initprog = create_program(init_source, ctx);
   build_program(initprog, device);
   cl_kernel initkernel = create_kernel(initprog, "init"); 
-  set_kernel_arg(initkernel, 0, sizeof(cl_mem), &inbuf);
-  set_kernel_arg(initkernel, 1, sizeof(unsigned int), &ny);
-  set_kernel_arg(initkernel, 2, sizeof(unsigned int), &nz);
+  clSetKernelArg(initkernel, 0, sizeof(cl_mem), &inbuf);
 
   std::cout << "Allocating " << 2 * ncomplex << " doubles." << std::endl;
   double *X = new double[2 * ncomplex];
-  double *Xout = new double[2 * ncomplex];
+  double *FX = new double[2 * ncomplex];
 
   cl_event clv_init;
   cl_event clv_toram;
@@ -87,10 +86,11 @@ const unsigned int ny, const unsigned int nz)\n	\
 
   std::cout << "\nTransformed:" << std::endl;
   fft.forward(&inbuf, inplace ? NULL : &outbuf, 1, &clv_init, &clv_forward);    
-  clEnqueueReadBuffer(queue, inbuf, CL_TRUE, 0, sizeof(double) * 2 *ncomplex, X,
+  clEnqueueReadBuffer(queue, inplace ? inbuf : outbuf, CL_TRUE, 0,
+		      sizeof(double) * 2 *ncomplex, FX,
 		      1, &clv_forward, &clv_toram);
   clWaitForEvents(1, &clv_toram);
-  show3C(Xout, nx, ny, nz);
+  show3C(FX, nx, ny, nz);
 
   std::cout << "\nTransformed back:" << std::endl;
   fft.backward(inplace ? &inbuf : &outbuf, 

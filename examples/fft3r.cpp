@@ -51,21 +51,20 @@ int main() {
   // FIXME: kernel doesn't handle strides.
   std::string init_source ="\
 #pragma OPENCL EXTENSION cl_khr_fp64: enable\n	\
-__kernel void init(__global double *X, \
-const unsigned int ny, const unsigned int nz)	\
+__kernel void init(__global double *X)		\
 {						\
   const int i = get_global_id(0);		\
   const int j = get_global_id(1);		\
   const int k = get_global_id(2);		\
+  const int ny = get_global_size(1);		\
+  const int nz = get_global_size(2);		\
   unsigned int pos = i * ny * nz + j * nz + k;	\
   X[pos] = i * i + j + 10 * k;			\
 }";
   cl_program initprog = create_program(init_source, ctx);
   build_program(initprog, device);
   cl_kernel initkernel = create_kernel(initprog, "init"); 
-  set_kernel_arg(initkernel, 0, sizeof(cl_mem), &inbuf);
-  set_kernel_arg(initkernel, 1, sizeof(unsigned int), &ny);
-  set_kernel_arg(initkernel, 2, sizeof(unsigned int), &nz);
+  clSetKernelArg(initkernel, 0, sizeof(cl_mem), &inbuf);
 
   std::cout << "Allocating " << nreal  << " doubles for real." << std::endl;
   double *X = new double[nreal];

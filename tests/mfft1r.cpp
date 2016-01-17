@@ -227,9 +227,9 @@ __kernel void init(__global double *X,		\n		\
   cl_program initprog = create_program(init_source, ctx);
   build_program(initprog, device);
   cl_kernel initkernel = create_kernel(initprog, "init"); 
-  set_kernel_arg(initkernel, 0, sizeof(cl_mem), &inbuf);
-  set_kernel_arg(initkernel, 1, sizeof(unsigned int), &nx);
-  set_kernel_arg(initkernel, 2, sizeof(unsigned int), &ny);
+  clSetKernelArg(initkernel, 0, sizeof(cl_mem), &inbuf);
+  clSetKernelArg(initkernel, 1, sizeof(unsigned int), &nx);
+  clSetKernelArg(initkernel, 2, sizeof(unsigned int), &ny);
   size_t wsize[] = {nx, ny};
   if(inplace)
     wsize[direction] = 2 * (wsize[direction] / 2 + 1);
