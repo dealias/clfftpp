@@ -133,21 +133,22 @@ int main(int argc, char *argv[]) {
   direction_params(direction, nx, ny, inplace,
 		   M, n, istride, ostride, idist, odist);
 
-  show_devices();
+  platform::show_devices();
   cout << "Using platform " << platnum
        << " device " << devnum 
        << "." << endl;
 
   vector<vector<cl_device_id> > dev_ids;
-  create_device_tree(dev_ids);
+  platform::create_device_tree(dev_ids);
   cl_device_id device = dev_ids[platnum][devnum];
 
   vector<cl_platform_id> plat_ids;
-  find_platform_ids(plat_ids);
+  platform::find_platform_ids(plat_ids);
   cl_platform_id platform = plat_ids[platnum];
 
-  cl_context ctx = create_context(platform, device);
-  cl_command_queue queue = create_queue(ctx, device, CL_QUEUE_PROFILING_ENABLE);
+  cl_context ctx = platform::create_context(platform, device);
+  cl_command_queue queue = platform::create_queue(ctx, device,
+						  CL_QUEUE_PROFILING_ENABLE);
   
   clmfft1r fft(n, M, istride, ostride, idist, odist, inplace, queue, ctx);
 
@@ -225,7 +226,7 @@ __kernel void init(__global double *X,		\n		\
 }";
 
   cl_int status;
-  cl_program initprog = create_program(init_source, ctx);
+  cl_program initprog = platform::create_program(init_source, ctx);
   clBuildProgram(initprog, 1, &device, NULL, NULL, NULL);
   cl_kernel initkernel = clCreateKernel(initprog, "init", &status);
   clSetKernelArg(initkernel, 0, sizeof(cl_mem), &inbuf);

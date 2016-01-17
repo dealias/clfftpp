@@ -8,6 +8,7 @@ extern "C" {
 }
 #include <CL/cl.h>
 
+namespace platform{
 void show_devices();
 void create_device_tree(std::vector<std::vector<cl_device_id> > &D);
 void find_platform_ids(std::vector<cl_platform_id > &A);
@@ -21,5 +22,5 @@ cl_program create_program(const std::string source, cl_context context);
 void build_program(cl_program program, cl_device_id device,
 		   const char *options = NULL);
 cl_kernel create_kernel(cl_program program, const char *kernelname);
-
+}
 #endif

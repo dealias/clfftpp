@@ -3,6 +3,7 @@
 #include <CL/cl.h>
 #include "platform.hpp"
 
+namespace platform{
 void find_platform_ids(std::vector<cl_platform_id > &A)
 {
   // FIXME: get num of plats
@@ -112,7 +113,6 @@ cl_command_queue create_queue(const cl_context ctx,
 
 cl_program create_program(const std::string source, cl_context context)
 {
-  // FIXME: remove
   cl_int ret;
   size_t size = source.size();
   cl_program prog = clCreateProgramWithSource(context, 
@@ -120,7 +120,8 @@ cl_program create_program(const std::string source, cl_context context)
 					      (const char **)&source,
 					      (const size_t *)&size,
 					      &ret);
-  //check_cl_ret(ret,"clCreateProgrammWithSource"); 
   assert(ret == CL_SUCCESS);
   return prog;
 }
+
+} // end of namespace
