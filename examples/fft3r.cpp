@@ -1,6 +1,6 @@
 #include <stdlib.h>
 #include <platform.hpp>
-#include <clfft.hpp>
+#include <clfft++.hpp>
 #include <iostream>
 #include "utils.hpp"
 

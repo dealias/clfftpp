@@ -45,7 +45,7 @@ endif
 # The programs to be produced
 OUTPUT=fft1 fft2 fft1r fft2r fft3 fft3r mfft1 mfft1r
 
-SRCS_CPP=clfft platform
+SRCS_CPP=clfft++ platform
 SRCS_C=clutils
 OBJS=$(SRCS_CPP:=.o) $(SRCS_C:=.o)
 ALL=$(SRCS_CPP) $(SRCS_C) $(OUTPUT)

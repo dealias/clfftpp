@@ -70,7 +70,7 @@ LDLIBS+=-lm
 # The programs to be produced
 OUTPUT=fft1 fft2 fft3 fft1r fft2r fft3r mfft1 mfft1r
 
-SRCS_CPP=clfft platform
+SRCS_CPP=clfft++ platform
 SRCS_C=clutils
 #SRCS_CC=fftw++
 OBJS=$(SRCS_CPP:=.o) $(SRCS_C:=.o) $(SRCS_CC:=.o)

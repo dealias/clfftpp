@@ -1,7 +1,7 @@
 #include <stdlib.h>
 #include <iostream>
 #include <platform.hpp>
-#include <clfft.hpp>
+#include <clfft++.hpp>
 #include "utils.hpp"
 
 int main() {
