@@ -15,13 +15,6 @@
 
 using namespace std;
 
-template<class T>
-void initR(T *X, unsigned int n)
-{
-  for(unsigned int i = 0; i < n; ++i)
-    X[i] = i;
-}
-
 int main(int argc, char *argv[]) {
 
   int platnum = 0;
@@ -94,17 +87,26 @@ int main(int argc, char *argv[]) {
   cl_command_queue queue = create_queue(ctx, device, CL_QUEUE_PROFILING_ENABLE);
 
   clfft1r fft(nx, inplace, queue, ctx);
-  cl_mem inbuf, outbuf;
+
+  unsigned int nxp = nx / 2 + 1;
+  unsigned int nreal = inplace ? 2 * nxp : nx; 
+
+  cl_int status;
+  cl_mem inbuf = clCreateBuffer(ctx, CL_MEM_READ_WRITE,
+				sizeof(double) * nreal, NULL,
+				&status);
+  cl_mem outbuf;
   if(inplace) {
-    fft.create_cbuf(&inbuf);
     cout << "in-place transform" << endl;
   } else {
     cout << "out-of-place transform" << endl;
-    fft.create_rbuf(&inbuf);
-    fft.create_cbuf(&outbuf);
+    outbuf = clCreateBuffer(ctx, CL_MEM_READ_WRITE,
+			   sizeof(double) * 2 * nxp, NULL,
+			   &status);
   }
 
   // Create OpenCL kernel to initialize OpenCL buffer
+  size_t global_wsize[] = {nx};
   string init_source = "\
 #pragma OPENCL EXTENSION cl_khr_fp64: enable\n	\
 __kernel void init(__global double *X)\n	\
@@ -116,59 +118,45 @@ __kernel void init(__global double *X)\n	\
   build_program(initprog, device);
   cl_kernel initkernel = create_kernel(initprog, "init"); 
   set_kernel_arg(initkernel, 0, sizeof(cl_mem), &inbuf);
- 
-  cout << "Allocating "
-	    << fft.nreal() 
-	    << " doubles for real." << endl;
-  double *X = new double[inplace ? 2 * fft.ncomplex() : fft.nreal()];
-  cout << "Allocating " 
-	    << 2 * fft.ncomplex()
-	    << " doubles for complex." << endl;
-  double *FX = new double[2 * fft.ncomplex()];
 
-  cl_event clv_init = clCreateUserEvent(ctx, NULL);
-  cl_event clv_toram = clCreateUserEvent(ctx, NULL);
-  cl_event clv_forward = clCreateUserEvent(ctx, NULL);
-  cl_event clv_backward = clCreateUserEvent(ctx, NULL);
+  cout << "Allocating " << nreal  << " doubles for real." << endl;
+  double *X = new double[nreal];
+  cout << "Allocating " << 2 * nxp  << " doubles for complex." << endl;
+  double *FX = new double[2 * nxp];
 
   if(N == 0) {
     tolerance *= 1.0 + log((double)nx);
     cout << "Tolerance: " << tolerance << endl;
 
     cout << "\nInput:" << endl;
-    initR(X, nx);
+    clEnqueueNDRangeKernel(queue, initkernel, 1, NULL, global_wsize, 0, 0, 0,0);
+    clFinish(queue);
+    clEnqueueReadBuffer(queue, inbuf, CL_TRUE, 0,
+			sizeof(double) * nx, X, 0, 0, 0);
+    clFinish(queue);
     if(nx <= maxout)
       show1R(X, nx);
     else
       cout << X[0] << endl;
 
     cout << "\nTransformed:" << endl;
-
-    //fft.ram_to_rbuf(X, &inbuf, 0, NULL, &clv_init);
-    size_t global_wsize[] = {nx};
-    clEnqueueNDRangeKernel(queue,
-			   initkernel,
-			   1, // cl_uint work_dim,
-			   NULL, // global_work_offset,
-			   global_wsize, // global_work_size, 
-			   NULL, // size_t *local_work_size, 
-			   0, NULL, &clv_init);
-    fft.forward(&inbuf, inplace ? NULL : &outbuf, 1, &clv_init, &clv_forward);
-    fft.cbuf_to_ram(FX, inplace ? &inbuf :&outbuf, 1, &clv_forward, &clv_toram);
-    clWaitForEvents(1, &clv_toram);
-
+    fft.forward(&inbuf, inplace ? NULL : &outbuf, 0, 0, 0);
+    clFinish(queue);
+    clEnqueueReadBuffer(queue, inplace ? inbuf : outbuf, CL_TRUE, 0,
+			sizeof(double) * 2 * nxp, FX, 0, 0, 0);
+    clFinish(queue);
     if(nx <= maxout)
       show1C(FX, fft.ncomplex(0));
     else 
       cout << FX[0] << endl;
-
-    cout << "\nTransformed back:" << endl;
-    fft.backward(inplace ? &inbuf : &outbuf, 
-		 inplace ? NULL : &inbuf, 1, &clv_forward, &clv_backward);
-    fft.rbuf_to_ram(X, &inbuf, 1, &clv_backward, &clv_toram);
-    clWaitForEvents(1, &clv_toram);
-    fft.finish();
     
+    cout << "\nTransformed back:" << endl;
+    fft.backward(inplace ? &inbuf : &outbuf, inplace ? NULL : &inbuf, 0, 0, 0);
+    clFinish(queue);
+    clEnqueueReadBuffer(queue, inbuf, CL_TRUE, 0,
+			sizeof(double) * nreal, X, 0, 0, 0);
+    clFinish(queue);
+
     if(nx <= maxout) 
       show1R(X, nx);
     else 
@@ -177,14 +165,20 @@ __kernel void init(__global double *X)\n	\
     // Compute the round-trip error.
     {
       double *X0 = new double[fft.nreal()];
-      initR(X0, nx);
+      clEnqueueNDRangeKernel(queue, initkernel, 1, NULL, global_wsize,
+			     0, 0, 0, 0);
+      clFinish(queue);
+      clEnqueueReadBuffer(queue, inbuf, CL_TRUE, 0,
+			  sizeof(double) * nx, X0, 0, 0, 0);
+      clFinish(queue);
+
       double L2error = 0.0;
       double maxerror = 0.0;
       for(unsigned int i = 0; i < fft.nreal(); ++i) {
-	double diff = X[i] - X0[i];
-	L2error += diff * diff;
-	if(diff > maxerror)
-	  maxerror = diff;
+  	double diff = X[i] - X0[i];
+  	L2error += diff * diff;
+  	if(diff > maxerror)
+  	  maxerror = diff;
       }
       L2error = sqrt(L2error / (double) nx);
 
@@ -194,14 +188,16 @@ __kernel void init(__global double *X)\n	\
       cout << "max error: " << maxerror << endl;
 
       if(L2error < tolerance && maxerror < tolerance) 
-	cout << "\nResults ok!" << endl;
+  	cout << "\nResults ok!" << endl;
       else {
-	cout << "\nERROR: results diverge!" << endl;
-	error += 1;
+  	cout << "\nERROR: results diverge!" << endl;
+  	error += 1;
       }
+
+      free(X0);
     }
 
-     // Compute the error with respect to FFTW
+    // Compute the error with respect to FFTW
     {
       //fftw::maxthreads=get_max_threads();
       size_t align = sizeof(Complex);
@@ -211,20 +207,26 @@ __kernel void init(__global double *X)\n	\
       fftwpp::crfft1d Backward(nx, g, f);
   
       double *df = (double *)f();
-      initR(df, nx);
-      //show1C(df, nx);
+      clEnqueueNDRangeKernel(queue, initkernel, 1, NULL, global_wsize,
+			     0, 0, 0, 0);
+      clFinish(queue);
+      clEnqueueReadBuffer(queue, inbuf, CL_TRUE, 0,
+			  sizeof(double) * nx, df, 0, 0, 0);
+      clFinish(queue);
+
+      //cout << "f:" << f << endl;
       Forward.fft(f, g);
-      //show1C(df, nx);
+      //cout << "g:" << g << endl;
 
       double L2error = 0.0;
       double maxerror = 0.0;
       for(unsigned int i = 0; i < nx / 2 + 1; ++i) {
-	double rdiff = FX[2 * i] - g[i].re;
-	double idiff = FX[2 * i + 1] - g[i].im;
-	double diff = sqrt(rdiff * rdiff + idiff * idiff);
-	L2error += diff * diff;
-	if(diff > maxerror)
-	  maxerror = diff;
+  	double rdiff = FX[2 * i] - g[i].re;
+  	double idiff = FX[2 * i + 1] - g[i].im;
+  	double diff = sqrt(rdiff * rdiff + idiff * idiff);
+  	L2error += diff * diff;
+  	if(diff > maxerror)
+  	  maxerror = diff;
       }
       L2error = sqrt(L2error / (double) nx);
 
@@ -234,10 +236,10 @@ __kernel void init(__global double *X)\n	\
       cout << "max error: " << maxerror << endl;
 
       if(L2error < tolerance && maxerror < tolerance) 
-	cout << "\nResults ok!" << endl;
+  	cout << "\nResults ok!" << endl;
       else {
-	cout << "\nERROR: results diverge!" << endl;
-	error += 1;
+  	cout << "\nERROR: results diverge!" << endl;
+  	error += 1;
       }
     }
     
@@ -246,19 +248,12 @@ __kernel void init(__global double *X)\n	\
   
     cl_ulong time_start, time_end;
     for(unsigned int i = 0; i < N; i++) {
-      //initR(X, nx);
-      //fft.ram_to_rbuf(X, &inbuf, 0, NULL, &clv_init);
+      cl_event clv_forward;
+      clEnqueueNDRangeKernel(queue, initkernel, 1, NULL, global_wsize,
+			     0, 0, 0, 0);
+      clFinish(queue);
 
-      size_t global_wsize[] = {nx};
-      clEnqueueNDRangeKernel(queue,
-			     initkernel,
-			     1, // cl_uint work_dim,
-			     NULL, // global_work_offset,
-			     global_wsize, // global_work_size, 
-			     NULL, // size_t *local_work_size, 
-			     0, NULL, &clv_init);
-
-      fft.forward(&inbuf, inplace ? NULL : &outbuf, 1, &clv_init, &clv_forward);
+      fft.forward(&inbuf, inplace ? NULL : &outbuf, 0, 0, &clv_forward);
       clWaitForEvents(1, &clv_forward);
     
       clGetEventProfilingInfo(clv_forward,
