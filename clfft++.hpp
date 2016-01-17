@@ -330,8 +330,7 @@ private:
   void setup_plan(clfftPlanHandle &plan) {
 
     clfftDim dim = CLFFT_2D;
-    //size_t clLengths[2] = {nx, ny};
-    size_t clLengths[2] = {ny, nx}; // They lied when they said it was row-major
+    size_t clLengths[2] = {ny, nx};
 
     create_default_plan(plan, dim, clLengths);
     set_precision(plan, precision);

@@ -1,0 +1,220 @@
+        clFFT++, a C++ wrapper for the clFFT library
+
+Copyright 2016, Malcolm Roberts (malcolmiwroberts.com,
+malcolmiwroberts@gmail.com)
+
+clFFT++ is a C++ header file for the clFFT fast Fourier transform
+(FFT) library available at https://github.com/clMathLibraries/clFFT
+clFFT is a collection of functions written in C which generates OpenCL
+code which can then be run on a large variety of hardware, for example
+CPUs, GPUs, and co-processor boards.  the clFFT++ library makes the use
+of clFFT much easier by wrapping the various set-up and tear-down functions
+into an object-oriented setting.
+
+For example, to create a 1D complex-to-complex FFT using clFFT++ requires one
+line:
+
+clfft1 fft(nx, inplace, queue, ctx);
+
+where nx is the problem size, inplace is a bool which determines
+whether the transform is in-place or out-of-place, and queue and ctx
+are the OpenCL context and queues as per normal.  Calling this fft is done
+using the command
+
+fft.forward(&inbuf, &outbuf, nwait, wait, done);
+
+where inbuf and outbuf are cl_mem buffers of the appropriate size, and
+nwait, wait, and done are the usual OpenCL event data.
+
+
+************* Examples *************
+
+Examples are available in the examples directory, along with some
+small utility files (platform.cpp, platform.hpp, clutils.c, clutils.h,
+and utils.hpp) which help manage output and setting up the OpenCL
+environment.  The example files are
+
+examples/fft1:
+  complex-to-complex 1D FFT
+examples/fft2:
+  complex-to-complex 2D FFT
+examples/fft3:
+  complex-to-complex 3D FFT
+
+examples/fft1r:
+  real-to-complex 1D FFT
+examples/fft2r:
+  real-to-complex 2D FFT
+examples/fft3r:
+  real-to-complex 3D FFT
+
+examples/mfft1:
+  multiple 1D complex-to-complex FFTs
+examples/mfft1r:
+  multiple 1D real-to-complex FFTs
+
+The environment variables OPENCL_INCLUDE_PATH and OPENCL_LIB_PATH
+allow one to include and link OpenCL in non-standard directories,
+while CLFFT_INCLUDE_PATH and CLFFT_LIB_PATH perform the role for
+clFFT.
+
+
+************* Tests *************
+
+The tests directory has similar files, but checks the results agains
+FFTW using the fftw++ library (fftwp.sf.net) for accuracy.  Timing
+tests are also available, and there are a variety of python scripts
+for performing timing tests and verifying output.  The environment
+variables FFTW_INCLUDE_PATH and FFTW_LIB_PATH specify the location of
+FFTW (available at fftw.org), while FFTWPP_INCLUDE_PATH and
+FFTWPP_LIB_PATH specify the location of fftw++ (available at
+fftwpp.sf.net).
+
+
+************* Usage *************
+
+Once an object is created, for example 
+
+clfft1 fft(nx, inplace, queue, ctx);
+
+one performs forward FFTs by calling
+
+fft.forward(&inbuf, &outbuf, nwait, wait, done);
+
+If inbuf is equal to outbuf, the FFT is in-place.  The constructor and
+the FFT call must either both be in-place or both be out-of-place.
+For in-place transforms, &outbuff may be set to NULL.
+
+Backwards FFTs are performed by calling the analagous function
+
+fft.backward(&inbuf, &outbuf, nwait, wait, done);
+
+
+
+************* Classes / Constructors *************
+
+clfft++.hpp contains the following object constructors:
+
+
+1D complex-to-complex FFTS
+unsigned int nx        : The problem size
+bool inplace           : Specifies whether the FFT is in-place
+cl_command_queue queue : The OpenCL command queue
+cl_context ctx         : The OpenCL context
+
+clfft1(unsigned int nx, bool inplace,
+       cl_command_queue queue, cl_context ctx)
+
+
+2D complex-to-complex FFTS
+unsigned int nx        : The problem size in the first dimension
+unsigned int ny        : The problem size in the second dimension
+bool inplace           : Specifies whether the FFT is in-place
+cl_command_queue queue : The OpenCL command queue
+cl_context ctx         : The OpenCL context
+
+clfft2(unsigned int nx, unsigned int ny, bool inplace,
+       cl_command_queue queue, cl_context ctx)
+
+
+3D complex-to-complex FFTS
+unsigned int nx        : The problem size in the first dimension
+unsigned int ny        : The problem size in the second dimension
+unsigned int nz        : The problem size in the third dimension
+bool inplace           : Specifies whether the FFT is in-place
+cl_command_queue queue : The OpenCL command queue
+cl_context ctx         : The OpenCL context
+
+clfft3(unsigned int nx, unsigned int ny, unsigned int nz, bool inplace,
+       cl_command_queue queue, cl_context ctx)
+
+
+1D real-to-complex and complex-to-real FFTs
+unsigned int nx        : The problem size in the first dimension
+bool inplace           : Specifies whether the FFT is in-place
+cl_command_queue queue : The OpenCL command queue
+cl_context ctx         : The OpenCL context
+
+The problem size nx is the number of real values before being
+transformed into complex space.  The output has nx / 2 + 1 complex
+values.
+
+clfft1r(unsigned int nx, bool inplace, 
+	cl_command_queue queue, cl_context ctx)
+
+2D real-to-complex and complex-to-real FFTs
+unsigned int nx        : The problem size in the first dimension
+unsigned int ny        : The problem size in the second dimension
+bool inplace           : Specifies whether the FFT is in-place
+cl_command_queue queue : The OpenCL command queue
+cl_context ctx         : The OpenCL context
+
+The input is nx * ny real values, and the output has
+nx * nyp complex values, where nyp = ny / 2 + 1.
+
+clfft2r(unsigned int nx, unsigned int ny, bool inplace, 
+	cl_command_queue queue, cl_context ctx)
+
+
+2D real-to-complex and complex-to-real FFTs
+unsigned int nx        : The problem size in the first dimension
+unsigned int ny        : The problem size in the second dimension
+unsigned int nz        : The problem size in the third dimension
+bool inplace           : Specifies whether the FFT is in-place
+cl_command_queue queue : The OpenCL command queue
+cl_context ctx         : The OpenCL context
+
+The input is nx * ny * nz real values, and the output has
+nx * ny * nzp complex values, where nzp = nz / 2 + 1.
+
+clfft3r(unsigned int nx, unsigned int ny, unsigned int nz, bool inplace, 
+	cl_command_queue queue, cl_context ctx)
+
+
+Multiple 1D complex-to-copmlex FFTs
+unsigned int nx        : The problem size in the first dimension
+unsigned int M         : The number of 1D FFTs to be performed
+int istride            : The stride between values in the input
+int ostride            : The stride between values in the output
+int idist              : The distance between the beginning of vectors in
+                         the input
+int odist              : The distance between the beginning of vectors in
+                         the output
+bool inplace           : Specifies whether the FFT is in-place
+cl_command_queue queue : The OpenCL command queue
+cl_context ctx         : The OpenCL context
+
+The input and output consist of nx * M complex values.  The distance
+and stride parameters can be chosen so that the FFTs are in either the
+first or second dimension; see the examples for how to compute these
+values.
+
+clmfft1(unsigned int nx, unsigned int M, 
+	int istride, int ostride, int idist, int odist, 
+	bool inplace,
+	cl_command_queue queue, cl_context ctx) :
+
+
+Multiple 1D real-to-copmlex and complex-to-real FFTs
+unsigned int nx        : The problem size in the first dimension
+unsigned int M         : The number of 1D FFTs to be performed
+int istride            : The stride between values in the input
+int ostride            : The stride between values in the output
+int idist              : The distance between the beginning of vectors in
+                         the input
+int odist              : The distance between the beginning of vectors in
+                         the output
+bool inplace           : Specifies whether the FFT is in-place
+cl_command_queue queue : The OpenCL command queue
+cl_context ctx         : The OpenCL context
+
+The input consists of nx * M real values, and the output consists of
+nxp * M complex values, where nxp = nx / 2 + 1.  The distance and
+stride parameters can be chosen so that the FFTs are in either the
+first or second dimension; see the examples for how to compute these
+values.
+
+clmfft1r(unsigned int nx, unsigned int M, int istride, int ostride,
+	 int idist, int odist,  
+	 bool inplace, 
+	 cl_command_queue queue, cl_context ctx) :
