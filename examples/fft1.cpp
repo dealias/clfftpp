@@ -7,7 +7,7 @@
 #include "utils.hpp"
 
 int main() {
-  int platnum = 1;
+  int platnum = 0;
   int devnum = 0;
   bool inplace = true;
   unsigned int nx = 4;
@@ -57,10 +57,8 @@ __kernel void init(__global double *X)\n	\
   cl_kernel initkernel = create_kernel(initprog, "init"); 
   set_kernel_arg(initkernel, 0, sizeof(cl_mem), &inbuf);
 
-  std::cout << "Allocating " 
-	    << 2 * fft.ncomplex() 
-	    << " doubles." << std::endl;
-  double *X = new double[2 * fft.ncomplex()];
+  std::cout << "Allocating " << 2 * nx << " doubles." << std::endl;
+  double *X = new double[2 * nx];
 
   cl_event clv_init;
   cl_event clv_toram;

@@ -29,7 +29,7 @@ int main(int argc, char *argv[]) {
 
   double tolerance = 1e-9;
   
-  unsigned int maxout = 32; // maximum size of array output in entirety
+  unsigned int maxout = 100; // maximum size of array output in entirety
 
   int error = 0;
 #ifdef __GNUC__	
@@ -232,9 +232,11 @@ const unsigned int skip)				\
 			  sizeof(double) * nx * ny * skip, f(), 0, 0, 0);
       clFinish(queue);
 
-      //cout << "f" << endl << f << endl;
+      if(nx * ny * nz <= maxout)
+	cout << "f" << endl << f << endl;
       Forward.fft(f, g);
-      //cout << "g" << endl << g << endl;
+      if(nx * ny * nz <= maxout)
+	cout << "g" << endl << g << endl;
 
       double *dg = (double*) pg;
       

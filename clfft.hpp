@@ -163,16 +163,6 @@ protected:
     assert(ret == CL_SUCCESS);	
   }
 
-  void set_buf_size() {
-    // FIXME: remove
-    cbuf_size = ncomplex(-1) * 2 * realsize;
-    if(realtocomplex) {
-      rbuf_size = inplace ? cbuf_size : nreal(-1) * realsize;
-    } else {
-      rbuf_size = 0;
-    }
-  }
-
   void bake_plan(clfftPlanHandle &plan) {
     cl_int ret;   
     ret = clfftBakePlan(plan,
@@ -249,115 +239,6 @@ public:
     assert(ret == CL_SUCCESS);
   }
 
-  // FIXME: remove
-  virtual const unsigned int nreal(const int dim) {return 0;};
-  virtual const unsigned int ncomplex(const int dim){return 0;};
-
-  void create_rbuf(cl_mem *buf, const int nreal = 0) {
-    // FIXME: remove
-    size_t n = (nreal == 0) ? rbuf_size : nreal * realsize;
-    cl_int ret;
-    *buf = clCreateBuffer(ctx,
-			  CL_MEM_READ_WRITE,
-			  n,
-			  NULL,
-			  &ret);
-    if(ret != CL_SUCCESS) std::cerr << clErrorString(ret) << std::endl;
-    assert(ret == CL_SUCCESS);
-  }
-
-  void create_cbuf(cl_mem *buf, const int ncomp = 0) {
-    // FIXME: remove
-    size_t n = (ncomp == 0) ? cbuf_size : 2 * ncomp * realsize;
-    cl_int ret;
-    *buf = clCreateBuffer(ctx,
-			  CL_MEM_READ_WRITE,
-			  n,
-			  NULL,
-			  &ret);
-    if(ret != CL_SUCCESS) std::cerr << clErrorString(ret) << std::endl;
-    assert(ret == CL_SUCCESS);
-  }
-
-  void ram_to_buf(const double *X, cl_mem *buf, const size_t buf_size,
-		  const cl_uint nwait,
-		  const cl_event *wait, cl_event *event) {
-    // FIXME: remove
-    std::cout << "FIXME:REMOVE" << std::endl;
-    cl_int ret;
-    ret = clEnqueueWriteBuffer(queue,
-			       *buf, // cl_mem buffer, 
-			       CL_TRUE,// cl_bool blocking_read, 
-			       0, // size_t offset
-			       buf_size, // size_t cb
-			       X, //  	void *ptr, 
-			       nwait, // cl_uint num_events_in_wait_list, 
-			       wait, // const cl_event *event_wait_list, 
-			       event); // cl_event *event
-    if(ret != CL_SUCCESS) std::cerr << clErrorString(ret) << std::endl;
-    assert(ret == CL_SUCCESS);
-  }
-
-  void ram_to_cbuf(const double *X, cl_mem *buf, 
-		   const cl_uint nwait,
-		   const cl_event *wait, cl_event *event) {
-    // FIXME: remove
-    std::cout << "FIXME:REMOVE" << std::endl;
-    ram_to_buf(X, buf, cbuf_size, nwait, wait, event);
-  }
-
-  void ram_to_rbuf(const double *X, cl_mem *buf, 
-		   const cl_uint nwait,
-		   const cl_event *wait, cl_event *event) {
-    // FIXME: remove
-    std::cout << "FIXME:REMOVE" << std::endl;
-    ram_to_buf(X, buf, rbuf_size, nwait, wait, event);
-  }
-
-  void buf_to_ram(double *X, cl_mem *buf, const size_t buf_size,
-		  const cl_uint nwait,
-		  const cl_event *wait, cl_event *event) {
-    std::cout << "FIXME:REMOVE" << std::endl;
-    // FIXME: remove
-    cl_int ret;
-    ret = clEnqueueReadBuffer(queue,
-			      *buf,
-			      CL_TRUE,
-			      0,
-			      buf_size,
-			      X,
-			      nwait,
-			      wait,
-			      event);
-    if(ret != CL_SUCCESS) std::cerr << clErrorString(ret) << std::endl;
-    assert(ret == CL_SUCCESS);
-  }
-
-  void cbuf_to_ram(double *X, cl_mem *buf,
-		   const cl_uint nwait,
-		   const cl_event *wait, cl_event *event) {
-    // FIXME: remove
-    std::cout << "FIXME:REMOVE" << std::endl;
-    buf_to_ram(X, buf, cbuf_size, nwait, wait, event);
-  }
-
-  void rbuf_to_ram(double *X, cl_mem *buf,
-		   const cl_uint nwait,
-		   const cl_event *wait, cl_event *event) {
-    // FIXME: remove
-        std::cout << "FIXME:REMOVE" << std::endl;
-    buf_to_ram(X, buf, rbuf_size, nwait, wait, event);
-    //std::cout << "rbuf_size/sizeof(double): " << rbuf_size/sizeof(double) << std::endl;
-  }
-
-  void finish() {
-    // FIXME: remove
-    std::cout << "FIXME:REMOVE" << std::endl;
-    cl_int ret = clFinish(queue);
-    if(ret != CL_SUCCESS) std::cerr << clErrorString(ret) << std::endl;
-    assert(ret == CL_SUCCESS);
-  }
-
   void transform(clfftDirection direction, 
 		 cl_mem *inbuf, cl_mem *outbuf,
 		 cl_uint nwait = 0, cl_event *wait = NULL, 
@@ -421,7 +302,6 @@ private:
 
 public:
   clfft1() : clfft_base(), nx(0) {
-    set_buf_size();
   }
 
   clfft1(unsigned int nx, bool inplace, 
@@ -431,26 +311,6 @@ public:
   }
 
   ~clfft1() {
-  }
-
-  // FIXME: remove
-  const unsigned int nreal(const int dim = -1) {return 0;}
-  const unsigned int ncomplex(const int dim = -1) {
-    // FIXME: remove
-    switch(dim) {
-    case -1:
-      return nx;
-      break;
-    case 0:
-      return nx;
-      break;
-    default:
-      std::cerr << dim
-		<< " is an invalid dimension for clfft1::ncomplex"
-		<< std::endl;
-      exit(1);
-      return 0;
-    }
   }
 };
 
@@ -523,7 +383,6 @@ private:
 
   void setup() {
     realtocomplex = false;
-    set_buf_size();
 
     setup_plan(forward_plan);
     setup_plan(backward_plan);
@@ -595,7 +454,6 @@ public:
   clmfft1() : clfft_base(), nx(0), M(0), istride(0), ostride(0), idist(0),
 	      odist(0) {
     realtocomplex = false;
-    set_buf_size();     // FIXME: remove
   }
 
   clmfft1(unsigned int nx, unsigned int M, 
@@ -637,8 +495,9 @@ private:
     size_t iostrides[1] = {1};
     set_strides(plan, dim, iostrides, iostrides);
 
-    size_t idist = forward ? nreal(0) : ncomplex(0);
-    size_t odist = forward ? ncomplex(0) : nreal(0);
+    size_t nxp = nx / 2 + 1;
+    size_t idist = forward ? nx : nxp;
+    size_t odist = forward ? nxp : nx;
     set_dists(plan, dim, idist, odist);
 
     bake_plan(plan);
@@ -692,7 +551,7 @@ private:
     else
       set_strides(plan, dim, cstride, rstride);
     
-    size_t rdist = inplace ? 2 * nx * nyp : nx * ny;
+    size_t rdist = inplace ? nx * 2 * nyp : nx * ny;
     size_t cdist = nx * nyp;
     if(forward)
       set_dists(plan, dim, rdist, cdist);
