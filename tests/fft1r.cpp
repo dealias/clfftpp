@@ -87,7 +87,7 @@ int main(int argc, char *argv[]) {
   cl_command_queue queue = platform::create_queue(ctx, device,
 						  CL_QUEUE_PROFILING_ENABLE);
 
-  clfft1r fft(nx, inplace, queue, ctx);
+  clfftpp::clfft1r fft(nx, inplace, queue, ctx);
 
   unsigned int nxp = nx / 2 + 1;
   unsigned int nreal = inplace ? 2 * nxp : nx; 

@@ -35,7 +35,7 @@ int main() {
   cl_command_queue queue = platform::create_queue(ctx, device,
 						  CL_QUEUE_PROFILING_ENABLE);
 
-  clfft3r fft(nx, ny, nz, inplace, queue, ctx);
+  clfftpp::clfft3r fft(nx, ny, nz, inplace, queue, ctx);
 
   cl_int status;
   cl_mem inbuf = clCreateBuffer(ctx, CL_MEM_READ_WRITE,

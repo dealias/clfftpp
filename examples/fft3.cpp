@@ -31,7 +31,7 @@ int main() {
   cl_command_queue queue = platform::create_queue(ctx, device,
 						  CL_QUEUE_PROFILING_ENABLE);
   
-  clfft3 fft(nx, ny, nz, inplace, queue, ctx);
+  clfftpp::clfft3 fft(nx, ny, nz, inplace, queue, ctx);
 
   unsigned int ncomplex = nx * ny * nz;
 

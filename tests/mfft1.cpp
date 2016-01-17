@@ -171,8 +171,9 @@ int main(int argc, char *argv[]) {
   cout << "ostride: " << ostride << endl;
   cout << "odist: " << odist << endl;
   cout << "ny: " << ny << endl;
-  clmfft1 fft(n, M, istride, ostride, idist, odist, inplace,
-	      queue, ctx);
+
+  clfftpp::clmfft1 fft(n, M, istride, ostride, idist, odist, inplace,
+		       queue, ctx);
 
   cout << "Allocating " 
   	    << 2 * nx * ny

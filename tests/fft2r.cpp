@@ -95,7 +95,7 @@ int main(int argc, char *argv[]) {
   unsigned int nyp = ny / 2 + 1;
   int skip = inplace ? 2 * nyp : ny;
   
-  clfft2r fft(nx, ny, inplace, queue, ctx);
+  clfftpp::clfft2r fft(nx, ny, inplace, queue, ctx);
 
   cl_int status;
 

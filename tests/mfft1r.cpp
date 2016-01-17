@@ -150,7 +150,8 @@ int main(int argc, char *argv[]) {
   cl_command_queue queue = platform::create_queue(ctx, device,
 						  CL_QUEUE_PROFILING_ENABLE);
   
-  clmfft1r fft(n, M, istride, ostride, idist, odist, inplace, queue, ctx);
+  clfftpp::clmfft1r fft(n, M, istride, ostride, idist, odist, inplace,
+			queue, ctx);
 
   cout << endl;
 

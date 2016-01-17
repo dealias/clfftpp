@@ -4,6 +4,7 @@
 extern "C" {
 #include "clutils.h"
 }
+namespace clfftpp{
 
 class clfft_base
 {
@@ -691,3 +692,5 @@ public:
     setup();
   }
 };
+
+}

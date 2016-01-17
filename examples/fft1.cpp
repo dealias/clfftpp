@@ -29,7 +29,7 @@ int main() {
   cl_command_queue queue = platform::create_queue(ctx, device,
 						  CL_QUEUE_PROFILING_ENABLE);
   
-  clfft1 fft(nx, inplace, queue, ctx);
+  clfftpp::clfft1 fft(nx, inplace, queue, ctx);
 
   cl_int status;
   cl_mem inbuf = clCreateBuffer(ctx, CL_MEM_READ_WRITE,
@@ -74,7 +74,8 @@ __kernel void init(__global double *X)\n	\
 		      1, &clv_init, &clv_toram);
   show1C(X, nx);
 
-  fft.forward(&inbuf, inplace ? NULL : &outbuf, 1, &clv_init, &clv_forward);
+  fft.forward(&inbuf, inplace ? NULL : &outbuf,
+	      1, &clv_init, &clv_forward);
   clEnqueueReadBuffer(queue, inbuf, CL_TRUE, 0, sizeof(double) * 2 * nx, X,
 		      1, &clv_forward, &clv_toram);
   clWaitForEvents(1, &clv_toram);
@@ -83,7 +84,8 @@ __kernel void init(__global double *X)\n	\
   show1C(X, nx);
 
   fft.backward(inplace ? &inbuf : &outbuf, 
-	       inplace ? NULL : &inbuf, 1, &clv_forward, &clv_backward);    
+	       inplace ? NULL : &inbuf,
+	       1, &clv_forward, &clv_backward);    
   clEnqueueReadBuffer(queue, inbuf, CL_TRUE, 0, sizeof(double) * 2 * nx, X,
 		      1, &clv_backward, &clv_toram);
   clWaitForEvents(1, &clv_toram);
