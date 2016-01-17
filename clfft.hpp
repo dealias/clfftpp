@@ -355,25 +355,6 @@ public:
 
   ~clfft2() {
   }
-
-  // FIXME: remove
-  const unsigned int nreal(const int dim = -1) {return 0;}
-  const unsigned int ncomplex(const int dim = -1) {
-    switch(dim) {
-    case -1:
-      return nx * ny;
-    case 0:
-      return nx;
-    case 1:
-      return ny;
-    default:
-      std::cerr << dim 
-		<< " is an invalid dimension for clfft2::ncomplex"
-		<< std::endl;
-      exit(1);
-    }
-    return 0;
-  }
 };
 
 class clfft3 : public clfft_base
@@ -391,7 +372,6 @@ private:
   void setup_plan(clfftPlanHandle &plan) {
 
     clfftDim dim = CLFFT_3D;
-    // They lied when they said it was row-major
     size_t clLengths[3] = {nz, ny, nx}; 
 
     create_default_plan(plan, dim, clLengths);

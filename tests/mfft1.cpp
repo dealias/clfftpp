@@ -178,14 +178,17 @@ int main(int argc, char *argv[]) {
   	    << 2 * nx * ny
   	    << " doubles." << endl;
   const unsigned int ndouble = 2 * nx * ny;
-  
-  cl_mem inbuf, outbuf;
-  fft.create_cbuf(&inbuf, ndouble);
+
+  cl_int status;
+  cl_mem inbuf = clCreateBuffer(ctx, CL_MEM_READ_WRITE,
+				sizeof(double) * 2 * nx * ny, NULL, &status);
+  cl_mem outbuf;
   if(inplace) {
-    cout << "in-place transform" << endl;
+    std::cout << "in-place transform" << std::endl;
   } else {
-    cout << "out-of-place transform" << endl;
-    fft.create_cbuf(&outbuf, ndouble);
+    std::cout << "out-of-place transform" << std::endl;
+    outbuf = clCreateBuffer(ctx, CL_MEM_READ_WRITE,
+				   sizeof(double) * 2 * nx * ny, NULL, &status);
   }
   
   string init_source = "\

@@ -146,7 +146,7 @@ __kernel void init(__global double *X)\n	\
 			sizeof(double) * 2 * nxp, FX, 0, 0, 0);
     clFinish(queue);
     if(nx <= maxout)
-      show1C(FX, fft.ncomplex(0));
+      show1C(FX, nxp);
     else 
       cout << FX[0] << endl;
     
@@ -174,7 +174,7 @@ __kernel void init(__global double *X)\n	\
 
       double L2error = 0.0;
       double maxerror = 0.0;
-      for(unsigned int i = 0; i < nreal; ++i) {
+      for(unsigned int i = 0; i < nx; ++i) {
   	double diff = X[i] - X0[i];
   	L2error += diff * diff;
   	if(diff > maxerror)
@@ -214,9 +214,11 @@ __kernel void init(__global double *X)\n	\
 			  sizeof(double) * nx, df, 0, 0, 0);
       clFinish(queue);
 
-      //cout << "f:" << f << endl;
+      if(nx <= maxout)
+	cout << "f:" << f << endl;
       Forward.fft(f, g);
-      //cout << "g:" << g << endl;
+      if(nx <= maxout)
+	cout << "g:" << g << endl;
 
       double L2error = 0.0;
       double maxerror = 0.0;

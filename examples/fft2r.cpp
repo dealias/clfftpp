@@ -7,8 +7,10 @@
 int main() {
   int platnum = 1;
   int devnum = 0;
+
   unsigned int nx = 4;
   unsigned int ny = 4;
+
   bool inplace = true;
 
   unsigned int nyp = ny / 2 + 1;

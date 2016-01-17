@@ -141,7 +141,7 @@ __kernel void init(__global double *X)\n	\
     cout << "\nTransformed:" << endl;
     fft.forward(&inbuf, inplace ? NULL : &outbuf, 0, 0, 0);
     clFinish(queue);
-    clEnqueueReadBuffer(queue, inbuf, CL_TRUE, 0,
+    clEnqueueReadBuffer(queue, inplace ? inbuf : outbuf, CL_TRUE, 0,
 			sizeof(double) * 2 * nx, FX, 0, 0, 0);
     clFinish(queue);
     if(nx <= maxout)
@@ -162,7 +162,7 @@ __kernel void init(__global double *X)\n	\
 
     // Compute the round-trip error.
     {
-      double *X0 = new double[2 * fft.ncomplex()];
+      double *X0 = new double[2 * nx];
       clEnqueueNDRangeKernel(queue, initkernel, 1, NULL,  global_wsize, NULL,
 			     0, 0, 0);
       clFinish(queue);
@@ -211,8 +211,12 @@ __kernel void init(__global double *X)\n	\
 			  sizeof(double) * 2 * nx, df, 0, 0, 0);
       clFinish(queue);
 
+      if(nx <= maxout)
+	cout << "f:\n" << f << endl;
       Forward.fft(f);
-
+      if(nx <= maxout)
+	cout << "f:\n" << f << endl;
+      
       double L2error = 0.0;
       double maxerror = 0.0;
       for(unsigned int i = 0; i < nx; ++i) {

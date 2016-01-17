@@ -7,6 +7,7 @@
 int main() {
   int platnum = 1;
   int devnum = 0;
+
   bool inplace = true;
 
   // Input buffer size

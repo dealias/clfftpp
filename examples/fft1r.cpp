@@ -5,9 +5,11 @@
 #include "utils.hpp"
 
 int main() {
-  int platnum = 0;
+  int platnum = 1;
   int devnum = 0;
+
   unsigned int nx = 4;
+
   bool inplace = false;
 
   unsigned int nxp = nx / 2 + 1;

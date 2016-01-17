@@ -92,24 +92,28 @@ int main(int argc, char *argv[]) {
 					CL_QUEUE_PROFILING_ENABLE);
 
   clfft2 fft(nx, ny, inplace, queue, ctx);
-  cl_mem inbuf, outbuf;
-  fft.create_cbuf(&inbuf);
+
+  cl_int status;
+  cl_mem inbuf = clCreateBuffer(ctx, CL_MEM_READ_WRITE,
+				sizeof(double) * 2 * nx * ny, NULL, &status);
+  cl_mem outbuf;
   if(inplace) {
-    cout << "in-place transform" << endl;
+    std::cout << "in-place transform" << std::endl;
   } else {
-    cout << "out-of-place transform" << endl;
-    fft.create_cbuf(&outbuf);
+    std::cout << "out-of-place transform" << std::endl;
+    outbuf = clCreateBuffer(ctx, CL_MEM_READ_WRITE,
+				   sizeof(double) * 2 * nx * ny, NULL, &status);
   }
 
   string init_source ="\
-#pragma OPENCL EXTENSION cl_khr_fp64: enable\n	\
+#pragma OPENCL EXTENSION cl_khr_fp64: enable\n				\
 __kernel void init(__global double *X, const unsigned int ny)		\
-{						\
-  const int i = get_global_id(0);		\
-  const int j = get_global_id(1);		\
-  unsigned pos = 2 * (i * ny + j);		\
-  X[pos] = i;					\
-  X[pos + 1] = j;				\
+{									\
+  const int i = get_global_id(0);					\
+  const int j = get_global_id(1);					\
+  unsigned pos = 2 * (i * ny + j);					\
+  X[pos] = i;								\
+  X[pos + 1] = j;							\
 }";
   size_t global_wsize[] = {nx, ny};
   cl_program initprog = create_program(init_source, ctx);
@@ -141,7 +145,7 @@ __kernel void init(__global double *X, const unsigned int ny)		\
     cout << "\nTransformed:" << endl;
     fft.forward(&inbuf, inplace ? NULL : &outbuf, 0, 0, 0);
     clFinish(queue);
-    clEnqueueReadBuffer(queue, inbuf, CL_TRUE, 0,
+    clEnqueueReadBuffer(queue, inplace ? inbuf : outbuf, CL_TRUE, 0,
 			sizeof(double) * 2 * nx * ny, FX, 0, 0, 0);
     clFinish(queue);
     
@@ -164,7 +168,7 @@ __kernel void init(__global double *X, const unsigned int ny)		\
     
     // Compute the round-trip error.
     {
-      double *X0 = new double[2 * fft.ncomplex()];
+      double *X0 = new double[2 * nx * ny];
       clEnqueueNDRangeKernel(queue, initkernel, 2, NULL,  global_wsize, NULL,
 			     0, 0, 0);
       clFinish(queue);
@@ -174,7 +178,7 @@ __kernel void init(__global double *X, const unsigned int ny)		\
 
       double L2error = 0.0;
       double maxerror = 0.0;
-      for(unsigned int i = 0; i < fft.ncomplex(); ++i) {
+      for(unsigned int i = 0; i < nx * ny; ++i) {
   	double rdiff = X[2 * i] - X0[2 * i];
   	double idiff = X[2 * i + 1] - X0[2 * i + 1];
   	double diff = sqrt(rdiff * rdiff + idiff * idiff);

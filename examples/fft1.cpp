@@ -7,7 +7,7 @@
 #include "utils.hpp"
 
 int main() {
-  int platnum = 0;
+  int platnum = 1;
   int devnum = 0;
   bool inplace = true;
   unsigned int nx = 4;

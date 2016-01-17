@@ -5,7 +5,7 @@
 #include "utils.hpp"
 
 int main() {
-  int platnum = 0;
+  int platnum = 1;
   int devnum = 0;
   bool inplace = true;
   unsigned int nx = 4;
@@ -57,11 +57,9 @@ __kernel void init(__global double *X)				\
   cl_kernel initkernel = create_kernel(initprog, "init"); 
   set_kernel_arg(initkernel, 0, sizeof(cl_mem), &inbuf);
 
-  std::cout << "Allocating " 
-	    << fft.ncomplex() 
-	    << " doubles." << std::endl;
-  double *X = new double[2 * fft.ncomplex()];
-  double *Xout = new double[2 * fft.ncomplex()];
+  std::cout << "Allocating " << 2 * nx * ny << " doubles." << std::endl;
+  double *X = new double[ 2 * nx * ny ];
+  double *FX = new double[ 2 * nx * ny ];
 
   cl_event clv_init;
   cl_event clv_toram;
@@ -79,10 +77,11 @@ __kernel void init(__global double *X)				\
 
   std::cout << "\nTransformed:" << std::endl;
   fft.forward(&inbuf, inplace ? NULL : &outbuf, 1, &clv_init, &clv_forward);    
-  clEnqueueReadBuffer(queue, inbuf, CL_TRUE, 0, sizeof(double) * 2 * nx * ny, X,
+  clEnqueueReadBuffer(queue, inplace ? inbuf : outbuf,
+		      CL_TRUE, 0, sizeof(double) * 2 * nx * ny, FX,
 		      1, &clv_forward, &clv_toram);
   clWaitForEvents(1, &clv_toram);
-  show2C(Xout, nx, ny);
+  show2C(FX, nx, ny);
 
   std::cout << "\nTransformed back:" << std::endl;
   fft.backward(inplace ? &inbuf : &outbuf, 

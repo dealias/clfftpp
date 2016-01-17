@@ -24,7 +24,6 @@ int main(int argc, char *argv[]) {
   unsigned int nx = 4;
   unsigned int ny = 4;
   unsigned int nz = 4;
-  //nx=262144;
 
   unsigned int N = 0;
 
@@ -101,16 +100,22 @@ int main(int argc, char *argv[]) {
   cl_command_queue queue = create_queue(ctx, device, CL_QUEUE_PROFILING_ENABLE);
   
   clfft3 fft(nx, ny, nz, inplace, queue, ctx);
-  cl_mem inbuf, outbuf;
-  fft.create_cbuf(&inbuf);
-  if(inplace) {
-    cout << "in-place transform" << endl;
-  } else {
-    cout << "out-of-place transform" << endl;
-    fft.create_cbuf(&outbuf);
-  }
 
-    // Create OpenCL kernel to initialize OpenCL buffer
+  unsigned int ncomplex = nx * ny * nz;
+  
+  cl_int status;
+  cl_mem inbuf = clCreateBuffer(ctx, CL_MEM_READ_WRITE,
+				sizeof(double) * 2 * ncomplex, NULL, &status);
+  cl_mem outbuf;
+  if(inplace) {
+    std::cout << "in-place transform" << std::endl;
+  } else {
+    std::cout << "out-of-place transform" << std::endl;
+    outbuf = clCreateBuffer(ctx, CL_MEM_READ_WRITE,
+				   sizeof(double) * 2 * ncomplex, NULL,&status);
+  }
+  
+  // Create OpenCL kernel to initialize OpenCL buffer
   string init_source = "\
 #pragma OPENCL EXTENSION cl_khr_fp64: enable\n	\
 __kernel void init(__global double *X,		\
