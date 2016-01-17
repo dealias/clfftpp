@@ -125,23 +125,6 @@ cl_program create_program(const std::string source, cl_context context)
   return prog;
 }
 
-void build_program(cl_program program, cl_device_id device,
-		   const char *options)
-{
-  // FIXME: remove
-  cl_int ret;
-  ret = clBuildProgram(program, 
-		       1,
-		       &device, 
-		       options, // Options
-		       NULL, 
-		       NULL);
-  if(ret != CL_SUCCESS)
-    std::cout <<  print_build_debug(program, &device) << std::endl;
-  // check_cl_ret(ret,"clBuildProgram");
-  assert(ret == CL_SUCCESS);
-}
-
 cl_kernel create_kernel(cl_program program, const char *kernelname) 
 {
   // FIXME: remove

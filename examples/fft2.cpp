@@ -53,7 +53,7 @@ __kernel void init(__global double *X)				\
   X[2 * pos + 1] = j;						\
 }";
   cl_program initprog = create_program(init_source, ctx);
-  build_program(initprog, device);
+  clBuildProgram(initprog, 1, &device, NULL, NULL, NULL);
   cl_kernel initkernel = create_kernel(initprog, "init"); 
   clSetKernelArg(initkernel, 0, sizeof(cl_mem), &inbuf);
   
