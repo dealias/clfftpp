@@ -27,8 +27,8 @@ INCL+=-I../examples
 INCL+=-I$(FFTWPP_INCLUDE_PATH)
 
 vpath %.cc $(FFTWPP_INCLUDE_PATH)
-vpath %.cpp ../
-vpath %.c ../
+vpath %.cpp ../ ../examples
+vpath %.c ../ ../examples
 
 # Set up CXXFLAGS
 CXXFLAGS=
@@ -45,6 +45,7 @@ CXXFLAGS+=$(INCL)
 CFLAGS=$(CXXFLAGS)
 
 MAKEDEPEND=$(CXXFLAGS) -O0 -M -DDEPEND
+
 
 # set up LDFLAGS
 LDFLAGS=
