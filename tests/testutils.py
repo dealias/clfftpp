@@ -17,7 +17,7 @@
 import numpy as np
 
 def sizes(maxsize):
-    primes = [2, 3 ,5]
+    primes = [2, 3, 5, 7]
 
     list = []
     
