@@ -1,3 +1,5 @@
+#!/usr/bin/python
+
 # This file is part of clFFT++.
 
 # clFFT++ is free software: you can redistribute it and/or modify

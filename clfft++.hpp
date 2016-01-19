@@ -21,7 +21,7 @@ along with clFFT++.  If not, see <http://www.gnu.org/licenses/>.
 extern "C" {
 #include "clutils.h"
 }
-namespace clfftpp{
+namespace clfftpp {
 
 class clfft_base
 {
@@ -31,16 +31,16 @@ protected:
   clfftPlanHandle forward_plan, backward_plan;
   cl_context ctx;
   cl_command_queue queue;
-  size_t rbuf_size, cbuf_size;
   bool inplace, realtocomplex;
   clfftPrecision precision;
-  size_t realsize;
   cl_mem workmem;
+  size_t nwork;
 
   const char *clfft_errorstring(const cl_int err) {
     const char *errstring = NULL;
     errstring = clErrorString(err);
 
+    // FIXME: memory leak?
     switch (err) {
     case CL_SUCCESS:
       errstring = "Success";
@@ -80,47 +80,40 @@ protected:
 				 ctx,
 				 dim,
 				 clLengths);
-    if(ret != CL_SUCCESS) std::cerr << clfft_errorstring(ret) << std::endl;
-    assert(ret == CL_SUCCESS);
+    if(ret < CL_SUCCESS) std::cerr << clfft_errorstring(ret) << std::endl;
+    assert(ret >= CL_SUCCESS);
   }
 
   void set_inout_place(clfftPlanHandle &plan) {
     cl_int ret;
     ret = clfftSetResultLocation(plan, 
 				 inplace ? CLFFT_INPLACE : CLFFT_OUTOFPLACE);
-    if(ret != CL_SUCCESS) std::cerr << clfft_errorstring(ret) << std::endl;
-    assert(ret == CL_SUCCESS);
+    if(ret < CL_SUCCESS) std::cerr << clfft_errorstring(ret) << std::endl;
+    assert(ret >= CL_SUCCESS);
   }
 
   void set_precision(clfftPlanHandle &plan, clfftPrecision precision) {
     cl_int ret;
-    ret = clfftSetPlanPrecision(plan,
-				precision);
-    if(ret != CL_SUCCESS) std::cerr << clfft_errorstring(ret) << std::endl;
-    assert(ret == CL_SUCCESS);
-    if(precision == CLFFT_DOUBLE)
-      realsize = sizeof(double);
-    if(precision == CLFFT_SINGLE)
-      realsize = sizeof(float);
+    ret = clfftSetPlanPrecision(plan, precision);
+    if(ret < CL_SUCCESS) std::cerr << clfft_errorstring(ret) << std::endl;
+    assert(ret >= CL_SUCCESS);
   }
 
   void set_strides(clfftPlanHandle &plan, clfftDim dim,
 		   size_t *istride, size_t *ostride) {
     cl_int ret;
-    
     ret = clfftSetPlanInStride(plan,
-			       dim, //const clfftDim  	dim,
+			       dim,    //const clfftDim dim,
 			       istride //size_t * clStrides 
 			       );
-    if(ret != CL_SUCCESS) std::cerr << clfft_errorstring(ret) << std::endl;
-    assert(ret == CL_SUCCESS);
-
+    if(ret < CL_SUCCESS) std::cerr << clfft_errorstring(ret) << std::endl;
+    assert(ret >= CL_SUCCESS);
     ret = clfftSetPlanOutStride(plan,
-				dim, //const clfftDim  	dim,
+				dim,    //const clfftDim dim,
 				ostride //size_t * clStrides 
 				);
-    if(ret != CL_SUCCESS) std::cerr << clfft_errorstring(ret) << std::endl;
-    assert(ret == CL_SUCCESS);
+    if(ret < CL_SUCCESS) std::cerr << clfft_errorstring(ret) << std::endl;
+    assert(ret >= CL_SUCCESS);
   }
 
   void set_dists(clfftPlanHandle &plan, clfftDim dim,
@@ -129,19 +122,17 @@ protected:
     ret = clfftSetPlanDistance(plan,
 			       idist,
 			       odist);
-    if(ret != CL_SUCCESS) std::cerr << clfft_errorstring(ret) << std::endl;
-    assert(ret == CL_SUCCESS);
+    if(ret < CL_SUCCESS) std::cerr << clfft_errorstring(ret) << std::endl;
+    assert(ret >= CL_SUCCESS);
   }
-
   
   void set_data_layout_complex(clfftPlanHandle &plan) {
     cl_int ret;
-
     ret = clfftSetLayout(plan,
 			 CLFFT_COMPLEX_INTERLEAVED, 
 			 CLFFT_COMPLEX_INTERLEAVED);
-    if(ret != CL_SUCCESS) std::cerr << clfft_errorstring(ret) << std::endl;
-    assert(ret == CL_SUCCESS);
+    if(ret < CL_SUCCESS) std::cerr << clfft_errorstring(ret) << std::endl;
+    assert(ret >= CL_SUCCESS);
   }
 
   void set_data_layout_real_to_complex(clfftPlanHandle &plan) {
@@ -149,8 +140,8 @@ protected:
     ret = clfftSetLayout(plan, 
 			 CLFFT_REAL,
 			 CLFFT_HERMITIAN_INTERLEAVED);
-    if(ret != CL_SUCCESS) std::cerr << clfft_errorstring(ret) << std::endl;
-    assert(ret == CL_SUCCESS);
+    if(ret < CL_SUCCESS) std::cerr << clfft_errorstring(ret) << std::endl;
+    assert(ret >= CL_SUCCESS);
   }
 
   void set_data_layout_complex_to_real(clfftPlanHandle &plan) {
@@ -158,8 +149,8 @@ protected:
     ret = clfftSetLayout(plan, 
 			 CLFFT_HERMITIAN_INTERLEAVED,
 			 CLFFT_REAL);
-    if(ret != CL_SUCCESS) std::cerr << clfft_errorstring(ret) << std::endl;
-    assert(ret == CL_SUCCESS);
+    if(ret < CL_SUCCESS) std::cerr << clfft_errorstring(ret) << std::endl;
+    assert(ret >= CL_SUCCESS);
   }
 
   void set_data_layout(clfftPlanHandle &plan, bool forward = true) {
@@ -177,29 +168,28 @@ protected:
   void set_batchsize(clfftPlanHandle &plan, const size_t M) {
     cl_int ret;
     ret = clfftSetPlanBatchSize(plan, M); 
-    if(ret != CL_SUCCESS) std::cerr << clfft_errorstring(ret) << std::endl;
-    assert(ret == CL_SUCCESS);	
+    if(ret < CL_SUCCESS) std::cerr << clfft_errorstring(ret) << std::endl;
+    assert(ret >= CL_SUCCESS);	
   }
 
   void bake_plan(clfftPlanHandle &plan) {
     cl_int ret;   
     ret = clfftBakePlan(plan,
-			1, // numQueues: number of experiments 
+			1,      // numQueues: number of experiments 
 			&queue, // commQueueFFT
-			NULL, // Always NULL
-			NULL // Always NULL
+			NULL,   // Always NULL
+			NULL    // Always NULL
 			);
-    if(ret != CL_SUCCESS) std::cerr << clfft_errorstring(ret) << std::endl;
-    assert(ret == CL_SUCCESS);
+    if(ret < CL_SUCCESS) std::cerr << clfft_errorstring(ret) << std::endl;
+    assert(ret >= CL_SUCCESS);
   }
 
 public:
   clfft_base() :
     inplace(true), realtocomplex(false), precision(CLFFT_DOUBLE) {
-    realsize = sizeof(double);
     if(count_zero++ == 0)
       clfft_setup();
-    //precision = CLFFT_SINGLE;
+    nwork = 0;
   }
 
   clfft_base(cl_context ctx, cl_command_queue queue,
@@ -207,21 +197,21 @@ public:
 	     clfftPrecision precision = CLFFT_DOUBLE) :
     ctx(ctx), queue(queue), 
     inplace(inplace), realtocomplex(realtocomplex), precision(precision) {
-    realsize = (precision == CLFFT_DOUBLE) ? sizeof(double) : sizeof(float);
     if(count_zero++ == 0)
       clfft_setup();
+    nwork = 0;
   }
 
   ~clfft_base() {
     cl_int ret;
 
     ret = clfftDestroyPlan(&forward_plan);
-    if(ret != CL_SUCCESS) std::cerr << clErrorString(ret) << std::endl;
-    assert(ret == CL_SUCCESS);
+    if(ret < CL_SUCCESS) std::cerr << clErrorString(ret) << std::endl;
+    assert(ret >= CL_SUCCESS);
 
     ret = clfftDestroyPlan(&backward_plan);
-    if(ret != CL_SUCCESS) std::cerr << clErrorString(ret) << std::endl;
-    assert(ret == CL_SUCCESS);
+    if(ret < CL_SUCCESS) std::cerr << clErrorString(ret) << std::endl;
+    assert(ret >= CL_SUCCESS);
     
     if(--count_zero == 0) 
       clfftTeardown();
@@ -229,16 +219,14 @@ public:
 
   void set_workmem(clfftPlanHandle &plan) {
     cl_int ret;
-
-    size_t nwork = 0; // FIXME: set up for free as well.
     ret = clfftGetTmpBufSize(plan, &nwork);
-    if(ret != CL_SUCCESS) std::cerr << clfft_errorstring(ret) << std::endl;
-    assert(ret == CL_SUCCESS);
+    if(ret < CL_SUCCESS) std::cerr << clfft_errorstring(ret) << std::endl;
+    assert(ret >= CL_SUCCESS);
 
     if(nwork > 0) {
       workmem = clCreateBuffer(ctx, CL_MEM_READ_WRITE, nwork, 0, &ret);
-      if(ret != CL_SUCCESS) std::cerr << clfft_errorstring(ret) << std::endl;
-      assert(ret == CL_SUCCESS);
+      if(ret < CL_SUCCESS) std::cerr << clfft_errorstring(ret) << std::endl;
+      assert(ret >= CL_SUCCESS);
     } else {
       workmem = NULL;
     }
@@ -247,48 +235,42 @@ public:
   void clfft_setup() {
     cl_int ret;
     clfftSetupData fftSetup;
-
     ret = clfftInitSetupData(&fftSetup);
-    if(ret != CL_SUCCESS) std::cerr << clfft_errorstring(ret) << std::endl;
-    assert(ret == CL_SUCCESS);
-
+    if(ret < CL_SUCCESS) std::cerr << clfft_errorstring(ret) << std::endl;
+    assert(ret >= CL_SUCCESS);
     ret = clfftSetup(&fftSetup);
-    if(ret != CL_SUCCESS) std::cerr << clfft_errorstring(ret) << std::endl;
-    assert(ret == CL_SUCCESS);
+    if(ret < CL_SUCCESS) std::cerr << clfft_errorstring(ret) << std::endl;
+    assert(ret >= CL_SUCCESS);
   }
 
   void transform(clfftDirection direction, 
 		 cl_mem *inbuf, cl_mem *outbuf,
-		 cl_uint nwait = 0, cl_event *wait = NULL, 
-		 cl_event *done = NULL) {
+		 cl_uint nwait, cl_event *wait, cl_event *done) {
     clfftPlanHandle plan 
       = (direction == CLFFT_FORWARD) ? forward_plan : backward_plan;
-    
     cl_int ret;
-    ret = clfftEnqueueTransform(plan, // clfftPlanHandle plHandle,
-				direction, //direction
-				1,  //cl_uint numQueuesAndEvents,
+    ret = clfftEnqueueTransform(plan,      // clfftPlanHandle plHandle,
+				direction, // direction
+				1,         // cl_uint numQueuesAndEvents,
 				&queue,
-				nwait, // cl_uint numWaitEvents,
-				wait, // const cl_event * waitEvents,
-				done, // cl_event * outEvents,
-				inbuf, // cl_mem * inputBuffers,
-				outbuf, // cl_mem * outputBuffers,
-				workmem // cl_mem tmpBuffer 
+				nwait,     // cl_uint numWaitEvents,
+				wait,      // const cl_event * waitEvents,
+				done,      // cl_event * outEvents,
+				inbuf,     // cl_mem * inputBuffers,
+				outbuf,    // cl_mem * outputBuffers,
+				workmem    // cl_mem tmpBuffer 
 				);
-    if(ret != CL_SUCCESS) std::cerr << clfft_errorstring(ret) << std::endl;
-    assert(ret == CL_SUCCESS);
+    if(ret < CL_SUCCESS) std::cerr << clfft_errorstring(ret) << std::endl;
+    assert(ret >= CL_SUCCESS);
   }
   
   void forward(cl_mem *inbuf, cl_mem *outbuf,
-	       cl_uint nwait = 0, cl_event *wait = NULL, 
-	       cl_event *done = NULL) {
+	       cl_uint nwait, cl_event *wait, cl_event *done) {
     transform(CLFFT_FORWARD, inbuf, outbuf, nwait, wait, done);
   }
 
   void backward(cl_mem *inbuf0, cl_mem *outbuf0,
-  		cl_uint nwait = 0, cl_event *wait = NULL, 
-  		cl_event *done = NULL) {
+  		cl_uint nwait, cl_event *wait, cl_event *done) {
     transform(CLFFT_BACKWARD, inbuf0, outbuf0, nwait, wait, done);
   }
 };
@@ -296,11 +278,10 @@ public:
 class clfft1 : public clfft_base
 {
 private:
-  unsigned nx; // size of problem
+  unsigned nx;
 
   void setup() {
     realtocomplex = false;
-
     setup_plan(forward_plan);
     setup_plan(backward_plan);
   }
@@ -308,12 +289,10 @@ private:
   void setup_plan(clfftPlanHandle &plan) {
     clfftDim dim = CLFFT_1D;
     size_t clLengths[1] = {nx};
-
     create_default_plan(plan, dim, clLengths);
     set_precision(plan, precision);
     set_inout_place(plan);
     set_data_layout(plan);
-
     bake_plan(plan);
     set_workmem(plan);
   }
@@ -329,23 +308,28 @@ public:
   }
 
   ~clfft1() {
+    if(nwork > 0) {
+      cl_int ret;
+      ret = clReleaseMemObject(workmem);
+      if(ret < CL_SUCCESS) std::cerr << clfft_errorstring(ret) << std::endl;
+      assert(ret >= CL_SUCCESS);
+      nwork = 0;
+    }
   }
 };
 
 class clfft2 : public clfft_base
 {
 private:
-  unsigned nx, ny; // size of problem
+  unsigned nx, ny;
 
   void setup() {
     realtocomplex = false;
-
     setup_plan(forward_plan);
     setup_plan(backward_plan);
   }
 
   void setup_plan(clfftPlanHandle &plan) {
-
     clfftDim dim = CLFFT_2D;
     size_t clLengths[2] = {ny, nx};
 
@@ -377,17 +361,15 @@ public:
 class clfft3 : public clfft_base
 {
 private:
-  unsigned nx, ny, nz; // size of problem
+  unsigned nx, ny, nz;
 
   void setup() {
     realtocomplex = false;
-
     setup_plan(forward_plan);
     setup_plan(backward_plan);
   }
 
   void setup_plan(clfftPlanHandle &plan) {
-
     clfftDim dim = CLFFT_3D;
     size_t clLengths[3] = {nz, ny, nx}; 
 
@@ -468,14 +450,12 @@ public:
 class clfft1r : public clfft_base
 {
 private:
-  unsigned nx; // size of problem for clFFT
+  unsigned nx;
 
   void setup() {
     realtocomplex = true;
-    
     setup_plan(forward_plan, CLFFT_FORWARD);
     setup_plan(backward_plan, CLFFT_BACKWARD);
-    // FIXME: delete backplan
   }
 
   void setup_plan(clfftPlanHandle &plan, clfftDirection direction) {
@@ -519,13 +499,12 @@ public:
 class clfft2r : public clfft_base
 {
 private:
-  unsigned nx, ny; // size of problem for clFFT
+  unsigned nx, ny;
 
   void setup() {
     realtocomplex = true;
     setup_plan(forward_plan, CLFFT_FORWARD);
     setup_plan(backward_plan, CLFFT_BACKWARD);
-    // FIXME: delete backplan
   }
 
   void setup_plan(clfftPlanHandle &plan, clfftDirection direction) {
@@ -577,14 +556,12 @@ public:
 class clfft3r : public clfft_base
 {
 private:
-  unsigned nx, ny, nz; // size of problem for clFFT
+  unsigned nx, ny, nz;
 
   void setup() {
     realtocomplex = true;
-
     setup_plan(forward_plan, CLFFT_FORWARD);
     setup_plan(backward_plan, CLFFT_BACKWARD);
-    // FIXME: delete backplan
   }
 
   void setup_plan(clfftPlanHandle &plan, clfftDirection direction) {
@@ -644,7 +621,6 @@ private:
 
   void setup() {
     realtocomplex = true;
-    
     setup_plan(forward_plan, CLFFT_FORWARD);
     setup_plan(backward_plan, CLFFT_BACKWARD);
   }
@@ -681,6 +657,7 @@ private:
     else
       set_dists(plan, dim, odist_t, idist_t);
 
+    /*
     if(forward)
       std::cout << "forward" << std::endl;
     else
@@ -689,6 +666,7 @@ private:
     std::cout << "\tostride: " << ostride << std::endl;
     std::cout << "\tidist: " << idist << std::endl;
     std::cout << "\todist: " << odist << std::endl;
+    */
 
     bake_plan(plan);
     set_workmem(plan);
