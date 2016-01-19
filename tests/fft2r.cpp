@@ -97,18 +97,18 @@ int main(int argc, char *argv[]) {
   
   clfftpp::clfft2r fft(nx, ny, inplace, queue, ctx);
 
+  size_t rbufsize = sizeof(double) * nx * skip;
+  size_t cbufsize = sizeof(double) * 2 * nx * nyp;
   cl_int status;
-
   cl_mem inbuf = clCreateBuffer(ctx, CL_MEM_READ_WRITE,
-				sizeof(double) * nx * skip, NULL,
+				rbufsize, NULL,
 				&status);
   cl_mem outbuf;
   if(inplace) {
     cout << "in-place transform" << endl;
   } else {
     cout << "out-of-place transform" << endl;
-    outbuf = clCreateBuffer(ctx, CL_MEM_READ_WRITE,
-			    2 * sizeof(double) * nx * nyp, NULL, &status);
+    outbuf = clCreateBuffer(ctx, CL_MEM_READ_WRITE, cbufsize, NULL, &status);
   }
 
   string init_source ="\
@@ -128,12 +128,13 @@ __kernel void init(__global double *X, const unsigned int skip)	\
   clSetKernelArg(initkernel, 0, sizeof(cl_mem), &inbuf);
   clSetKernelArg(initkernel, 1, sizeof(unsigned int), &skip);
 
-  cout << "Allocating " << nx * skip  << " doubles for real." << endl;
-  double *X = new double[nx * skip];
-  cout << "Allocating "  << 2 * nx * nyp << " doubles for complex." << endl;
-  double *FX = new double[2 * nx * nyp];
 
   if(N == 0) {
+    
+    cout << "Allocating " << nx * skip  << " doubles for real." << endl;
+    double *X = new double[nx * skip];
+    cout << "Allocating "  << 2 * nx * nyp << " doubles for complex." << endl;
+    double *FX = new double[2 * nx * nyp];
     tolerance *= 1.0 + log((double) max(nx, ny));
     cout << "Tolerance: " << tolerance << endl;
 
@@ -142,7 +143,7 @@ __kernel void init(__global double *X, const unsigned int skip)	\
 			   0, 0, 0);
     clFinish(queue);
     clEnqueueReadBuffer(queue, inbuf, CL_TRUE, 0,
-			sizeof(double) * nx * skip, X, 0, 0, 0);
+			rbufsize, X, 0, 0, 0);
     clFinish(queue);
     
     if(nx <= maxout)
@@ -153,7 +154,7 @@ __kernel void init(__global double *X, const unsigned int skip)	\
     fft.forward(&inbuf, inplace ? NULL : &outbuf, 0, 0, 0);
     clFinish(queue);
     clEnqueueReadBuffer(queue, inplace ? inbuf : outbuf, CL_TRUE, 0,
-			2 * sizeof(double) * nx * nyp, FX, 0, 0, 0);
+			cbufsize, FX, 0, 0, 0);
     clFinish(queue);
     
     cout << "\nTransformed:" << endl;
@@ -167,7 +168,7 @@ __kernel void init(__global double *X, const unsigned int skip)	\
 		 inplace ? NULL : &inbuf, 0, 0, 0);
     clFinish(queue);
     clEnqueueReadBuffer(queue, inbuf, CL_TRUE, 0,
-			sizeof(double) * nx * skip, X, 0, 0, 0);
+			rbufsize, X, 0, 0, 0);
     clFinish(queue);
 
     cout << "\nTransformed back:" << endl;
@@ -184,7 +185,7 @@ __kernel void init(__global double *X, const unsigned int skip)	\
 			     0, 0, 0);
       clFinish(queue);
       clEnqueueReadBuffer(queue, inbuf, CL_TRUE, 0,
-			  sizeof(double) * nx * skip, X0, 0, 0, 0);
+			  rbufsize, X0, 0, 0, 0);
       clFinish(queue);
 
       double L2error = 0.0;
@@ -228,7 +229,7 @@ __kernel void init(__global double *X, const unsigned int skip)	\
 			     0, 0, 0);
       clFinish(queue);
       clEnqueueReadBuffer(queue, inbuf, CL_TRUE, 0,
-			  sizeof(double) * nx * skip, (double *)f(), 0, 0, 0);
+			  rbufsize, (double *)f(), 0, 0, 0);
       clFinish(queue);
 
       cout << f << endl;
@@ -265,6 +266,8 @@ __kernel void init(__global double *X, const unsigned int skip)	\
       }
     }
 
+    delete[] FX;
+    delete[] X;
   } else {
     double *T = new double[N];
   
@@ -298,10 +301,11 @@ __kernel void init(__global double *X, const unsigned int skip)	\
     timings("fft timing", nx, T, N,stats);
     delete[] T;
   }
-  delete[] FX;
-  delete[] X;
   
-  /* Release OpenCL working objects. */
+  clReleaseMemObject(inbuf);
+  if(!inplace)
+    clReleaseMemObject(outbuf);
+  
   clReleaseCommandQueue(queue);
   clReleaseContext(ctx);
 

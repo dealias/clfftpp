@@ -134,13 +134,13 @@ __kernel void init(__global double *X)\n	\
   clBuildProgram(initprog, 1, &device, NULL, NULL, NULL);
   cl_kernel initkernel = clCreateKernel(initprog, "init", &status); 
   clSetKernelArg(initkernel, 0, sizeof(cl_mem), &inbuf);
- 
-  cout << "Allocating " << 2 * nx << " doubles." << endl;
-  double *X = new double[2 * nx];
-  double *FX = new double[2 * nx];
-  
 
   if(N == 0) {
+    cout << "Allocating " << 2 * nx << " doubles." << endl;
+    double *X = new double[2 * nx];
+    double *FX = new double[2 * nx];
+  
+
     tolerance *= 1.0 + log((double)nx);
     cout << "Tolerance: " << tolerance << endl;
 
@@ -260,6 +260,8 @@ __kernel void init(__global double *X)\n	\
       }
     }
 
+    delete[] X;
+    delete[] FX;
   } else {
     double *T = new double[N];
   
@@ -287,7 +289,10 @@ __kernel void init(__global double *X)\n	\
     delete[] T;
   }
 
-  delete[] X;
+  clReleaseMemObject(inbuf);
+  if(!inplace)
+    clReleaseMemObject(outbuf);
+    
   clReleaseCommandQueue(queue);
   clReleaseContext(ctx);
 

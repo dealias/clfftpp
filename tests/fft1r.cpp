@@ -92,18 +92,18 @@ int main(int argc, char *argv[]) {
   unsigned int nxp = nx / 2 + 1;
   unsigned int nreal = inplace ? 2 * nxp : nx; 
 
+  size_t rbufsize = sizeof(double) * nreal;
+  size_t cbufsize = sizeof(double) * 2 * nxp;
   cl_int status;
   cl_mem inbuf = clCreateBuffer(ctx, CL_MEM_READ_WRITE,
-				sizeof(double) * nreal, NULL,
+				rbufsize, NULL,
 				&status);
   cl_mem outbuf;
   if(inplace) {
     cout << "in-place transform" << endl;
   } else {
     cout << "out-of-place transform" << endl;
-    outbuf = clCreateBuffer(ctx, CL_MEM_READ_WRITE,
-			   sizeof(double) * 2 * nxp, NULL,
-			   &status);
+    outbuf = clCreateBuffer(ctx, CL_MEM_READ_WRITE, cbufsize, NULL, &status);
   }
 
   // Create OpenCL kernel to initialize OpenCL buffer
@@ -120,20 +120,19 @@ __kernel void init(__global double *X)\n	\
   cl_kernel initkernel = clCreateKernel(initprog, "init", &status); 
   clSetKernelArg(initkernel, 0, sizeof(cl_mem), &inbuf);
 
-  cout << "Allocating " << nreal  << " doubles for real." << endl;
-  double *X = new double[nreal];
-  cout << "Allocating " << 2 * nxp  << " doubles for complex." << endl;
-  double *FX = new double[2 * nxp];
-
   if(N == 0) {
+    cout << "Allocating " << nreal  << " doubles for real." << endl;
+    double *X = new double[nreal];
+    cout << "Allocating " << 2 * nxp  << " doubles for complex." << endl;
+    double *FX = new double[2 * nxp];
+
     tolerance *= 1.0 + log((double)nx);
     cout << "Tolerance: " << tolerance << endl;
 
     cout << "\nInput:" << endl;
     clEnqueueNDRangeKernel(queue, initkernel, 1, NULL, global_wsize, 0, 0, 0,0);
     clFinish(queue);
-    clEnqueueReadBuffer(queue, inbuf, CL_TRUE, 0,
-			sizeof(double) * nx, X, 0, 0, 0);
+    clEnqueueReadBuffer(queue, inbuf, CL_TRUE, 0, rbufsize, X, 0, 0, 0);
     clFinish(queue);
     if(nx <= maxout)
       show1R(X, nx);
@@ -144,7 +143,7 @@ __kernel void init(__global double *X)\n	\
     fft.forward(&inbuf, inplace ? NULL : &outbuf, 0, 0, 0);
     clFinish(queue);
     clEnqueueReadBuffer(queue, inplace ? inbuf : outbuf, CL_TRUE, 0,
-			sizeof(double) * 2 * nxp, FX, 0, 0, 0);
+			cbufsize, FX, 0, 0, 0);
     clFinish(queue);
     if(nx <= maxout)
       show1C(FX, nxp);
@@ -154,8 +153,7 @@ __kernel void init(__global double *X)\n	\
     cout << "\nTransformed back:" << endl;
     fft.backward(inplace ? &inbuf : &outbuf, inplace ? NULL : &inbuf, 0, 0, 0);
     clFinish(queue);
-    clEnqueueReadBuffer(queue, inbuf, CL_TRUE, 0,
-			sizeof(double) * nreal, X, 0, 0, 0);
+    clEnqueueReadBuffer(queue, inbuf, CL_TRUE, 0, rbufsize, X, 0, 0, 0);
     clFinish(queue);
 
     if(nx <= maxout) 
@@ -170,7 +168,7 @@ __kernel void init(__global double *X)\n	\
 			     0, 0, 0, 0);
       clFinish(queue);
       clEnqueueReadBuffer(queue, inbuf, CL_TRUE, 0,
-			  sizeof(double) * nx, X0, 0, 0, 0);
+			  rbufsize, X0, 0, 0, 0);
       clFinish(queue);
 
       double L2error = 0.0;
@@ -245,6 +243,8 @@ __kernel void init(__global double *X)\n	\
   	error += 1;
       }
     }
+    delete[] X;
+    delete[] FX;
     
   } else {
     double *T = new double[N];
@@ -272,10 +272,11 @@ __kernel void init(__global double *X)\n	\
     timings("fft timing", nx, T, N,stats);
     delete[] T;
   }
-  delete[] X;
-  delete[] FX;
-
-  /* Release OpenCL working objects. */
+  
+  clReleaseMemObject(inbuf);
+  if(!inplace)
+    clReleaseMemObject(outbuf);
+    
   clReleaseCommandQueue(queue);
   clReleaseContext(ctx);
 

@@ -197,16 +197,16 @@ int main(int argc, char *argv[]) {
   	    << " doubles." << endl;
   const unsigned int ndouble = 2 * nx * ny;
 
+  size_t bufsize = sizeof(double) * 2 * nx * ny;
   cl_int status;
   cl_mem inbuf = clCreateBuffer(ctx, CL_MEM_READ_WRITE,
-				sizeof(double) * 2 * nx * ny, NULL, &status);
+				bufsize, NULL, &status);
   cl_mem outbuf;
   if(inplace) {
     std::cout << "in-place transform" << std::endl;
   } else {
     std::cout << "out-of-place transform" << std::endl;
-    outbuf = clCreateBuffer(ctx, CL_MEM_READ_WRITE,
-				   sizeof(double) * 2 * nx * ny, NULL, &status);
+    outbuf = clCreateBuffer(ctx, CL_MEM_READ_WRITE, bufsize, NULL, &status);
   }
   
   string init_source = "\
@@ -237,8 +237,7 @@ __kernel void init(__global double *X)		\
     cout << "\nInput:" << endl;
     clEnqueueNDRangeKernel(queue, initkernel, 2, NULL, global_wsize, 0, 0, 0,0);
     clFinish(queue);
-    clEnqueueReadBuffer(queue, inbuf, CL_TRUE, 0,
-			sizeof(double) * 2 * nx * ny, X, 0, 0, 0);
+    clEnqueueReadBuffer(queue, inbuf, CL_TRUE, 0, bufsize, X, 0, 0, 0);
     clFinish(queue);
     if(nx <= maxout)
       show2C(X, nx, ny);
@@ -248,8 +247,7 @@ __kernel void init(__global double *X)		\
     cout << "\nTransformed:" << endl;    
     fft.forward(&inbuf, inplace ? NULL : &outbuf, 0, 0, 0);
     clFinish(queue);
-    clEnqueueReadBuffer(queue, inbuf, CL_TRUE, 0,
-			sizeof(double) * 2 * nx * ny, FX, 0, 0, 0);
+    clEnqueueReadBuffer(queue, inbuf, CL_TRUE, 0, bufsize, FX, 0, 0, 0);
     clFinish(queue);
     if(nx <= maxout)
       show1C(FX, n, M);
@@ -259,8 +257,7 @@ __kernel void init(__global double *X)		\
     cout << "\nTransformed back:" << endl;
     fft.backward(inplace ? &inbuf : &outbuf, inplace ? NULL : &inbuf, 0, 0, 0);
     clFinish(queue);
-    clEnqueueReadBuffer(queue, inbuf, CL_TRUE, 0,
-			sizeof(double) * 2 * nx * ny, X, 0, 0, 0);
+    clEnqueueReadBuffer(queue, inbuf, CL_TRUE, 0, bufsize, X, 0, 0, 0);
     clFinish(queue);
     if(nx <= maxout)
       show2C(X, nx, ny);
@@ -273,8 +270,7 @@ __kernel void init(__global double *X)		\
       clEnqueueNDRangeKernel(queue, initkernel, 2, NULL, global_wsize, 0,
 			     0, 0, 0);
       clFinish(queue);
-      clEnqueueReadBuffer(queue, inbuf, CL_TRUE, 0,
-			  sizeof(double) * 2 * nx * ny, X0, 0, 0, 0);
+      clEnqueueReadBuffer(queue, inbuf, CL_TRUE, 0, bufsize, X0, 0, 0, 0);
       clFinish(queue);
       
       double L2error = 0.0;
@@ -313,8 +309,7 @@ __kernel void init(__global double *X)		\
       clEnqueueNDRangeKernel(queue, initkernel, 2, NULL, global_wsize, 0,
 			     0, 0, 0);
       clFinish(queue);
-      clEnqueueReadBuffer(queue, inbuf, CL_TRUE, 0,
-			  sizeof(double) * 2 * nx * ny, df, 0, 0, 0);
+      clEnqueueReadBuffer(queue, inbuf, CL_TRUE, 0, bufsize, df, 0, 0, 0);
       clFinish(queue);
 
       cout << endl;

@@ -175,16 +175,16 @@ int main(int argc, char *argv[]) {
     if(direction == 1)
       nreal = nx * 2 * (ny / 2 + 1);
   }
-  size_t inbufsize = nreal * sizeof(double);
+  size_t rbufsize = nreal * sizeof(double);
   unsigned int ncomplex = np * M;
-  size_t outbufsize = 2 * ncomplex * sizeof(double);
+  size_t cbufsize = 2 * ncomplex * sizeof(double);
   
   unsigned int stride = (inplace && direction == 1) ? 2 * (ny / 2 + 1) : ny;
     
   cl_int ret;
   cl_mem inbuf = clCreateBuffer(ctx,
 				CL_MEM_READ_WRITE,
-				inbufsize,
+				rbufsize,
 				NULL,
 				&ret);
   if(ret != CL_SUCCESS) std::cerr << clErrorString(ret) << std::endl;
@@ -198,18 +198,13 @@ int main(int argc, char *argv[]) {
     //fft.create_cbuf(&outbuf);
     outbuf = clCreateBuffer(ctx,
     			    CL_MEM_READ_WRITE,
-    			    outbufsize,
+    			    cbufsize,
     			    NULL,
     			    &ret);
     if(ret != CL_SUCCESS) std::cerr << clErrorString(ret) << std::endl;
     assert(ret == CL_SUCCESS);
   }
   
-  cout << "\nAllocating "  << nreal << " doubles for real." << endl;
-  double *X = new double[nreal];
-
-  cout << "Allocating " << 2 * ncomplex << " doubles for complex." << endl;
-  double *FX = new double[2 * ncomplex];
 
   string init_source ="\
 #pragma OPENCL EXTENSION cl_khr_fp64: enable \n			\
@@ -240,13 +235,19 @@ __kernel void init(__global double *X,		\n		\
   cout << "wsize: " << wsize[0] << " " << wsize[1] << endl;
   
   if(N == 0) {
+    cout << "\nAllocating "  << nreal << " doubles for real." << endl;
+    double *X = new double[nreal];
+
+    cout << "Allocating " << 2 * ncomplex << " doubles for complex." << endl;
+    double *FX = new double[2 * ncomplex];
+    
     tolerance *= 1.0 + log((double)nx);
     cout << "Tolerance: " << tolerance << endl;
 
     cout << "\nInput:" << endl;
     clEnqueueNDRangeKernel(queue, initkernel, 2, NULL, wsize, NULL, 0, 0, 0);
     clFinish(queue);
-    clEnqueueReadBuffer(queue, inbuf, CL_TRUE, 0, inbufsize, X, 0, 0, 0);
+    clEnqueueReadBuffer(queue, inbuf, CL_TRUE, 0, rbufsize, X, 0, 0, 0);
     clFinish(queue);
     if(nx <= maxout)
       show2R(X, wsize[0], wsize[1]);
@@ -257,7 +258,7 @@ __kernel void init(__global double *X,		\n		\
     fft.forward(&inbuf, inplace ? NULL : &outbuf, 0, 0, 0);
     clFinish(queue);
     clEnqueueReadBuffer(queue, inplace ? inbuf : outbuf, CL_TRUE,
-				     0, outbufsize, FX, 0, 0, 0);
+				     0, cbufsize, FX, 0, 0, 0);
     clFinish(queue);
     if(nx * ny <= maxout) {
       if(direction == 0) 
@@ -271,7 +272,7 @@ __kernel void init(__global double *X,		\n		\
     cout << "\nTransformed back:" << endl;
     fft.backward(inplace ? &inbuf : & outbuf, inplace ? NULL : &inbuf, 0, 0, 0);
     clFinish(queue);
-    clEnqueueReadBuffer(queue, inbuf, CL_TRUE, 0, inbufsize, X, 0, 0, 0);
+    clEnqueueReadBuffer(queue, inbuf, CL_TRUE, 0, rbufsize, X, 0, 0, 0);
     clFinish(queue);
     if(nx <= maxout) {
       show2R(X, wsize[0], wsize[1]);
@@ -284,7 +285,7 @@ __kernel void init(__global double *X,		\n		\
       double *X0 = new double[nreal];
       clEnqueueNDRangeKernel(queue, initkernel, 2, NULL, wsize, NULL, 0, 0, 0);
       clFinish(queue);
-      clEnqueueReadBuffer(queue, inbuf, CL_TRUE, 0, inbufsize, X0, 0, 0, 0);
+      clEnqueueReadBuffer(queue, inbuf, CL_TRUE, 0, rbufsize, X0, 0, 0, 0);
       clFinish(queue);
       
       double L2error = 0.0;
@@ -334,7 +335,7 @@ __kernel void init(__global double *X,		\n		\
 
       clEnqueueNDRangeKernel(queue, initkernel, 2, NULL, wsize, NULL, 0, 0, 0);
       clFinish(queue);
-      clEnqueueReadBuffer(queue, inbuf, CL_TRUE, 0, inbufsize, f(), 0, 0, 0);
+      clEnqueueReadBuffer(queue, inbuf, CL_TRUE, 0, rbufsize, f(), 0, 0, 0);
       clFinish(queue);
       
       cout << "fftw++ input:\n" << f << endl;
@@ -368,6 +369,7 @@ __kernel void init(__global double *X,		\n		\
 	error += 1;
       }
     }
+    delete[] X;
 
   } else {
     double *T = new double[N];
@@ -395,7 +397,9 @@ __kernel void init(__global double *X,		\n		\
     delete[] T;
   }
 
-  delete[] X;
+  if(!inplace)
+    clReleaseMemObject(outbuf);
+  clReleaseMemObject(inbuf); 
   clReleaseCommandQueue(queue);
   clReleaseContext(ctx);
 
