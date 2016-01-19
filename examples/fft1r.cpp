@@ -22,16 +22,14 @@ along with clFFT++.  If not, see <http://www.gnu.org/licenses/>.
 #include "utils.hpp"
 
 int main() {
-  int platnum = 1;
+  int platnum = 0;
   int devnum = 0;
 
-  unsigned int nx = 4;
-
   bool inplace = false;
-
-  unsigned int nxp = nx / 2 + 1;
-  unsigned int nreal = inplace ? 2 * nxp : nx;
   
+  unsigned int nx = 4;
+  
+  // Set up OpenCL environment
   platform::show_devices();
   std::cout << "Using platform " << platnum
 	    << " device " << devnum 
@@ -49,21 +47,29 @@ int main() {
   cl_command_queue queue = platform::create_queue(ctx, device,
 						  CL_QUEUE_PROFILING_ENABLE);
 
+  // Create fft
   clfftpp::clfft1r fft(nx, inplace, queue, ctx);
 
+  // Set up buffers
+  unsigned int nxp = nx / 2 + 1;
+  unsigned int nreal = inplace ? 2 * nxp : nx;
+  std::cout << "Allocating " << nreal << " doubles for real." << std::endl;
+  double *X = new double[nreal];
+  std::cout << "Allocating " << 2 * nxp << " doubles for complex." << std::endl;
+  double *FX = new double[2 * nxp];
+  size_t rbufsize = nreal * sizeof(double);
+  size_t cbufsize = 2 * nxp * sizeof(double);
   cl_int status;
-  cl_mem inbuf = clCreateBuffer(ctx, CL_MEM_READ_WRITE,
-				sizeof(double) * nreal, NULL, &status);
+  cl_mem inbuf = clCreateBuffer(ctx, CL_MEM_READ_WRITE, rbufsize, NULL,&status);
   cl_mem outbuf;
   if(inplace) {
     std::cout << "in-place transform" << std::endl;
   } else {
     std::cout << "out-of-place transform" << std::endl;
-    outbuf = clCreateBuffer(ctx, CL_MEM_READ_WRITE,
-				   sizeof(double) * 2 * nxp, NULL, &status);
+    outbuf = clCreateBuffer(ctx, CL_MEM_READ_WRITE, cbufsize, NULL, &status);
   }
 
-  // Create OpenCL kernel to initialize OpenCL buffer
+  // Set up initialization kernel  
   std::string init_source = "\
 #pragma OPENCL EXTENSION cl_khr_fp64: enable\n	\
 __kernel void init(__global double *X)\n	\
@@ -76,45 +82,40 @@ __kernel void init(__global double *X)\n	\
   cl_kernel initkernel = clCreateKernel(initprog, "init", &status); 
   clSetKernelArg(initkernel, 0, sizeof(cl_mem), &inbuf);
 
-  std::cout << "Allocating " << nreal << " doubles for real." << std::endl;
-  double *X = new double[nreal];
-  std::cout << "Allocating " << 2 * nxp << " doubles for complex." << std::endl;
-  double *FX = new double[2 * nxp];
-
-  cl_event clv_init;
-  cl_event clv_toram;
-  cl_event clv_forward;
-  cl_event clv_backward;
-
+  
   std::cout << "\nInput:" << std::endl;
   size_t global_wsize[] = {(size_t)nx};
   clEnqueueNDRangeKernel(queue, initkernel, 1, NULL, global_wsize, NULL,
-			 0, NULL, &clv_init);
-  clEnqueueReadBuffer(queue, inbuf, CL_TRUE, 0, sizeof(double) * nreal, X,
-		      1, &clv_init, &clv_toram);
-  clWaitForEvents(1, &clv_toram);
+			 0, 0, 0);
+  clFinish(queue);
+  clEnqueueReadBuffer(queue, inbuf, CL_TRUE, 0, rbufsize, X, 0, 0, 0);
+  clFinish(queue);
   show1R(X, nx);
 
+  
   std::cout << "\nTransformed:" << std::endl;
-  fft.forward(&inbuf, inplace ? NULL : &outbuf, 1, &clv_init, &clv_forward);
-  clEnqueueReadBuffer(queue, inplace ? inbuf : outbuf,
-		      CL_TRUE, 0, sizeof(double) * 2 * nxp, FX,
-		      1, &clv_init, &clv_toram);
-  clWaitForEvents(1, &clv_toram);
+  fft.forward(&inbuf, inplace ? NULL : &outbuf, 0, 0, 0);
+  clFinish(queue);
+  clEnqueueReadBuffer(queue, inplace ? inbuf : outbuf, CL_TRUE, 0, cbufsize, FX,
+		      0, 0, 0);
+  clFinish(queue);
   show1C(FX, nxp);
 
+  
   std::cout << "\nTransformed back:" << std::endl;
-  fft.backward(inplace ? &inbuf : &outbuf, 
-	       inplace ? NULL : &inbuf, 1, &clv_forward, &clv_backward);
-  clEnqueueReadBuffer(queue, inbuf, CL_TRUE, 0, sizeof(double) * nreal, X,
-		      1,  &clv_backward, &clv_toram);
-  clWaitForEvents(1, &clv_toram);
+  fft.backward(inplace ? &inbuf : &outbuf, inplace ? NULL : &inbuf, 0, 0, 0);
+  clFinish(queue);
+  clEnqueueReadBuffer(queue, inbuf, CL_TRUE, 0, rbufsize, X, 0, 0, 0);
+  clFinish(queue);
   show1R(X, nx);
   
   delete[] X;
   delete[] FX;
+  
+  clReleaseMemObject(inbuf);
+  if(!inplace)
+    clReleaseMemObject(outbuf);
 
-  /* Release OpenCL working objects. */
   clReleaseCommandQueue(queue);
   clReleaseContext(ctx);
 

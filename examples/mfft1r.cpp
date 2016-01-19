@@ -22,22 +22,23 @@ along with clFFT++.  If not, see <http://www.gnu.org/licenses/>.
 #include "utils.hpp"
 
 int main() {
-  // OpenCL platform / device choice
   int platnum = 1;
   int devnum = 0;
 
   // Input buffer size
   unsigned int nx = 4;
   unsigned int ny = 4;
+  std::cout << "nx: " << nx << "\tny: " << ny << std::endl;
 
-  unsigned int n = 4; // lenght of transform
-  unsigned int M = 4; // number of transforms in batch
+  // Lenght of transform:
+  unsigned int n = 4;
+  // Number of transforms
+  unsigned int M = 4; 
+  std::cout << "n: " << n << "\tM: " << M << std::endl;
   
   bool inplace = false;
 
   unsigned int np = n / 2 + 1;
-  unsigned int ncomplex = np * M;
-
 #if 1
   // transform along index 0
   size_t istride = nx;
@@ -58,6 +59,7 @@ int main() {
   unsigned int cdim[2] = {M, np};
 #endif
   
+  // Set up OpenCL environment
   platform::show_devices();
   std::cout << "Using platform " << platnum
 	    << " device " << devnum 
@@ -75,36 +77,43 @@ int main() {
   cl_command_queue queue = platform::create_queue(ctx, device,
 						  CL_QUEUE_PROFILING_ENABLE);
 
+  // Create fft
   clfftpp::clmfft1r fft(n, M, istride, ostride, idist, odist, inplace,
 			queue, ctx);
 
+  // Set up buffers
+  std::cout << "Allocating " << nreal << " doubles for real." << std::endl;
+  double *X = new double[nreal];
+  std::cout << "Allocating " << 2 * np * M
+	    << " doubles for complex." << std::endl;
+  double *FX = new double[2 * np * M];
+  size_t rbufsize = sizeof(double) * nreal;
+  size_t cbufsize = sizeof(double) * 2 * np * M;
   cl_int status;
-  cl_mem inbuf = clCreateBuffer(ctx, CL_MEM_READ_WRITE,
-				sizeof(double) * 2 * nx * ny, NULL, &status);
+  cl_mem inbuf = clCreateBuffer(ctx, CL_MEM_READ_WRITE, rbufsize, NULL,&status);
   cl_mem outbuf;
   if(inplace) {
     std::cout << "in-place transform" << std::endl;
   } else {
     std::cout << "out-of-place transform" << std::endl;
-    outbuf = clCreateBuffer(ctx, CL_MEM_READ_WRITE,
-			    sizeof(double) * 2 * ncomplex, NULL, &status);
+    outbuf = clCreateBuffer(ctx, CL_MEM_READ_WRITE, cbufsize, NULL, &status);
   }
 
+  // Set up initialization kernel
   std::string init_source ="\
 #pragma OPENCL EXTENSION cl_khr_fp64: enable \n			\
-__kernel void init(__global double *X,		\n		\
-      const unsigned int nx, const unsigned int ny ) \n		\
-{						\n		\
-  const int i = get_global_id(0); 		\n		\
-  const int j = get_global_id(1); 		\n		\
-  const int stride = get_global_size(1); 	\n		\
-  int pos = i * stride + j;			\n		\
-  if((i < nx) && (j < ny))			\n		\
-    X[pos] = j + 10.0 * i;			\n		\
-  else						\n		\
-    X[pos] = 0.0;				\n		\
+__kernel void init(__global double *X,				\
+      const unsigned int nx, const unsigned int ny ) 		\
+{								\
+  const int i = get_global_id(0); 				\
+  const int j = get_global_id(1); 				\
+  const int stride = get_global_size(1); 			\
+  int pos = i * stride + j;					\
+  if((i < nx) && (j < ny))					\
+    X[pos] = j + 10.0 * i;					\
+  else								\
+    X[pos] = 0.0;						\
 }";
-   
   cl_program initprog = platform::create_program(init_source, ctx);
   clBuildProgram(initprog, 1, &device, NULL, NULL, NULL);
   cl_kernel initkernel = clCreateKernel(initprog, "init", &status); 
@@ -112,46 +121,38 @@ __kernel void init(__global double *X,		\n		\
   clSetKernelArg(initkernel, 1, sizeof(unsigned int), &nx);
   clSetKernelArg(initkernel, 2, sizeof(unsigned int), &ny);
 
-  std::cout << "Allocating " << nreal << " doubles for real." << std::endl;
-  double *X = new double[nreal];
-  std::cout << "Allocating " << 2 * ncomplex
-	    << " doubles for complex." << std::endl;
-  double *FX = new double[2 * ncomplex];
-
-  // Create OpenCL events
-  cl_event clv_init;
-  cl_event clv_toram;
-  cl_event clv_forward;
-  cl_event clv_backward;
 
   std::cout << "\nInput:" << std::endl;
   clEnqueueNDRangeKernel(queue, initkernel, 2, NULL, global_wsize, NULL,
-			 0, NULL, &clv_init);
-  clEnqueueReadBuffer(queue, inbuf, CL_TRUE, 0, sizeof(double) * nreal, X,
-		 1, &clv_init, &clv_toram);
+			 0, 0, 0);
+  clFinish(queue);
+  clEnqueueReadBuffer(queue, inbuf, CL_TRUE, 0, rbufsize, X, 0, 0, 0);
+  clFinish(queue);
   show1R(X, nx, ny);
 
+  
   std::cout << "\nTransformed:" << std::endl;
-  fft.forward(&inbuf, inplace ? NULL : &outbuf, 1, &clv_init, &clv_forward);
-  clEnqueueReadBuffer(queue, inplace ? inbuf : outbuf,
-		      CL_TRUE, 0, sizeof(double) * 2 * ncomplex,
-		      FX,
-		      1, &clv_forward, &clv_toram);
-  clWaitForEvents(1, &clv_toram);
+  fft.forward(&inbuf, inplace ? NULL : &outbuf, 0, 0, 0);
+  clFinish(queue);
+  clEnqueueReadBuffer(queue, inplace ? inbuf : outbuf, CL_TRUE, 0, cbufsize, FX,
+		      0, 0, 0);
+  clFinish(queue);
   show2C(FX, cdim[0], cdim[1]);
 
+  
   std::cout << "\nTransformed back:" << std::endl;
-  fft.backward(inplace ? &inbuf : &outbuf, 
-  	       inplace ? NULL : &inbuf, 1, &clv_forward, &clv_backward);
-  clEnqueueReadBuffer(queue, inbuf, CL_TRUE, 0, sizeof(double) * nreal, X, 1,
-		      &clv_backward, &clv_toram);
-  clWaitForEvents(1, &clv_toram);
+  fft.backward(inplace ? &inbuf : &outbuf, inplace ? NULL : &inbuf, 0, 0, 0);
+  clFinish(queue);
+  clEnqueueReadBuffer(queue, inbuf, CL_TRUE, 0, rbufsize, X, 0, 0, 0);
+  clFinish(queue);
   show1R(X, n, M);
 
   delete[] FX;
   delete[] X;
+  clReleaseMemObject(inbuf);
+  if(!inplace)
+    clReleaseMemObject(outbuf);
   
-  /* Release OpenCL working objects. */
   clReleaseCommandQueue(queue);
   clReleaseContext(ctx);
 

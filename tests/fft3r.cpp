@@ -159,7 +159,7 @@ const unsigned int skip)				\
     fft.forward(&inbuf, inplace ? NULL : &outbuf, 0, 0, 0);
     clFinish(queue);
     clEnqueueReadBuffer(queue, inplace ? inbuf : outbuf, CL_TRUE, 0,
-			2 * sizeof(double) * nx * ny *nzp, FX, 0, 0, 0);
+			2 * sizeof(double) * nx * ny * nzp, FX, 0, 0, 0);
     clFinish(queue);
     
     cout << "\nTransformed:" << endl;

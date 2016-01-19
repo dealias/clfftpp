@@ -23,12 +23,15 @@ along with clFFT++.  If not, see <http://www.gnu.org/licenses/>.
 #include "utils.hpp"
 
 int main() {
-  int platnum = 1;
+  int platnum = 0;
   int devnum = 0;
+  
   bool inplace = true;
+
   unsigned int nx = 4;
   unsigned int ny = 4;
 
+  // Set up OpenCL environment
   platform::show_devices();
   std::cout << "Using platform " << platnum
 	    << " device " << devnum 
@@ -45,21 +48,26 @@ int main() {
   cl_context ctx = platform::create_context(platform, device);
   cl_command_queue queue = platform::create_queue(ctx, device,
 						  CL_QUEUE_PROFILING_ENABLE);
-  
+
+  // Create fft
   clfftpp::clfft2 fft(nx, ny, inplace, queue, ctx);
 
+  // Set up buffers
+  std::cout << "Allocating " << 2 * nx * ny << " doubles." << std::endl;
+  double *X = new double[ 2 * nx * ny ];
+  double *FX = new double[ 2 * nx * ny ];
+  size_t bufsize = sizeof(double) * 2 * nx * ny;
   cl_int status;
-  cl_mem inbuf = clCreateBuffer(ctx, CL_MEM_READ_WRITE,
-				sizeof(double) * 2 * nx * ny, NULL, &status);
+  cl_mem inbuf = clCreateBuffer(ctx, CL_MEM_READ_WRITE, bufsize, NULL, &status);
   cl_mem outbuf;
   if(inplace) {
     std::cout << "in-place transform" << std::endl;
   } else {
     std::cout << "out-of-place transform" << std::endl;
-    outbuf = clCreateBuffer(ctx, CL_MEM_READ_WRITE,
-				   sizeof(double) * 2 * nx * ny, NULL, &status);
+    outbuf = clCreateBuffer(ctx, CL_MEM_READ_WRITE, bufsize, NULL, &status);
   }
 
+  // Set up initialization kernel
   std::string init_source ="\
 #pragma OPENCL EXTENSION cl_khr_fp64: enable\n			\
 __kernel void init(__global double *X)				\
@@ -76,45 +84,39 @@ __kernel void init(__global double *X)				\
   cl_kernel initkernel = clCreateKernel(initprog, "init", &status); 
   clSetKernelArg(initkernel, 0, sizeof(cl_mem), &inbuf);
   
-  std::cout << "Allocating " << 2 * nx * ny << " doubles." << std::endl;
-  double *X = new double[ 2 * nx * ny ];
-  double *FX = new double[ 2 * nx * ny ];
-
-  cl_event clv_init;
-  cl_event clv_toram;
-  cl_event clv_forward;
-  cl_event clv_backward;
 
   std::cout << "\nInput:" << std::endl;
   size_t global_wsize[] = {nx, ny};
   clEnqueueNDRangeKernel(queue, initkernel, 2, NULL, global_wsize, NULL,
-			 0, NULL, &clv_init);
-  clEnqueueReadBuffer(queue, inbuf, CL_TRUE, 0, sizeof(double) * 2 * nx * ny, X,
-		      1, &clv_init, &clv_toram);
-  clWaitForEvents(1, &clv_toram);
+			 0, 0, 0);
+  clFinish(queue);
+  clEnqueueReadBuffer(queue, inbuf, CL_TRUE, 0, bufsize, X, 0, 0, 0);
+  clFinish(queue);
   show2C(X, nx, ny);
 
   std::cout << "\nTransformed:" << std::endl;
-  fft.forward(&inbuf, inplace ? NULL : &outbuf, 1, &clv_init, &clv_forward);    
+  fft.forward(&inbuf, inplace ? NULL : &outbuf, 0, 0, 0); 
+  clFinish(queue);   
   clEnqueueReadBuffer(queue, inplace ? inbuf : outbuf,
 		      CL_TRUE, 0, sizeof(double) * 2 * nx * ny, FX,
-		      1, &clv_forward, &clv_toram);
-  clWaitForEvents(1, &clv_toram);
+		      0, 0, 0);
+  clFinish(queue);
   show2C(FX, nx, ny);
 
   std::cout << "\nTransformed back:" << std::endl;
-  fft.backward(inplace ? &inbuf : &outbuf, 
-	       inplace ? NULL : &inbuf, 1, &clv_forward, &clv_backward);
-  clEnqueueReadBuffer(queue, inbuf, CL_TRUE, 0, sizeof(double) * 2 * nx * ny, X,
-		      1, &clv_backward, &clv_toram);
-  clWaitForEvents(1, &clv_toram);
+  fft.backward(inplace ? &inbuf : &outbuf, inplace ? NULL : &inbuf, 0, 0, 0);
+  clFinish(queue);
+  clEnqueueReadBuffer(queue, inbuf, CL_TRUE, 0, bufsize, X, 0, 0, 0);
+  clFinish(queue);
   show2C(X, nx, ny);
   
-  delete X;
+  // Clean up
+  delete[] X;
+  delete[] FX;
+  clReleaseMemObject(inbuf);
+  if(!inplace)
+    clReleaseMemObject(outbuf);
 
-  // FIXME: release cl_mem
-  
-  /* Release OpenCL working objects. */
   clReleaseCommandQueue(queue);
   clReleaseContext(ctx);
 

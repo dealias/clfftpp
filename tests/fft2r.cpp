@@ -112,13 +112,13 @@ int main(int argc, char *argv[]) {
   }
 
   string init_source ="\
-#pragma OPENCL EXTENSION cl_khr_fp64: enable\n	\
+#pragma OPENCL EXTENSION cl_khr_fp64: enable\n			\
 __kernel void init(__global double *X, const unsigned int skip)	\
-{						\
-  const int i = get_global_id(0);		\
-  const int j = get_global_id(1);		\
-  unsigned pos = i * skip + j;			\
-  X[pos] = i + j;			\
+{								\
+  const int i = get_global_id(0);				\
+  const int j = get_global_id(1);				\
+  unsigned pos = i * skip + j;					\
+  X[pos] = i + j;						\
 }";
   
   size_t global_wsize[] = {nx, ny};
