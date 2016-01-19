@@ -22,7 +22,7 @@ along with clFFT++.  If not, see <http://www.gnu.org/licenses/>.
 #include "utils.hpp"
 
 int main() {
-  int platnum = 1;
+  int platnum = 0;
   int devnum = 0;
 
   bool inplace = false;

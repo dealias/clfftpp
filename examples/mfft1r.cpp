@@ -22,9 +22,11 @@ along with clFFT++.  If not, see <http://www.gnu.org/licenses/>.
 #include "utils.hpp"
 
 int main() {
-  int platnum = 1;
+  int platnum = 0;
   int devnum = 0;
 
+  bool inplace = false;
+  
   // Input buffer size
   unsigned int nx = 4;
   unsigned int ny = 4;
@@ -36,8 +38,6 @@ int main() {
   unsigned int M = 4; 
   std::cout << "n: " << n << "\tM: " << M << std::endl;
   
-  bool inplace = false;
-
   unsigned int np = n / 2 + 1;
 #if 1
   // transform along index 0

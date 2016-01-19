@@ -26,7 +26,7 @@ int main() {
   int platnum = 0;
   int devnum = 0;
   
-  bool inplace = true;
+  bool inplace = false;
 
   unsigned int nx = 4;
   unsigned int ny = 4;
