@@ -35,7 +35,13 @@ vpath %.c ../
 
 # Set up CXXFLAGS
 CXXFLAGS=
-CXXFLAGS+=-O3
+ifeq (debug,$(firstword $(MAKECMDGOALS)))
+	CXXFLAGS+=-ggdb -g3 -Og
+	CXXFLAGS+=-DDEBUG
+else
+	CXXFLAGS+=-Ofast
+endif
+
 CXXFLAGS+=-Wall
 
 CXXFLAGS+=$(INCL)
@@ -65,6 +71,8 @@ SRCS_CPP=clfft++ platform
 SRCS_C=clutils
 OBJS=$(SRCS_CPP:=.o) $(SRCS_C:=.o)
 ALL=$(SRCS_CPP) $(SRCS_C) $(OUTPUT)
+
+debug: $(OUTPUT)
 
 all: $(OUTPUT)
 

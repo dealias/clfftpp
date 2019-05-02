@@ -238,6 +238,10 @@ public:
     ret = clfftInitSetupData(&fftSetup);
     if(ret < CL_SUCCESS) std::cerr << clfft_errorstring(ret) << std::endl;
     assert(ret >= CL_SUCCESS);
+#ifdef DEBUG
+    fftSetup.debugFlags = CLFFT_DUMP_PROGRAMS;
+#endif
+    
     ret = clfftSetup(&fftSetup);
     if(ret < CL_SUCCESS) std::cerr << clfft_errorstring(ret) << std::endl;
     assert(ret >= CL_SUCCESS);
